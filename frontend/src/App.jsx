@@ -1,0 +1,63 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './store/AuthContext'
+import { MembersProvider } from './store/MembersContext'
+import { useAuth } from './hooks/useAuth'
+import BottomNav from './components/layout/BottomNav'
+import Home from './pages/Home'
+import Tree from './pages/Tree'
+import Map from './pages/Map'
+import Photos from './pages/Photos'
+import Profile from './pages/Profile'
+import Families from './pages/Families'
+import Members from './pages/Members'
+import NotFound from './pages/NotFound'
+import Login from './pages/Login'
+
+function ProtectedLayout() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center bg-white">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (!user) return <Navigate to="/login" replace />
+
+  return (
+    <MembersProvider>
+      <div className="flex h-full flex-col bg-gray-50">
+        <main className="flex-1 overflow-y-auto">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/tree" element={<Tree />} />
+            <Route path="/map" element={<Map />} />
+            <Route path="/photos" element={<Photos />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:id" element={<Profile />} />
+            <Route path="/families" element={<Families />} />
+            <Route path="/members" element={<Members />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
+        <BottomNav />
+      </div>
+    </MembersProvider>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/invite/:token" element={<Login />} />
+          <Route path="/*" element={<ProtectedLayout />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  )
+}
