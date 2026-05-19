@@ -564,9 +564,13 @@ export default function Profile() {
         )}
 
         {/* Notifications — propre profil uniquement */}
-        {isOwnProfile && pushSupported && (
+        {isOwnProfile && (
           <Card title="Notifications">
-            {pushBlocked ? (
+            {!pushSupported ? (
+              <p className="text-sm text-gray-400">
+                Pour recevoir des notifications, ajoutez l'app à votre écran d'accueil puis ouvrez-la depuis là.
+              </p>
+            ) : pushBlocked ? (
               <p className="text-sm text-gray-400">
                 Les notifications sont bloquées dans les paramètres de votre navigateur.
               </p>
