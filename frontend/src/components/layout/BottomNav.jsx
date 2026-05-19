@@ -45,11 +45,6 @@ export default function BottomNav() {
       icon: MapIcon,
       onClick: () => { setFabOpen(false); navigate('/map') }
     },
-    {
-      label: 'Voir les photos',
-      icon: PhotoIcon,
-      onClick: () => { setFabOpen(false); navigate('/photos') }
-    },
   ]
 
   const adminOnlyActions = [
