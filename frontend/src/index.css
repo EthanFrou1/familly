@@ -21,6 +21,14 @@
   /* Prevent iOS Safari from zooming on input focus (requires font-size >= 16px) */
   input, textarea, select {
     font-size: 16px !important;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* iOS Safari date input ignores w-full without this */
+  input[type="date"], input[type="datetime-local"] {
+    display: block;
+    width: 100%;
   }
 
   #root {
