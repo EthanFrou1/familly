@@ -25,7 +25,7 @@ public class AuthController(AuthService authService, EmailService emailService) 
             Expires = DateTimeOffset.UtcNow.AddDays(30)
         });
 
-        return Ok(new { user = result.User });
+        return Ok(new { user = result.User, token = result.AccessToken });
     }
 
     [HttpPost("logout")]

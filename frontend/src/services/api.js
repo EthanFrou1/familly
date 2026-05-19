@@ -2,17 +2,27 @@ import axios from 'axios'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
+const TOKEN_KEY = 'auth_token'
+export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token)
+export const clearToken = () => localStorage.removeItem(TOKEN_KEY)
+export const getToken = () => localStorage.getItem(TOKEN_KEY)
+
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,
-  withCredentials: true, // httpOnly cookie JWT
   headers: { 'Content-Type': 'application/json' }
 })
 
-// Redirect to login on 401, sauf si on est déjà sur /login
+api.interceptors.request.use((config) => {
+  const token = getToken()
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
 api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
+      clearToken()
       window.location.href = '/login'
     }
     return Promise.reject(error)
