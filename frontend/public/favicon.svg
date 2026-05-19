@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#A87048"/>
+  <!-- main figure -->
+  <circle cx="16" cy="10" r="3" fill="white"/>
+  <path d="M10.5 22.5c0-3.04 2.46-5.5 5.5-5.5s5.5 2.46 5.5 5.5z" fill="white"/>
+  <!-- left figure -->
+  <circle cx="8.5" cy="13.5" r="2.2" fill="white" fill-opacity="0.8"/>
+  <path d="M4 22.5c0-2.49 2.01-4.5 4.5-4.5h.5a6.5 6.5 0 00-1.5 4.5z" fill="white" fill-opacity="0.8"/>
+  <!-- right figure -->
+  <circle cx="23.5" cy="13.5" r="2.2" fill="white" fill-opacity="0.8"/>
+  <path d="M28 22.5h-3.5a6.5 6.5 0 00-1.5-4.5h.5c2.49 0 4.5 2.01 4.5 4.5z" fill="white" fill-opacity="0.8"/>
+</svg>
