@@ -53,7 +53,11 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
       setForm(initial ? toFormValues(initial) : EMPTY)
       setFeedback(null)
       familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
     }
+    return () => { document.body.style.overflow = '' }
   }, [open, initial])
 
   function set(field, value) {
@@ -103,7 +107,7 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
   return createPortal(
     <div className="fixed inset-0 z-[60] flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl animate-slide-up max-h-[90vh] flex flex-col">
+      <div className="relative bg-white rounded-t-3xl animate-slide-up max-h-[90vh] w-full flex flex-col overflow-x-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">
             {isEdit ? 'Modifier le membre' : 'Ajouter un membre'}

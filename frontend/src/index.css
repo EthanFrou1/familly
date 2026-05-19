@@ -19,6 +19,12 @@
   }
 }
 
+/* Constrain Google Places autocomplete dropdown to viewport width */
+.pac-container {
+  max-width: calc(100vw - 2rem) !important;
+  box-sizing: border-box;
+}
+
 /* Prevent browser autofill from changing input background */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
