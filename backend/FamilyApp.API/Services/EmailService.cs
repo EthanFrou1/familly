@@ -11,7 +11,7 @@ public class EmailService(IHttpClientFactory http, IConfiguration config, ILogge
         string? familyGroupName)
     {
         var apiKey      = config["Brevo:ApiKey"];
-        var fromEmail   = config["Brevo:FromAddress"] ?? "noreply@mybigfamily.fr";
+        var fromEmail   = config["Brevo:FromAddress"] ?? "bonjour@mybigfamily.fr";
         var fromName    = config["Brevo:FromName"] ?? "MyBigFamily";
 
         if (string.IsNullOrEmpty(apiKey))
@@ -26,6 +26,10 @@ public class EmailService(IHttpClientFactory http, IConfiguration config, ILogge
 
         var greeting = familyGroupName is not null
             ? $"Tu es invité(e) à rejoindre la Famille <strong>{familyGroupName}</strong> sur MyBigFamily."
+            : "Tu es invité(e) à rejoindre notre espace famille sur MyBigFamily.";
+
+        var greetingText = familyGroupName is not null
+            ? $"Tu es invité(e) à rejoindre la Famille {familyGroupName} sur MyBigFamily."
             : "Tu es invité(e) à rejoindre notre espace famille sur MyBigFamily.";
 
         var html = $"""
@@ -60,12 +64,25 @@ public class EmailService(IHttpClientFactory http, IConfiguration config, ILogge
             </html>
             """;
 
+        var textContent = $"""
+            Bonjour {firstName},
+
+            {greetingText}
+
+            Crée ton compte en cliquant sur ce lien :
+            {inviteLink}
+
+            — L'équipe MyBigFamily
+            """;
+
         var payload = new
         {
-            sender  = new { name = fromName, email = fromEmail },
-            to      = new[] { new { email = toEmail, name = firstName } },
+            sender      = new { name = fromName, email = fromEmail },
+            to          = new[] { new { email = toEmail, name = firstName } },
+            replyTo     = new { email = fromEmail, name = fromName },
             subject,
             htmlContent = html,
+            textContent,
         };
 
         try
