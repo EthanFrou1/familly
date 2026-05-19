@@ -53,6 +53,7 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
   const cfg = NETWORKS[network]
   const [value, setValue] = useState(currentValue || '')
   const [loading, setLoading] = useState(false)
+  const [focused, setFocused] = useState(false)
 
   const preview = cfg.preview(value)
   const hasChanged = cfg.cleanValue(value) !== (currentValue || '')
@@ -79,14 +80,15 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
-      <div className="relative bg-white rounded-t-3xl animate-slide-up overflow-hidden shadow-xl">
+      <div className="relative bg-white rounded-t-3xl animate-slide-up shadow-xl flex flex-col"
+           style={{ maxHeight: '80dvh', touchAction: 'pan-y' }}>
         {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1">
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="h-1 w-10 rounded-full bg-gray-200" />
         </div>
 
         {/* Colored header */}
-        <div className={`${cfg.headerCls} px-5 py-5 flex items-center gap-3`}>
+        <div className={`${cfg.headerCls} px-5 py-4 flex items-center gap-3 shrink-0`}>
           <span className="h-8 w-8 text-white">
             {network === 'instagram' && <InstagramIcon />}
             {network === 'facebook' && <FacebookIcon />}
@@ -95,18 +97,20 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
           <span className="text-lg font-bold text-white">Lier {cfg.label}</span>
         </div>
 
-        <div className="px-5 py-5 space-y-5">
-          {/* Steps */}
-          <div className="rounded-2xl bg-gray-50 p-4 space-y-2.5">
-            {cfg.steps.map((step, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span className="h-5 w-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                  {i + 1}
-                </span>
-                <span className="text-sm text-gray-700">{step}</span>
-              </div>
-            ))}
-          </div>
+        <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+          {/* Steps — masqués quand le clavier est ouvert */}
+          {!focused && (
+            <div className="rounded-2xl bg-gray-50 p-4 space-y-2.5">
+              {cfg.steps.map((step, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span className="h-5 w-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm text-gray-700">{step}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Input */}
           <div>
@@ -127,6 +131,8 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
                     ? e.target.value.replace(/[^\d\s+\-().]/g, '')
                     : e.target.value
                 )}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
                 placeholder={cfg.placeholder}
                 autoFocus
                 className="flex-1 px-3 py-3 text-sm outline-none bg-white"
@@ -146,7 +152,7 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
         </div>
 
         {/* Footer */}
-        <div className="px-5 pb-8 pt-1 space-y-2">
+        <div className="px-5 pb-8 pt-1 space-y-2 shrink-0">
           <button
             onClick={handleSave}
             disabled={!value.trim() || !hasChanged || loading}
