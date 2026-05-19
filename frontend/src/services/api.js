@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const BASE_URL = import.meta.env.VITE_API_URL ?? ''
 
 const TOKEN_KEY = 'auth_token'
 export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token)

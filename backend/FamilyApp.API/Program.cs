@@ -69,8 +69,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Auto-migrate en dev uniquement
-if (app.Environment.IsDevelopment())
+// Migrate at startup (all environments)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
