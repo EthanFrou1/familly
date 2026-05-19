@@ -16,6 +16,8 @@ public class ActivityLogsController(AppDbContext db) : ControllerBase
     {
         var logs = await db.ActivityLogs
             .Where(l => l.Type != "member_updated")
+            .Where(l => l.TargetMemberId == null  || db.Members.Any(m => m.Id == l.TargetMemberId))
+            .Where(l => l.RelatedMemberId == null || db.Members.Any(m => m.Id == l.RelatedMemberId))
             .OrderByDescending(l => l.CreatedAt)
             .Take(Math.Clamp(limit, 1, 100))
             .Select(l => new ActivityLogDto(
