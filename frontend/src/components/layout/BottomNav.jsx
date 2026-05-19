@@ -34,14 +34,9 @@ export default function BottomNav() {
     navigate('/login')
   }
 
-  const adminActions = [
+  const allActions = [
     {
-      label: 'Ajouter un membre',
-      icon: AddPersonIcon,
-      onClick: () => { setFabOpen(false); setShowAddMember(true) }
-    },
-    {
-      label: 'Gérer les familles',
+      label: 'Les familles',
       icon: FamilyIcon,
       onClick: () => { setFabOpen(false); navigate('/families') }
     },
@@ -57,6 +52,14 @@ export default function BottomNav() {
     },
   ]
 
+  const adminOnlyActions = [
+    {
+      label: 'Ajouter un membre',
+      icon: AddPersonIcon,
+      onClick: () => { setFabOpen(false); setShowAddMember(true) }
+    },
+  ]
+
   return (
     <>
       {/* Overlay + menu FAB */}
@@ -67,13 +70,20 @@ export default function BottomNav() {
           {/* Menu dark */}
           <div
             className="relative mx-4 mb-24 rounded-2xl overflow-hidden"
-            style={{ background: '#1A1B2E' }}
+            style={{ background: '#2A1208' }}
             onClick={e => e.stopPropagation()}
           >
-            {isAdmin && adminActions.map(({ label, icon: Icon }, i) => (
+            {isAdmin && adminOnlyActions.map(({ label, icon: Icon }, i) => (
               <MenuItem key={label} icon={<Icon />} label={label}
-                onClick={() => { setFabOpen(false); adminActions[i].onClick() }}
-                border={i < adminActions.length - 1}
+                onClick={adminOnlyActions[i].onClick}
+                border
+              />
+            ))}
+
+            {allActions.map(({ label, icon: Icon }, i) => (
+              <MenuItem key={label} icon={<Icon />} label={label}
+                onClick={allActions[i].onClick}
+                border={i < allActions.length - 1}
               />
             ))}
 

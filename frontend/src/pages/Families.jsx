@@ -1,16 +1,21 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
+import { useAuth } from '../hooks/useAuth'
 import { familiesApi, membersApi } from '../services/api'
 import Avatar from '../components/shared/Avatar'
 import ConfirmModal from '../components/shared/ConfirmModal'
 
 export default function Families() {
   const { members, refresh } = useMembers()
+  const { user } = useAuth()
   const navigate = useNavigate()
+  const isAdmin = user?.role === 'Admin'
 
   const [families, setFamilies] = useState([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [sort, setSort] = useState('alpha')
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
@@ -72,11 +77,46 @@ export default function Families() {
     setConfirmDelete(null)
   }
 
-  const unassigned = membersByFamily['__none__'] ?? []
-  const familiesWithMembers = families.map(f => ({
-    ...f,
-    members: membersByFamily[f.id] ?? [],
-  }))
+  const avgBirthYear = (members) => {
+    const withDate = members.filter(m => m.birthDate)
+    if (!withDate.length) return null
+    return withDate.reduce((sum, m) => sum + new Date(m.birthDate).getFullYear(), 0) / withDate.length
+  }
+
+  const { familiesWithMembers, unassigned } = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const all = membersByFamily['__none__'] ?? []
+
+    let list = families
+      .map(f => ({ ...f, members: membersByFamily[f.id] ?? [] }))
+      .filter(f => !q || f.name.toLowerCase().includes(q) ||
+        f.members.some(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)))
+
+    if (sort === 'biggest')  list = [...list].sort((a, b) => b.members.length - a.members.length)
+    else if (sort === 'smallest') list = [...list].sort((a, b) => a.members.length - b.members.length)
+    else if (sort === 'oldest') list = [...list].sort((a, b) => {
+      const ya = avgBirthYear(a.members), yb = avgBirthYear(b.members)
+      if (ya === null && yb === null) return 0
+      if (ya === null) return 1
+      if (yb === null) return -1
+      return ya - yb // année naissance la plus petite = la plus âgée
+    })
+    else if (sort === 'youngest') list = [...list].sort((a, b) => {
+      const ya = avgBirthYear(a.members), yb = avgBirthYear(b.members)
+      if (ya === null && yb === null) return 0
+      if (ya === null) return 1
+      if (yb === null) return -1
+      return yb - ya
+    })
+    else list = [...list].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+
+    return {
+      familiesWithMembers: list,
+      unassigned: !q ? all : all.filter(m =>
+        `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
+      ),
+    }
+  }, [families, membersByFamily, search, sort])
 
   if (loading) return (
     <div className="flex h-full items-center justify-center">
@@ -88,21 +128,66 @@ export default function Families() {
     <div className="overflow-y-auto h-full bg-gray-50 pb-24">
 
       {/* Header */}
-      <div className="bg-dark px-5 pt-12 pb-6">
-        <div className="flex items-center justify-between">
+      <div className="bg-dark px-5 pt-12 pb-4">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Familles</h1>
-            <p className="text-gray-400 text-sm mt-0.5">{families.length} famille{families.length !== 1 ? 's' : ''}</p>
+            <p className="text-white/70 text-sm mt-0.5">{families.length} famille{families.length !== 1 ? 's' : ''}</p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-white active:bg-primary-dark"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Nouvelle famille
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-white active:bg-primary-dark"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Nouvelle famille
+            </button>
+          )}
+        </div>
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50 pointer-events-none"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher une famille ou un membre…"
+            className="w-full rounded-xl bg-white/10 border border-white/10 pl-9 pr-9 py-2.5 text-sm text-white placeholder-white/50 focus:outline-none focus:bg-white/20"
+          />
+          {search && (
+            <button onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 active:text-white">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {/* Chips de tri */}
+        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-none pb-1">
+          {[
+            { key: 'alpha',    label: 'A–Z' },
+            { key: 'biggest',  label: '+ Grande' },
+            { key: 'smallest', label: '+ Petite' },
+            { key: 'oldest',   label: '+ Âgée' },
+            { key: 'youngest', label: '+ Jeune' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setSort(key)}
+              className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
+              style={sort === key
+                ? { background: '#A87048', color: '#fff' }
+                : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }
+              }
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -122,6 +207,7 @@ export default function Families() {
           <FamilyCard
             key={family.id}
             family={family}
+            isAdmin={isAdmin}
             onDelete={() => setConfirmDelete({ type: 'family', familyId: family.id, label: family.name })}
             onViewMember={id => navigate(`/profile/${id}`)}
             onRemoveMember={(memberId, memberName) => setConfirmDelete({ type: 'member', memberId, familyId: family.id, label: memberName })}
@@ -216,9 +302,17 @@ export default function Families() {
   )
 }
 
-function FamilyCard({ family, onDelete, onViewMember, onRemoveMember, onAddMembers }) {
+function FamilyCard({ family, isAdmin, onDelete, onViewMember, onRemoveMember, onAddMembers }) {
   const [expanded, setExpanded] = useState(false)
   const hasMembers = family.members.length > 0
+
+  const sortedMembers = useMemo(() =>
+    [...family.members].sort((a, b) => {
+      if (!a.birthDate && !b.birthDate) return 0
+      if (!a.birthDate) return 1
+      if (!b.birthDate) return -1
+      return new Date(a.birthDate) - new Date(b.birthDate)
+    }), [family.members])
 
   return (
     <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
@@ -245,14 +339,14 @@ function FamilyCard({ family, onDelete, onViewMember, onRemoveMember, onAddMembe
       {!expanded && hasMembers && (
         <div className="px-4 pb-4 flex items-center gap-2">
           <div className="flex -space-x-2">
-            {family.members.slice(0, 6).map(m => (
+            {sortedMembers.slice(0, 6).map(m => (
               <div key={m.id} className="ring-2 ring-white rounded-full">
                 <Avatar src={m.profilePictureUrl} name={`${m.firstName} ${m.lastName}`} size="sm" />
               </div>
             ))}
-            {family.members.length > 6 && (
+            {sortedMembers.length > 6 && (
               <div className="h-8 w-8 rounded-full bg-gray-100 ring-2 ring-white flex items-center justify-center">
-                <span className="text-xs font-semibold text-gray-500">+{family.members.length - 6}</span>
+                <span className="text-xs font-semibold text-gray-500">+{sortedMembers.length - 6}</span>
               </div>
             )}
           </div>
@@ -266,7 +360,7 @@ function FamilyCard({ family, onDelete, onViewMember, onRemoveMember, onAddMembe
             <p className="text-sm text-gray-400 px-4 py-4 text-center">Aucun membre dans cette famille.</p>
           ) : (
             <div className="divide-y divide-gray-50">
-              {family.members.map(m => (
+              {sortedMembers.map(m => (
                 <div key={m.id} className="flex items-center gap-3 px-4 py-3">
                   <button onClick={() => onViewMember(m.id)} className="flex items-center gap-3 flex-1 active:opacity-70">
                     <Avatar src={m.profilePictureUrl} name={`${m.firstName} ${m.lastName}`} size="sm" />
@@ -275,38 +369,42 @@ function FamilyCard({ family, onDelete, onViewMember, onRemoveMember, onAddMembe
                       {m.city && <p className="text-xs text-gray-400">{m.city}</p>}
                     </div>
                   </button>
-                  <button
-                    onClick={() => onRemoveMember(m.id, `${m.firstName} ${m.lastName}`)}
-                    className="p-1.5 text-gray-300 active:text-red-400"
-                    title="Retirer de la famille"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => onRemoveMember(m.id, `${m.firstName} ${m.lastName}`)}
+                      className="p-1.5 text-gray-300 active:text-red-400"
+                      title="Retirer de la famille"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-2 px-4 py-3 border-t border-gray-50">
-            <button
-              onClick={onAddMembers}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary/10 py-2.5 text-sm font-semibold text-primary active:bg-primary/20"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Ajouter des membres
-            </button>
-            <button
-              onClick={onDelete}
-              className="rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-400 active:bg-red-100"
-            >
-              Supprimer
-            </button>
-          </div>
+          {/* Actions admin */}
+          {isAdmin && (
+            <div className="flex gap-2 px-4 py-3 border-t border-gray-50">
+              <button
+                onClick={onAddMembers}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary/10 py-2.5 text-sm font-semibold text-primary active:bg-primary/20"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Ajouter des membres
+              </button>
+              <button
+                onClick={onDelete}
+                className="rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-400 active:bg-red-100"
+              >
+                Supprimer
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

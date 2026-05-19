@@ -10,6 +10,7 @@ import ConfirmModal from '../components/shared/ConfirmModal'
 import MemberFormModal from '../components/members/MemberFormModal'
 import RelationFormModal from '../components/members/RelationFormModal'
 import SocialLinkModal from '../components/members/SocialLinkModal'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 export default function Profile() {
   const { id } = useParams()
@@ -39,6 +40,7 @@ export default function Profile() {
   const [allRelations, setAllRelations] = useState([])
   const [linkModal, setLinkModal] = useState(null) // 'instagram' | 'facebook' | 'whatsapp' | null
   const [families, setFamilies] = useState([])
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
     if (!memberId) { setError('Aucun profil associé à ce compte.'); setLoading(false); return }
@@ -72,6 +74,40 @@ export default function Profile() {
     () => isAdmin && memberId ? computeRelationSuggestions(memberId, allRelations) : [],
     [isAdmin, memberId, allRelations]
   )
+
+  function handleAddToContacts() {
+    const lines = ['BEGIN:VCARD', 'VERSION:3.0']
+    lines.push(`FN:${member.firstName} ${member.lastName}`)
+    lines.push(`N:${member.lastName};${member.firstName};;;`)
+    if (member.phone) lines.push(`TEL;TYPE=CELL:${member.phone}`)
+    if (member.email) lines.push(`EMAIL;TYPE=INTERNET:${member.email}`)
+    if (member.birthDate) lines.push(`BDAY:${member.birthDate.split('T')[0]}`)
+    if (member.city || member.address || member.country) {
+      const street = member.address || ''
+      const city = member.city || ''
+      const postal = member.postalCode || ''
+      const country = member.country || ''
+      lines.push(`ADR;TYPE=HOME:;;${street};${city};;${postal};${country}`)
+    }
+    if (member.familyName) lines.push(`ORG:Famille ${member.familyName}`)
+    lines.push('END:VCARD')
+
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/vcard;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${member.firstName}_${member.lastName}.vcf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  async function handleDelete() {
+    await membersApi.delete(memberId)
+    refreshMembers()
+    navigate(-1)
+  }
 
   async function handleEdit(form) {
     const { data } = await membersApi.update(memberId, form)
@@ -109,7 +145,12 @@ export default function Profile() {
     if (!member.email) return
     setInviteState('loading')
     try {
-      const { data } = await adminApi.generateInvitation(member.email, 'Member', member.id)
+      const { data } = await adminApi.generateInvitation(
+        member.email, 'Member', member.id,
+        window.location.origin,
+        member.firstName,
+        familyGroupName ?? undefined
+      )
       const link = `${window.location.origin}/invite/${data.token}`
       setInviteLink(link)
       setInviteState('done')
@@ -153,6 +194,8 @@ export default function Profile() {
     return idx >= 0 ? FAMILY_PALETTE[idx % FAMILY_PALETTE.length] : null
   }, [member?.familyId, families])
 
+  const { supported: pushSupported, subscribed, blocked: pushBlocked, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications()
+
   if (loading) return <div className="flex h-full items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
   if (error) return <div className="flex h-full flex-col items-center justify-center px-6 text-center"><p className="text-gray-400 text-sm">{error}</p></div>
   if (!member) return <div className="flex h-full items-center justify-center text-gray-400">Membre introuvable</div>
@@ -173,12 +216,29 @@ export default function Profile() {
     <div className="overflow-y-auto h-full bg-gray-50 pb-8 animate-fade-in">
 
       {/* Header */}
-      <div className="bg-dark flex flex-col items-center gap-3 overflow-hidden">
+      <div className="bg-dark flex flex-col items-center gap-3 overflow-hidden relative">
         {/* Bande couleur famille */}
         <div
           className="w-full h-2 shrink-0"
           style={{ background: familyColor ? familyColor.border : 'transparent' }}
         />
+
+        {/* Bouton ajouter contact — haut droite */}
+        {!isOwnProfile && member?.phone && (
+          <button
+            onClick={handleAddToContacts}
+            className="absolute top-6 right-4 flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1.5 text-xs font-semibold text-white active:bg-white/20 transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <line x1="19" y1="8" x2="19" y2="14" />
+              <line x1="22" y1="11" x2="16" y2="11" />
+            </svg>
+            Ajouter
+          </button>
+        )}
+
         <div className="px-5 pb-8 pt-4 flex flex-col items-center gap-3 w-full">
         <div className="relative">
           <Avatar src={member.profilePictureUrl} name={fullName} size="xl" />
@@ -195,7 +255,7 @@ export default function Profile() {
 
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white">{fullName}</h1>
-          <p className="text-gray-400 text-sm mt-0.5">
+          <p className="text-white/70 text-sm mt-0.5">
             {[age && `${age} ans`, member.city, member.country].filter(Boolean).join(' · ')}
           </p>
           {familyColor && member.familyName ? (
@@ -206,7 +266,7 @@ export default function Profile() {
               {member.familyName}
             </span>
           ) : pieceRapporteeLabel && (
-            <span className="inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-gray-400 border border-white/20">
+            <span className="inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-white/80 border border-white/20">
               {pieceRapporteeLabel}
             </span>
           )}
@@ -437,13 +497,41 @@ export default function Profile() {
 
             {inviteState === 'done' && (
               <div className="space-y-2">
-                {/* Message pré-rédigé */}
+                {/* Email envoyé automatiquement */}
+                <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
+                  <svg className="h-4 w-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <p className="text-xs font-semibold text-emerald-700">Email envoyé à {member.email}</p>
+                </div>
+
+                {/* Partage WhatsApp */}
+                {(member.whatsappNumber || member.phone) && (() => {
+                  const phone = (member.whatsappNumber || member.phone).replace(/[\s+\-()]/g, '')
+                  const msg = familyGroupName
+                    ? `Bonjour ${member.firstName} ! Tu es invité(e) à rejoindre la Famille ${familyGroupName} sur MyBigFamily.\n\nCrée ton compte ici :\n${inviteLink}`
+                    : `Bonjour ${member.firstName} ! Tu es invité(e) à rejoindre notre espace famille sur MyBigFamily.\n\nCrée ton compte ici :\n${inviteLink}`
+                  return (
+                    <a
+                      href={`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#25D366] py-2.5 text-xs font-semibold text-white active:opacity-80"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                      Envoyer via WhatsApp
+                    </a>
+                  )
+                })()}
+
+                {/* Copier message + lien seul */}
                 <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-3 space-y-2">
-                  <p className="text-xs font-semibold text-gray-600">Message à envoyer</p>
+                  <p className="text-xs font-semibold text-gray-600">Message à copier</p>
                   <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-line">
                     {familyGroupName
-                      ? `Bonjour ! Vous êtes invité(e) à rejoindre la Famille ${familyGroupName}.\n\nCréez votre compte ici :\n${inviteLink}`
-                      : `Bonjour ! Vous êtes invité(e) à rejoindre notre espace famille.\n\nCréez votre compte ici :\n${inviteLink}`}
+                      ? `Bonjour ${member.firstName} ! Tu es invité(e) à rejoindre la Famille ${familyGroupName}.\n\nCrée ton compte ici :\n${inviteLink}`
+                      : `Bonjour ${member.firstName} ! Tu es invité(e) à rejoindre notre espace famille.\n\nCrée ton compte ici :\n${inviteLink}`}
                   </p>
                   <button
                     onClick={handleCopyInviteMessage}
@@ -475,10 +563,55 @@ export default function Profile() {
           </Card>
         )}
 
+        {/* Notifications — propre profil uniquement */}
+        {isOwnProfile && pushSupported && (
+          <Card title="Notifications">
+            {pushBlocked ? (
+              <p className="text-sm text-gray-400">
+                Les notifications sont bloquées dans les paramètres de votre navigateur.
+              </p>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    {subscribed ? 'Notifications activées' : 'Activer les notifications'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Anniversaires · Nouveaux membres
+                  </p>
+                </div>
+                <button
+                  onClick={subscribed ? unsubscribe : subscribe}
+                  disabled={pushLoading}
+                  className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                    subscribed ? 'bg-primary' : 'bg-gray-200'
+                  }`}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                    subscribed ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* Membre depuis */}
         <p className="text-center text-xs text-gray-300">
           Membre depuis {new Date(member.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
         </p>
+
+        {isAdmin && !isOwnProfile && (
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-red-200 py-3 text-sm font-semibold text-red-500 active:bg-red-50 transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Supprimer ce membre
+          </button>
+        )}
 
       </div>
 
@@ -500,6 +633,15 @@ export default function Profile() {
         onCancel={() => setConfirmDeleteRelation(null)}
       />
 
+      <ConfirmModal
+        open={showDeleteConfirm}
+        title="Supprimer ce membre ?"
+        message={`${member?.firstName} ${member?.lastName} et toutes ses données seront définitivement supprimés.`}
+        confirmLabel="Supprimer"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
+
       {linkModal && (
         <SocialLinkModal
           network={linkModal}
@@ -511,7 +653,7 @@ export default function Profile() {
           onClose={() => setLinkModal(null)}
           onSave={async value => {
             const field = linkModal === 'instagram' ? 'instagramUsername' : linkModal === 'facebook' ? 'facebookUrl' : 'whatsappNumber'
-            const { data } = await membersApi.update(memberId, { [field]: value })
+            const { data } = await membersApi.update(memberId, { [field]: value, familyId: member.familyId })
             setMember(data)
             refreshMembers()
             setLinkModal(null)
@@ -724,10 +866,9 @@ function InfoRow({ icon, label, sub, href }) {
 
 function ActionBtn({ href, label, color, children }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer"
-      className={`flex flex-col items-center gap-1.5 ${color} rounded-2xl px-5 py-3 active:opacity-80`}>
-      <span className="h-5 w-5 text-white">{children}</span>
-      <span className="text-xs font-medium text-white">{label}</span>
+    <a href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
+      className={`flex items-center justify-center ${color} rounded-2xl p-4 active:opacity-80`}>
+      <span className="h-6 w-6 text-white">{children}</span>
     </a>
   )
 }

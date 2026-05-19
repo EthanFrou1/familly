@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useMembers } from '../../store/MembersContext'
 import Select from '../shared/Select'
 
@@ -65,7 +66,7 @@ export default function RelationFormModal({ open, onClose, onSubmit, currentMemb
   const selectedOther = members.find(m => m.id === otherMemberId)
   const selectedOpt = RELATION_OPTIONS.find(o => o.value === relationType)
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
       <div className="relative bg-white rounded-t-3xl animate-slide-up px-5 pt-6 pb-10">
@@ -155,6 +156,7 @@ export default function RelationFormModal({ open, onClose, onSubmit, currentMemb
           </button>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

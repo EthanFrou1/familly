@@ -74,9 +74,9 @@ export default function Tree() {
     <div className="flex flex-col h-full">
 
       {/* ── Header fixe ── */}
-      <div className="bg-dark px-5 pt-8 pb-4 shrink-0">
-        <h1 className="text-xl font-bold text-white">Arbre familial</h1>
-        <p className="text-xs text-gray-400 mt-1">
+      <div className="bg-dark px-5 pt-10 pb-4 shrink-0">
+        <h1 className="text-2xl font-bold text-white">Arbre familial</h1>
+        <p className="text-sm text-gray-400 mt-0.5">
           Pincez pour zoomer · Glissez pour naviguer · Appuyez sur un membre pour voir son profil
         </p>
       </div>

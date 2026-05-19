@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { familiesApi } from '../../services/api'
 import Select from '../shared/Select'
 
@@ -99,7 +100,7 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-white rounded-t-3xl animate-slide-up max-h-[90vh] flex flex-col">
@@ -250,7 +251,8 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

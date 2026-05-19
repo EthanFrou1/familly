@@ -1,0 +1,47 @@
+using System.Text.Json;
+using FamilyApp.API.Data;
+using Microsoft.EntityFrameworkCore;
+using WebPush;
+
+namespace FamilyApp.API.Services;
+
+public class PushNotificationService(AppDbContext db, IConfiguration config)
+{
+    private readonly VapidDetails _vapid = new(
+        config["Push:Subject"]!,
+        config["Push:PublicKey"]!,
+        config["Push:PrivateKey"]!
+    );
+
+    public async Task SendToAllAsync(string title, string body, string url = "/")
+    {
+        var subscriptions = await db.PushSubscriptions.AsNoTracking().ToListAsync();
+        if (subscriptions.Count == 0) return;
+
+        var client = new WebPushClient();
+        var payload = JsonSerializer.Serialize(new { title, body, url });
+        var toRemove = new List<int>();
+
+        foreach (var sub in subscriptions)
+        {
+            try
+            {
+                var pushSub = new PushSubscription(sub.Endpoint, sub.P256dh, sub.Auth);
+                await client.SendNotificationAsync(pushSub, payload, _vapid);
+            }
+            catch (WebPushException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Gone
+                                           || ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                toRemove.Add(sub.Id);
+            }
+            catch { /* réseau ou autre erreur transitoire */ }
+        }
+
+        if (toRemove.Count > 0)
+        {
+            await db.PushSubscriptions
+                .Where(s => toRemove.Contains(s.Id))
+                .ExecuteDeleteAsync();
+        }
+    }
+}

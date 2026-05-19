@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { familiesApi, settingsApi, relationsApi, activityLogsApi } from '../services/api'
 import Avatar from '../components/shared/Avatar'
+import BirthdayPopup from '../components/home/BirthdayPopup'
 
 function timeAgo(dateStr) {
   if (!dateStr) return ''
@@ -134,7 +135,7 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    activityLogsApi.getAll(20).then(({ data }) => setActivityLogs(data)).catch(() => {})
+    activityLogsApi.getAll(10).then(({ data }) => setActivityLogs(data)).catch(() => {})
   }, [members])
 
   async function handleSaveName(e) {
@@ -169,27 +170,40 @@ export default function Home() {
   const birthdays = getUpcomingBirthdays(members)
   const recent = [...members].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 8)
 
+  const todayBirthdays = birthdays.filter(m => m.daysUntil === 0)
+
   return (
     <div className="overflow-y-auto h-full bg-gray-50 pb-6 animate-fade-in">
+      {todayBirthdays.length > 0 && (
+        <BirthdayPopup members={birthdays} onNavigate={navigate} />
+      )}
 
       {/* Header */}
-      <div className="bg-dark px-5 pt-10 pb-5">
+      <div className="relative bg-dark overflow-hidden px-5 pt-12 pb-7">
 
-        {/* Greeting + badge sur la même ligne */}
-        <div className="flex items-center justify-between gap-3">
+        {/* Orbes d'ambiance */}
+        <div className="pointer-events-none absolute -top-20 -right-16 h-64 w-64 rounded-full bg-primary/25 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 -left-20 h-52 w-52 rounded-full bg-amber-950/50 blur-3xl" />
+        <div className="pointer-events-none absolute top-10 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full bg-orange-700/10 blur-2xl" />
+
+        {/* Ligne du haut : greeting + badge */}
+        <div className="relative flex items-start justify-between gap-3 mb-8">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-white truncate">Bonjour, {user?.firstName} !</h1>
+            <p className="text-base font-semibold text-white/80">Bonjour 👋</p>
+            <h1 className="text-4xl font-black text-white tracking-tight leading-none mt-1 truncate">
+              {user?.firstName} {user?.lastName}
+            </h1>
             {userFamilyName && (
-              <div className="flex items-center gap-1.5 mt-1">
+              <div className="flex items-center gap-1.5 mt-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                <span className="text-xs text-gray-300">{userFamilyName}</span>
+                <span className="text-xs text-white/70 font-medium">{userFamilyName}</span>
               </div>
             )}
           </div>
 
           {/* Badge famille */}
           {editingName ? (
-            <form onSubmit={handleSaveName} className="flex items-center gap-1.5 shrink-0">
+            <form onSubmit={handleSaveName} className="flex items-center gap-1.5 shrink-0 mt-1">
               <input autoFocus value={nameInput} onChange={e => setNameInput(e.target.value)}
                 placeholder="Ex : Navel"
                 className="w-24 rounded-xl bg-white/10 border border-white/20 px-2.5 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-primary" />
@@ -201,11 +215,11 @@ export default function Home() {
                 className="rounded-xl border border-white/20 px-2 py-1.5 text-xs text-gray-300">✕</button>
             </form>
           ) : familyGroupName ? (
-            <div className="flex items-center gap-1.5 bg-white/10 rounded-2xl px-3 py-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 bg-white/10 border border-white/15 rounded-2xl px-3 py-2 shrink-0 mt-1">
               <span className="text-xs font-bold text-white">Famille {familyGroupName}</span>
               {isAdmin && (
                 <button onClick={() => { setNameInput(familyGroupName); setEditingName(true) }}
-                  className="text-gray-400 active:text-white">
+                  className="text-gray-400 active:text-white ml-0.5">
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
@@ -214,7 +228,7 @@ export default function Home() {
             </div>
           ) : isAdmin ? (
             <button onClick={() => setEditingName(true)}
-              className="flex items-center gap-1 rounded-2xl border border-dashed border-white/30 px-3 py-1.5 text-xs text-gray-400 active:bg-white/5 shrink-0">
+              className="flex items-center gap-1 rounded-2xl border border-dashed border-white/30 px-3 py-2 text-xs text-white/50 active:bg-white/5 shrink-0 mt-1">
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
@@ -223,12 +237,12 @@ export default function Home() {
           ) : null}
         </div>
 
-        {/* Stats dans le header */}
-        <div className="grid grid-cols-2 gap-3 mt-5">
-          <StatCard value={stats.total} label="Membres" color="text-primary" />
-          <StatCard value={familyCount} label="Familles" color="text-violet-500" />
-          <StatCard value={stats.countries} label="Pays" color="text-emerald-500" />
-          <StatCard value={pieceRapporteeCount} label="Pièces rapportées" color="text-pink-400" />
+        {/* Stats — glassmorphism */}
+        <div className="relative grid grid-cols-2 gap-3">
+          <GlassStatCard value={stats.total} label="Membres" color="text-primary" />
+          <GlassStatCard value={familyCount} label="Familles" color="text-amber-400" />
+          <GlassStatCard value={stats.countries} label="Pays" color="text-emerald-400" />
+          <GlassStatCard value={pieceRapporteeCount} label="Pièces rapportées" color="text-orange-400" />
         </div>
       </div>
 
@@ -242,11 +256,22 @@ export default function Home() {
                 <button
                   key={m.id}
                   onClick={() => navigate(`/profile/${m.id}`)}
-                  className="flex items-center gap-3 w-full rounded-2xl bg-white p-3 shadow-sm active:opacity-70"
+                  className={`flex items-center gap-3 w-full rounded-2xl p-3 shadow-sm active:opacity-70 ${
+                    m.daysUntil === 0
+                      ? 'bg-gradient-to-r from-primary/10 to-pink-50 ring-1 ring-primary/20'
+                      : 'bg-white'
+                  }`}
                 >
-                  <Avatar src={m.profilePictureUrl} name={`${m.firstName} ${m.lastName}`} size="sm" />
+                  <div className="relative">
+                    <Avatar src={m.profilePictureUrl} name={`${m.firstName} ${m.lastName}`} size="sm" />
+                    {m.daysUntil === 0 && (
+                      <span className="absolute -top-1 -right-1 text-sm">🎂</span>
+                    )}
+                  </div>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-semibold text-gray-900">{m.firstName} {m.lastName}</p>
+                    <p className={`text-sm font-semibold ${m.daysUntil === 0 ? 'text-primary' : 'text-gray-900'}`}>
+                      {m.firstName} {m.lastName}
+                    </p>
                     <p className="text-xs text-gray-400">{m.age} ans · {m.nextBirthday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</p>
                   </div>
                   <BirthdayBadge days={m.daysUntil} />
@@ -273,7 +298,7 @@ export default function Home() {
                 >
                   <Avatar src={m.profilePictureUrl} name={`${m.firstName} ${m.lastName}`} size="sm" />
                   <div className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{m.firstName} {m.lastName}</p>
+                    <p className="text-sm font-semibold text-gray-900 truncate">Bienvenue à {m.firstName} 👋</p>
                     {m.familyName && <p className="text-xs text-gray-400 truncate">Famille {m.familyName}</p>}
                   </div>
                   <p className="text-xs text-gray-400 shrink-0">{timeAgo(m.createdAt)}</p>
@@ -316,11 +341,11 @@ function FunStatsSection({ stats, onNavigate }) {
   )
 }
 
-function StatCard({ value, label, color }) {
+function GlassStatCard({ value, label, color }) {
   return (
-    <div className="rounded-2xl bg-white shadow-sm p-4 text-center">
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+    <div className="rounded-2xl bg-white/[0.08] border border-white/10 p-4 text-center backdrop-blur-sm">
+      <p className={`text-2xl font-black ${color}`}>{value}</p>
+      <p className="text-xs text-white/70 mt-0.5 font-medium">{label}</p>
     </div>
   )
 }

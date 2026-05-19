@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 
 const NETWORKS = {
   instagram: {
@@ -54,6 +55,7 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
   const [loading, setLoading] = useState(false)
 
   const preview = cfg.preview(value)
+  const hasChanged = cfg.cleanValue(value) !== (currentValue || '')
 
   async function handleSave() {
     setLoading(true)
@@ -73,7 +75,7 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
@@ -147,7 +149,7 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
         <div className="px-5 pb-8 pt-1 space-y-2">
           <button
             onClick={handleSave}
-            disabled={!value.trim() || loading}
+            disabled={!value.trim() || !hasChanged || loading}
             className="w-full rounded-2xl bg-primary py-3.5 font-semibold text-white disabled:opacity-40 active:bg-primary/90 transition-colors"
           >
             {loading ? '...' : 'Enregistrer'}
@@ -165,7 +167,8 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

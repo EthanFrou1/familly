@@ -29,7 +29,7 @@ function groupByLocation(members) {
 
 function makeSvgMarker(count) {
   const size = count > 1 ? 46 : 36
-  const bg = '#534AB7'
+  const bg = '#A87048'
   const inner = `<text x="${size / 2}" y="${size / 2 + 5}" text-anchor="middle" fill="white" font-size="15" font-weight="700" font-family="system-ui,sans-serif">${count}</text>`
   const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
     <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 1}" fill="${bg}" stroke="white" stroke-width="2.5"/>
@@ -48,13 +48,13 @@ function makeInfoContent(members) {
       <div style="width:36px;height:36px;border-radius:50%;overflow:hidden;background:#e8e7f7;display:flex;align-items:center;justify-content:center;flex-shrink:0">
         ${m.profilePictureUrl
           ? `<img src="${m.profilePictureUrl}" style="width:100%;height:100%;object-fit:cover" />`
-          : `<span style="font-size:13px;font-weight:700;color:#534AB7">${m.firstName[0]}${m.lastName[0]}</span>`}
+          : `<span style="font-size:13px;font-weight:700;color:#A87048">${m.firstName[0]}${m.lastName[0]}</span>`}
       </div>
       <div style="flex:1">
         <p style="font-size:13px;font-weight:600;color:#111;margin:0">${m.firstName} ${m.lastName}</p>
         <p style="font-size:11px;color:#888;margin:2px 0 4px">${m.city ?? ''}</p>
         <a href="/profile/${m.id}" onclick="window._gmNav('${m.id}');return false"
-          style="font-size:11px;color:#534AB7;font-weight:600;text-decoration:none">Voir le profil →</a>
+          style="font-size:11px;color:#A87048;font-weight:600;text-decoration:none">Voir le profil →</a>
       </div>
       ${i === 0 ? `<button onclick="window._gmClose();return false"
         style="background:none;border:none;cursor:pointer;font-size:26px;color:#aaa;line-height:1;padding:0 4px;flex-shrink:0;align-self:flex-start">&times;</button>` : ''}

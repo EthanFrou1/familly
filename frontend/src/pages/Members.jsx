@@ -5,6 +5,7 @@ import { useMembers } from '../store/MembersContext'
 import { familiesApi } from '../services/api'
 import { FAMILY_PALETTE } from '../components/tree/treeLayout'
 import Avatar from '../components/shared/Avatar'
+import CalendarExportSheet from '../components/members/CalendarExportSheet'
 
 export default function Members() {
   const { members } = useMembers()
@@ -14,6 +15,7 @@ export default function Members() {
   const [search, setSearch] = useState('')
   const [familyFilter, setFamilyFilter] = useState(null)
   const [families, setFamilies] = useState([])
+  const [showExportSheet, setShowExportSheet] = useState(false)
 
   useEffect(() => {
     familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
@@ -58,14 +60,23 @@ export default function Members() {
       <div className="bg-dark px-5 pt-10 pb-4 shrink-0">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Membres</h1>
-            <p className="text-gray-400 text-sm mt-0.5">{members.length} membre{members.length !== 1 ? 's' : ''}</p>
+            <h1 className="text-2xl font-bold text-white">Membres ({members.length})</h1>
           </div>
+          <button
+            onClick={() => setShowExportSheet(true)}
+            title="Exporter les anniversaires"
+            className="flex items-center gap-1.5 rounded-xl bg-white/10 border border-white/10 px-3 py-2 text-xs font-semibold text-white active:bg-white/20"
+          >
+            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Agendas
+          </button>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none"
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50 pointer-events-none"
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" />
           </svg>
@@ -74,11 +85,11 @@ export default function Members() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher un membre…"
-            className="w-full rounded-xl bg-white/10 border border-white/10 pl-9 pr-9 py-2.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:bg-white/20"
+            className="w-full rounded-xl bg-white/10 border border-white/10 pl-9 pr-9 py-2.5 text-sm text-white placeholder-white/50 focus:outline-none focus:bg-white/20"
           />
           {search && (
             <button onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 active:text-white">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 active:text-white">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -89,8 +100,8 @@ export default function Members() {
 
       {/* Family filter chips */}
       {families.length > 0 && (
-        <div className="bg-dark pb-6 shrink-0">
-          <div className="flex gap-2 px-4 pb-2 overflow-x-auto scrollbar-none">
+        <div className="bg-dark pb-2 shrink-0">
+          <div className="flex gap-2 px-4 py-4 overflow-x-auto scrollbar-none">
             <Chip label="Tous" active={!familyFilter} onClick={() => setFamilyFilter(null)} />
             {families.map((f, i) => (
               <Chip
@@ -165,6 +176,7 @@ export default function Members() {
           ))
         )}
       </div>
+      {showExportSheet && <CalendarExportSheet onClose={() => setShowExportSheet(false)} />}
     </div>
   )
 }
@@ -177,7 +189,7 @@ function Chip({ label, active, onClick, color }) {
       style={active && color
         ? { background: color.border, color: '#fff' }
         : active
-          ? { background: '#534AB7', color: '#fff' }
+          ? { background: '#A87048', color: '#fff' }
           : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }
       }
     >

@@ -1,11 +1,11 @@
 {
-  "name": "Famille",
-  "short_name": "Famille",
-  "description": "Application familiale privée - arbre généalogique et réseau familial",
+  "name": "MyBigFamily",
+  "short_name": "MyBigFamily",
+  "description": "Votre histoire familiale, au même endroit.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FFFFFF",
-  "theme_color": "#534AB7",
+  "background_color": "#FAF7F2",
+  "theme_color": "#A87048",
   "orientation": "portrait",
   "icons": [
     {

@@ -9,7 +9,7 @@ namespace FamilyApp.API.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(AuthService authService) : ControllerBase
+public class AuthController(AuthService authService, EmailService emailService) : ControllerBase
 {
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
@@ -70,6 +70,13 @@ public class AuthController(AuthService authService) : ControllerBase
         var user = await authService.GenerateInvitationAsync(req.Email, role, req.MemberId);
         if (user is null) return Conflict(new { message = "Ce membre a déjà un compte actif." });
 
-        return Ok(new { token = user.InvitationToken });
+        var token = user.InvitationToken!;
+        var appUrl = req.AppUrl?.TrimEnd('/') ?? "https://mybigfamily.fr";
+        var inviteLink = $"{appUrl}/invite/{token}";
+
+        // Send email in background — don't block the response
+        _ = emailService.SendInvitationAsync(req.Email, req.FirstName ?? "là", inviteLink, req.FamilyGroupName);
+
+        return Ok(new { token });
     }
 }

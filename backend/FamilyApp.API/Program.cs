@@ -42,9 +42,12 @@ builder.Services.AddAuthorization();
 
 // Services
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<CloudinaryService>();
 builder.Services.AddScoped<ActivityLogService>();
+builder.Services.AddScoped<PushNotificationService>();
 builder.Services.AddHostedService<PhotoCleanupService>();
+builder.Services.AddHostedService<BirthdayNotificationService>();
 
 // CORS
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -55,6 +58,7 @@ builder.Services.AddCors(opt =>
               .AllowAnyMethod()
               .AllowCredentials()));
 
+builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 

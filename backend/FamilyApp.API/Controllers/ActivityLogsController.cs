@@ -15,6 +15,7 @@ public class ActivityLogsController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> GetAll([FromQuery] int limit = 30)
     {
         var logs = await db.ActivityLogs
+            .Where(l => l.Type != "member_updated")
             .OrderByDescending(l => l.CreatedAt)
             .Take(Math.Clamp(limit, 1, 100))
             .Select(l => new ActivityLogDto(

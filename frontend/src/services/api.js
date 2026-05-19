@@ -38,7 +38,9 @@ export const membersApi = {
     return api.put(`/members/${id}/profile-picture`, form, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
-  }
+  },
+  exportBirthdays: () => api.get('/members/export/birthdays.ics', { responseType: 'blob' }),
+  getCalendarUrl: () => api.get('/members/export/calendar-url'),
 }
 
 export const relationsApi = {
@@ -74,7 +76,8 @@ export const eventsApi = {
 }
 
 export const adminApi = {
-  generateInvitation: (email, role, memberId) => api.post('/auth/invitations', { email, role, memberId }),
+  generateInvitation: (email, role, memberId, appUrl, firstName, familyGroupName) =>
+    api.post('/auth/invitations', { email, role, memberId, appUrl, firstName, familyGroupName }),
   getMemberAccountStatus: (memberId) => api.get(`/auth/member/${memberId}/account-status`),
 }
 
@@ -91,6 +94,12 @@ export const settingsApi = {
 
 export const activityLogsApi = {
   getAll: (limit = 30) => api.get('/activity-logs', { params: { limit } }),
+}
+
+export const pushApi = {
+  getVapidPublicKey: () => api.get('/push/vapid-public-key'),
+  subscribe: (endpoint, p256dh, auth) => api.post('/push/subscribe', { endpoint, p256dh, auth }),
+  unsubscribe: (endpoint) => api.delete('/push/unsubscribe', { data: { endpoint } }),
 }
 
 export default api

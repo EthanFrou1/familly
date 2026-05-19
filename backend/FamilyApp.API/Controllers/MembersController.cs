@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using FamilyApp.API.Data;
 using FamilyApp.API.DTOs;
 using FamilyApp.API.Models;
@@ -12,13 +13,111 @@ namespace FamilyApp.API.Controllers;
 [ApiController]
 [Route("api/members")]
 [Authorize]
-public class MembersController(AppDbContext db, CloudinaryService cloudinary, ActivityLogService activityLog) : ControllerBase
+public class MembersController(AppDbContext db, CloudinaryService cloudinary, ActivityLogService activityLog, IConfiguration config, PushNotificationService push) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var members = await db.Members.Include(m => m.Family).Select(ToDto).ToListAsync();
         return Ok(members);
+    }
+
+    [HttpGet("export/calendar-url")]
+    public IActionResult GetCalendarUrl()
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var token = GenerateCalendarToken(userId);
+        var host = $"{Request.Scheme}://{Request.Host}";
+        var path = $"/api/members/export/birthdays.ics?token={Uri.EscapeDataString(token)}";
+        return Ok(new { httpsUrl = host + path, webcalUrl = "webcal://" + Request.Host + path });
+    }
+
+    [HttpGet("export/birthdays.ics")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ExportBirthdaysIcs([FromQuery] string? token)
+    {
+        var authorized = User.Identity?.IsAuthenticated == true;
+        if (!authorized && token is not null)
+            authorized = ValidateCalendarToken(token) is not null;
+        if (!authorized) return Unauthorized();
+
+        var members = await db.Members
+            .Where(m => m.BirthDate.HasValue)
+            .OrderBy(m => m.FirstName).ThenBy(m => m.LastName)
+            .Select(m => new { m.Id, m.FirstName, m.LastName, m.BirthDate })
+            .ToListAsync();
+
+        var culture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+        var sb = new System.Text.StringBuilder();
+        sb.Append("BEGIN:VCALENDAR\r\n");
+        sb.Append("VERSION:2.0\r\n");
+        sb.Append("PRODID:-//FamilyApp//FR\r\n");
+        sb.Append("CALSCALE:GREGORIAN\r\n");
+        sb.Append("METHOD:PUBLISH\r\n");
+        AppendFolded(sb, "X-WR-CALNAME:Anniversaires famille");
+        AppendFolded(sb, "X-WR-CALDESC:Anniversaires des membres de la famille");
+
+        foreach (var m in members)
+        {
+            var birth = m.BirthDate!.Value;
+            var name = IcsEscape($"{m.FirstName} {m.LastName}");
+            var dateStr = birth.ToString("dd MMMM yyyy", culture);
+
+            sb.Append("BEGIN:VEVENT\r\n");
+            AppendFolded(sb, $"UID:birthday-{m.Id}@familyapp");
+            AppendFolded(sb, $"DTSTART;VALUE=DATE:{birth:yyyyMMdd}");
+            AppendFolded(sb, $"DTEND;VALUE=DATE:{birth.AddDays(1):yyyyMMdd}");
+            sb.Append("RRULE:FREQ=YEARLY\r\n");
+            AppendFolded(sb, $"SUMMARY:Anniversaire de {name}");
+            AppendFolded(sb, $"DESCRIPTION:Né(e) le {IcsEscape(dateStr)}");
+            sb.Append("TRANSP:TRANSPARENT\r\n");
+            sb.Append("END:VEVENT\r\n");
+        }
+
+        sb.Append("END:VCALENDAR\r\n");
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        return File(bytes, "text/calendar; charset=utf-8", "anniversaires-famille.ics");
+    }
+
+    private string GenerateCalendarToken(Guid userId)
+    {
+        var key = System.Text.Encoding.UTF8.GetBytes(config["Jwt:Key"]! + ":calendar");
+        using var hmac = new HMACSHA256(key);
+        var hash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(userId.ToString()));
+        var userPart = Convert.ToBase64String(userId.ToByteArray()).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        var hashPart = Convert.ToBase64String(hash).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        return $"{userPart}.{hashPart}";
+    }
+
+    private Guid? ValidateCalendarToken(string token)
+    {
+        var parts = token.Split('.');
+        if (parts.Length != 2) return null;
+        try
+        {
+            var userIdBytes = Convert.FromBase64String(parts[0].Replace('-', '+').Replace('_', '/') + "==");
+            var userId = new Guid(userIdBytes);
+            return GenerateCalendarToken(userId) == token ? userId : null;
+        }
+        catch { return null; }
+    }
+
+    private static string IcsEscape(string s) =>
+        s.Replace("\\", "\\\\").Replace(";", "\\;").Replace(",", "\\,").Replace("\n", "\\n");
+
+    private static void AppendFolded(System.Text.StringBuilder sb, string line)
+    {
+        const int max = 75;
+        if (line.Length <= max) { sb.Append(line).Append("\r\n"); return; }
+        sb.Append(line[..max]).Append("\r\n");
+        var rest = line[max..];
+        while (rest.Length > 0)
+        {
+            var chunk = rest.Length > 74 ? rest[..74] : rest;
+            sb.Append(' ').Append(chunk).Append("\r\n");
+            rest = rest[chunk.Length..];
+        }
     }
 
     [HttpGet("{id:guid}")]
@@ -32,6 +131,13 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
     [Authorize(Roles = "Admin,Member")]
     public async Task<IActionResult> Create([FromBody] CreateMemberRequest req)
     {
+        if (!string.IsNullOrWhiteSpace(req.Email))
+        {
+            var emailTaken = await db.Members.AnyAsync(m => m.Email == req.Email.Trim());
+            if (emailTaken)
+                return Conflict(new { message = "Cette adresse email est déjà utilisée par un autre membre." });
+        }
+
         var member = new Member
         {
             FirstName = req.FirstName,
@@ -58,6 +164,13 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         await activityLog.LogAsync("member_created", User,
             targetMemberId: member.Id,
             targetMemberName: $"{member.FirstName} {member.LastName}");
+
+        _ = Task.Run(() => push.SendToAllAsync(
+            "👤 Nouveau membre !",
+            $"{member.FirstName} {member.LastName} vient de rejoindre la famille !",
+            $"/profile/{member.Id}"
+        ));
+
         return CreatedAtAction(nameof(GetById), new { id = member.Id }, MapToDto(member));
     }
 
@@ -74,11 +187,17 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         if (req.LastName is not null) member.LastName = req.LastName;
         if (req.BirthDate.HasValue) member.BirthDate = ToUtc(req.BirthDate);
         if (req.DeathDate.HasValue) member.DeathDate = ToUtc(req.DeathDate);
+        if (req.Email is not null && req.Email != "")
+        {
+            var emailTaken = await db.Members.AnyAsync(m => m.Email == req.Email.Trim() && m.Id != id);
+            if (emailTaken)
+                return Conflict(new { message = "Cette adresse email est déjà utilisée par un autre membre." });
+        }
         if (req.Email is not null) member.Email = req.Email;
         if (req.Phone is not null) member.Phone = req.Phone;
         if (req.Bio is not null) member.Bio = req.Bio;
-        member.Address = req.Address;
-        member.PostalCode = req.PostalCode;
+        if (req.Address is not null) member.Address = req.Address == "" ? null : req.Address;
+        if (req.PostalCode is not null) member.PostalCode = req.PostalCode == "" ? null : req.PostalCode;
         if (req.City is not null) member.City = req.City;
         if (req.Country is not null) member.Country = req.Country;
         if (req.Latitude.HasValue) member.Latitude = req.Latitude;
@@ -90,6 +209,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         member.FamilyId = req.FamilyId;
 
         await db.SaveChangesAsync();
+        await db.Entry(member).Reference(m => m.Family).LoadAsync();
         await activityLog.LogAsync("member_updated", User,
             targetMemberId: member.Id,
             targetMemberName: $"{member.FirstName} {member.LastName}",
