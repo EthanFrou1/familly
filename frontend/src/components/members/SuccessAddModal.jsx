@@ -29,7 +29,12 @@ export default function SuccessAddModal({ member, onClose }) {
   async function handleInvite() {
     setInviteStep('loading')
     try {
-      const { data } = await adminApi.generateInvitation(member.email, 'Member', member.id)
+      const { data } = await adminApi.generateInvitation(
+        member.email, 'Member', member.id,
+        window.location.origin,
+        member.firstName,
+        familyGroupName ?? undefined
+      )
       const link = `${window.location.origin}/invite/${data.token}`
       setInviteLink(link)
       setInviteStep('done')
