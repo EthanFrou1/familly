@@ -239,7 +239,7 @@ export default function Home() {
 
         {/* Stats — glassmorphism */}
         <div className="relative grid grid-cols-2 gap-3">
-          <GlassStatCard value={stats.total} label="Membres" color="text-primary" />
+          <GlassStatCard value={stats.total} label="Membres" color="text-sky-300" />
           <GlassStatCard value={familyCount} label="Familles" color="text-amber-400" />
           <GlassStatCard value={stats.countries} label="Pays" color="text-emerald-400" />
           <GlassStatCard value={pieceRapporteeCount} label="Pièces rapportées" color="text-orange-400" />
@@ -371,18 +371,6 @@ const ACTIVITY_CONFIG = {
     color: 'bg-violet-100',
     text: (log) => `${log.targetMemberName} a rejoint la famille`,
     sub: (log) => log.actorName ? `Ajouté par ${log.actorName}` : null,
-  },
-  member_updated: {
-    emoji: '✏️',
-    color: 'bg-sky-100',
-    text: (log) => `${log.targetMemberName} a mis à jour son profil`,
-    sub: (log) => log.actorName && log.actorName !== log.targetMemberName ? `Par ${log.actorName}` : null,
-  },
-  photo_updated: {
-    emoji: '📸',
-    color: 'bg-emerald-100',
-    text: (log) => `${log.targetMemberName} a changé sa photo`,
-    sub: () => null,
   },
   relation_created: {
     emoji: '🔗',
