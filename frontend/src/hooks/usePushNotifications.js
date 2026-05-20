@@ -17,9 +17,24 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-    navigator.serviceWorker.ready.then(reg =>
-      reg.pushManager.getSubscription().then(sub => setSubscribed(!!sub))
-    )
+    navigator.serviceWorker.ready.then(async reg => {
+      const sub = await reg.pushManager.getSubscription()
+      if (sub) { setSubscribed(true); return }
+
+      // Permission déjà accordée (PWA réinstallée) → re-souscrire silencieusement
+      if (Notification.permission === 'granted') {
+        try {
+          const { data } = await pushApi.getVapidPublicKey()
+          const newSub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(data.key),
+          })
+          const json = newSub.toJSON()
+          await pushApi.subscribe(json.endpoint, json.keys.p256dh, json.keys.auth)
+          setSubscribed(true)
+        } catch { /* silencieux */ }
+      }
+    })
   }, [])
 
   async function subscribe() {
