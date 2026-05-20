@@ -95,7 +95,7 @@ export default function BottomNav() {
         </div>
       )}
 
-      <nav className="safe-bottom border-t border-gray-200 bg-white relative z-50">
+      <nav className={`safe-bottom border-t border-gray-200 bg-white relative transition-all duration-200 ${fabOpen ? 'z-30' : 'z-50'}`}>
         <div className="flex items-end">
           <NavLink to="/" end
             className={({ isActive }) => tabCls(isActive)}>
