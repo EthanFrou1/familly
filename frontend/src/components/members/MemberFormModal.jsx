@@ -107,7 +107,7 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
   return createPortal(
     <div className="fixed inset-0 z-[60] flex flex-col justify-end" style={{ touchAction: 'pan-y' }}>
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl animate-slide-up max-h-[90vh] w-full flex flex-col" style={{ touchAction: 'pan-y', overflowX: 'clip' }}>
+      <div className="relative bg-white rounded-t-3xl animate-slide-up w-full flex flex-col" style={{ touchAction: 'pan-y', overflowX: 'clip', maxHeight: 'calc(100dvh - 56px)' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">
             {isEdit ? 'Modifier le membre' : 'Ajouter un membre'}
@@ -119,7 +119,7 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1" style={{ overflowX: 'clip' }}>
+        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
           <div className="px-5 py-4 space-y-4">
 
             {/* Identité */}
