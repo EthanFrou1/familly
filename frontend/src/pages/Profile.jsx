@@ -250,7 +250,7 @@ export default function Profile() {
                 : <CameraIcon />}
             </button>
           )}
-          <input ref={fileRef} type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoChange} />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
         </div>
 
         <div className="text-center">
