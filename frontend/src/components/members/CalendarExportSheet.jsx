@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { membersApi } from '../../services/api'
 
 export default function CalendarExportSheet({ onClose }) {
@@ -31,7 +32,7 @@ export default function CalendarExportSheet({ onClose }) {
     onClose()
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
@@ -90,7 +91,8 @@ export default function CalendarExportSheet({ onClose }) {
           Annuler
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
