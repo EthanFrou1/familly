@@ -107,41 +107,23 @@ export default function CalendarExportSheet({ onClose }) {
               </div>
             ) : (
               <div className="space-y-2">
-                {/* Google Agenda */}
+                {/* Google + Apple via vCard */}
                 <button
                   onClick={() => setView('google')}
                   className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50 active:bg-gray-100 text-left transition-colors"
                 >
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#FEEFC3' }}>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 gap-0.5" style={{ background: '#F3F4F6' }}>
                     <GoogleCalendarIcon />
+                    <AppleCalendarIcon />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">Google Agenda</p>
-                    <p className="text-xs text-gray-400">Via Google Contacts — {members.length} anniversaire{members.length > 1 ? 's' : ''}</p>
+                    <p className="text-sm font-semibold text-gray-900">Google & Apple Agenda</p>
+                    <p className="text-xs text-gray-400">Importer les contacts — {members.length} anniversaire{members.length > 1 ? 's' : ''}</p>
                   </div>
                   <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
-
-                {/* Apple Calendar */}
-                {urls && (
-                  <button
-                    onClick={() => { window.location.href = urls.webcalUrl; onClose() }}
-                    className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50 active:bg-gray-100 text-left transition-colors"
-                  >
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#FFE5E5' }}>
-                      <AppleCalendarIcon />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">Apple Calendrier</p>
-                      <p className="text-xs text-gray-400">Abonnement — mise à jour automatique</p>
-                    </div>
-                    <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                )}
 
                 {/* Outlook / Download */}
                 <button
@@ -176,7 +158,7 @@ export default function CalendarExportSheet({ onClose }) {
                 </svg>
               </button>
               <div>
-                <h2 className="text-base font-bold text-gray-900">Google Agenda</h2>
+                <h2 className="text-base font-bold text-gray-900">Google & Apple Agenda</h2>
                 <p className="text-xs text-gray-400">Sélectionne les membres à synchroniser</p>
               </div>
             </div>
@@ -184,7 +166,7 @@ export default function CalendarExportSheet({ onClose }) {
             {/* Info box */}
             <div className="rounded-2xl bg-blue-50 px-4 py-3 mb-3 shrink-0">
               <p className="text-xs text-blue-700 leading-relaxed">
-                Un fichier de contacts (.vcf) sera téléchargé. Importe-le dans <strong>Google Contacts</strong> — les anniversaires apparaîtront automatiquement dans ton Google Agenda.
+                Un fichier de contacts (.vcf) sera téléchargé. Importe-le dans <strong>Google Contacts</strong> ou dans les <strong>Contacts iOS</strong> — les anniversaires apparaîtront automatiquement dans Google Agenda et Apple Calendrier.
               </p>
             </div>
 
@@ -239,7 +221,7 @@ export default function CalendarExportSheet({ onClose }) {
                 {exporting ? '...' : `Télécharger ${selected.size} contact${selected.size > 1 ? 's' : ''}`}
               </button>
               <p className="text-center text-xs text-gray-400">
-                Importe ensuite dans <strong>Google Contacts</strong> → les anniversaires s'ajoutent à Google Agenda
+                Importe dans <strong>Google Contacts</strong> ou <strong>Contacts iOS</strong> → anniversaires dans Google & Apple Agenda
               </p>
             </div>
           </>
