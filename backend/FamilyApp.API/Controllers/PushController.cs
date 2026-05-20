@@ -10,7 +10,7 @@ namespace FamilyApp.API.Controllers;
 [ApiController]
 [Route("api/push")]
 [Authorize]
-public class PushController(AppDbContext db, IConfiguration config) : ControllerBase
+public class PushController(AppDbContext db, IConfiguration config, PushNotificationService push) : ControllerBase
 {
     [HttpGet("vapid-public-key")]
     public IActionResult GetPublicKey() => Ok(new { key = config["Push:PublicKey"] });
@@ -44,6 +44,20 @@ public class PushController(AppDbContext db, IConfiguration config) : Controller
             .Where(s => s.UserId == userId && s.Endpoint == dto.Endpoint)
             .ExecuteDeleteAsync();
         return Ok();
+    }
+
+    [HttpPost("test")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SendTest()
+    {
+        var count = await db.PushSubscriptions.CountAsync();
+        if (count == 0) return Ok(new { sent = 0, message = "Aucun abonné enregistré." });
+        await push.SendToAllAsync(
+            "🔔 Notification test",
+            "Les notifications fonctionnent correctement !",
+            "/"
+        );
+        return Ok(new { sent = count });
     }
 
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
-import { membersApi, relationsApi, adminApi, settingsApi, familiesApi } from '../services/api'
+import { membersApi, relationsApi, adminApi, settingsApi, familiesApi, pushApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { FAMILY_PALETTE } from '../components/tree/treeLayout'
@@ -41,6 +41,7 @@ export default function Profile() {
   const [linkModal, setLinkModal] = useState(null) // 'instagram' | 'facebook' | 'whatsapp' | null
   const [families, setFamilies] = useState([])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [testPushState, setTestPushState] = useState('idle') // idle | loading | ok | error
 
   useEffect(() => {
     if (!memberId) { setError('Aucun profil associé à ce compte.'); setLoading(false); return }
@@ -165,6 +166,18 @@ export default function Profile() {
     await navigator.clipboard.writeText(inviteLink)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function handleTestPush() {
+    setTestPushState('loading')
+    try {
+      await pushApi.sendTest()
+      setTestPushState('ok')
+      setTimeout(() => setTestPushState('idle'), 4000)
+    } catch {
+      setTestPushState('error')
+      setTimeout(() => setTestPushState('idle'), 4000)
+    }
   }
 
   async function handleCopyInviteMessage() {
@@ -620,6 +633,21 @@ export default function Profile() {
                   <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
                     subscribed ? 'translate-x-6' : 'translate-x-1'
                   }`} />
+                </button>
+              </div>
+            )}
+            {isAdmin && subscribed && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-xs text-gray-400 mb-2">Admin — envoyer une notif test à tous les abonnés</p>
+                <button
+                  onClick={handleTestPush}
+                  disabled={testPushState === 'loading'}
+                  className="w-full rounded-xl bg-gray-100 py-2.5 text-sm font-medium text-gray-700 active:bg-gray-200 disabled:opacity-50"
+                >
+                  {testPushState === 'loading' && 'Envoi...'}
+                  {testPushState === 'ok' && '✓ Notification envoyée !'}
+                  {testPushState === 'error' && 'Erreur — réessayez'}
+                  {testPushState === 'idle' && '🔔 Tester les notifications'}
                 </button>
               </div>
             )}

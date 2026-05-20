@@ -114,6 +114,7 @@ export const pushApi = {
   getVapidPublicKey: () => api.get('/push/vapid-public-key'),
   subscribe: (endpoint, p256dh, auth) => api.post('/push/subscribe', { endpoint, p256dh, auth }),
   unsubscribe: (endpoint) => api.delete('/push/unsubscribe', { data: { endpoint } }),
+  sendTest: () => api.post('/push/test'),
 }
 
 export default api
