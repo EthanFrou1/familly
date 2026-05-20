@@ -97,7 +97,7 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
           <span className="text-lg font-bold text-white">Lier {cfg.label}</span>
         </div>
 
-        <div className="px-5 py-4 space-y-4 overflow-y-auto min-h-0">
+        <div className="px-5 py-4 space-y-4">
           {/* Steps — masqués quand le clavier est ouvert */}
           {!focused && (
             <div className="rounded-2xl bg-gray-50 p-4 space-y-2.5">
