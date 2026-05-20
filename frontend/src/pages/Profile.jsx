@@ -272,7 +272,10 @@ export default function Profile() {
           </p>
           {isDeceased ? (
             <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/60 border border-white/15">
-              <span>†</span> In memoriam
+              <span>†</span>
+              {member.deathDate
+                ? `Décédé(e) le ${new Date(member.deathDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                : 'Décédé(e)'}
             </span>
           ) : familyColor && member.familyName ? (
             <span
@@ -468,8 +471,8 @@ export default function Profile() {
           </Card>
         )}
 
-        {/* Accès à l'application — admin uniquement, profil d'un autre membre */}
-        {isAdmin && id && id !== user?.memberId && accountStatus !== null && (
+        {/* Accès à l'application — admin uniquement, profil d'un autre membre vivant */}
+        {isAdmin && !isDeceased && id && id !== user?.memberId && accountStatus !== null && (
           <Card title="Accès à l'application">
             {accountStatus === 'active' && (
               <div className="flex items-center gap-3 py-1">
