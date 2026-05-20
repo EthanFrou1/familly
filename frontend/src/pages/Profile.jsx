@@ -654,6 +654,7 @@ export default function Profile() {
             linkModal === 'facebook'  ? member.facebookUrl :
             member.whatsappNumber || member.phone
           }
+          memberCountry={member.country}
           onClose={() => setLinkModal(null)}
           onSave={async value => {
             const field = linkModal === 'instagram' ? 'instagramUsername' : linkModal === 'facebook' ? 'facebookUrl' : 'whatsappNumber'

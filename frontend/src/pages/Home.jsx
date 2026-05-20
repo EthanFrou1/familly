@@ -5,6 +5,7 @@ import { useMembers } from '../store/MembersContext'
 import { familiesApi, settingsApi, relationsApi, activityLogsApi } from '../services/api'
 import Avatar from '../components/shared/Avatar'
 import BirthdayPopup from '../components/home/BirthdayPopup'
+import CalendarExportSheet from '../components/members/CalendarExportSheet'
 
 function timeAgo(dateStr) {
   if (!dateStr) return ''
@@ -124,6 +125,7 @@ export default function Home() {
   const [savingName, setSavingName] = useState(false)
   const [relations, setRelations] = useState([])
   const [activityLogs, setActivityLogs] = useState([])
+  const [showExportSheet, setShowExportSheet] = useState(false)
 
   useEffect(() => {
     settingsApi.get().then(({ data }) => {
@@ -250,7 +252,17 @@ export default function Home() {
 
         {/* Prochains anniversaires */}
         {birthdays.length > 0 && (
-          <Section title="Prochains anniversaires">
+          <Section title="Prochains anniversaires" action={
+            <button
+              onClick={() => setShowExportSheet(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-primary active:opacity-60"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Exporter
+            </button>
+          }>
             <div className="space-y-2">
               {birthdays.map(m => (
                 <button
@@ -314,6 +326,8 @@ export default function Home() {
         )}
 
       </div>
+
+      {showExportSheet && <CalendarExportSheet onClose={() => setShowExportSheet(false)} />}
     </div>
   )
 }
@@ -350,10 +364,13 @@ function GlassStatCard({ value, label, color }) {
   )
 }
 
-function Section({ title, children }) {
+function Section({ title, action, children }) {
   return (
     <section>
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">{title}</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{title}</h2>
+        {action}
+      </div>
       {children}
     </section>
   )

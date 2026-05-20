@@ -1,6 +1,49 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 
+const COUNTRY_CODES = [
+  { code: '+33', flag: '🇫🇷' },
+  { code: '+32', flag: '🇧🇪' },
+  { code: '+41', flag: '🇨🇭' },
+  { code: '+352', flag: '🇱🇺' },
+  { code: '+1', flag: '🇨🇦' },
+  { code: '+44', flag: '🇬🇧' },
+  { code: '+34', flag: '🇪🇸' },
+  { code: '+39', flag: '🇮🇹' },
+  { code: '+49', flag: '🇩🇪' },
+  { code: '+351', flag: '🇵🇹' },
+  { code: '+31', flag: '🇳🇱' },
+  { code: '+212', flag: '🇲🇦' },
+  { code: '+213', flag: '🇩🇿' },
+  { code: '+216', flag: '🇹🇳' },
+]
+
+const COUNTRY_TO_DIAL = {
+  France: '+33', Belgique: '+32', Belgium: '+32',
+  Suisse: '+41', Switzerland: '+41',
+  Luxembourg: '+352',
+  Canada: '+1', 'États-Unis': '+1', 'United States': '+1', USA: '+1',
+  'Royaume-Uni': '+44', 'United Kingdom': '+44',
+  Espagne: '+34', Spain: '+34',
+  Italie: '+39', Italy: '+39',
+  Allemagne: '+49', Germany: '+49',
+  Portugal: '+351',
+  'Pays-Bas': '+31', Netherlands: '+31',
+  Maroc: '+212', Morocco: '+212',
+  Algérie: '+213', Algeria: '+213',
+  Tunisie: '+216', Tunisia: '+216',
+}
+
+function parsePhone(value) {
+  if (!value) return { dialCode: null, local: '' }
+  const normalized = value.replace(/[\s\-().]/g, '')
+  const sorted = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length)
+  for (const { code } of sorted) {
+    if (normalized.startsWith(code)) return { dialCode: code, local: normalized.slice(code.length) }
+  }
+  return { dialCode: null, local: normalized.replace(/^\+/, '') }
+}
+
 const NETWORKS = {
   instagram: {
     label: 'Instagram',
@@ -12,9 +55,8 @@ const NETWORKS = {
     steps: [
       'Ouvre Instagram sur ton téléphone',
       'Appuie sur ton profil en bas à droite',
-      'Copie ton nom d\'utilisateur (sans le @)',
+      "Copie ton nom d'utilisateur (sans le @)",
     ],
-    preview: val => val ? `instagram.com/${val.replace('@', '')}` : null,
     cleanValue: val => val.replace('@', '').trim(),
   },
   facebook: {
@@ -27,41 +69,51 @@ const NETWORKS = {
     steps: [
       'Ouvre Facebook sur ton téléphone',
       'Vas sur ton profil',
-      'Copie l\'identifiant dans l\'URL (ex: jean.dupont.92)',
+      "Copie l'identifiant dans l'URL (ex: jean.dupont.92)",
     ],
-    preview: val => val ? (val.startsWith('http') ? val : `facebook.com/${val}`) : null,
     cleanValue: val => val.trim(),
   },
   whatsapp: {
     label: 'WhatsApp',
     field: 'whatsappNumber',
     headerCls: 'bg-[#25D366]',
-    inputType: 'tel',
-    placeholder: '+33 6 12 34 56 78',
-    prefix: null,
     steps: [
-      'Ouvre WhatsApp → Paramètres',
-      'Ton numéro apparaît en haut',
-      'Entre-le au format international (+33…)',
+      'Choisis ton indicatif pays',
+      'Saisis ton numéro sans le 0 initial',
+      'Ex : 6 12 34 56 78 pour un numéro français',
     ],
-    preview: val => val ? `wa.me/${val.replace(/[\s+\-()]/g, '')}` : null,
-    cleanValue: val => val.trim(),
   },
 }
 
-export default function SocialLinkModal({ network, currentValue, onSave, onClose }) {
+export default function SocialLinkModal({ network, currentValue, memberCountry, onSave, onClose }) {
   const cfg = NETWORKS[network]
+  const isWhatsapp = network === 'whatsapp'
+
   const [value, setValue] = useState(currentValue || '')
+
+  const parsed = parsePhone(currentValue)
+  const [dialCode, setDialCode] = useState(
+    parsed.dialCode ?? COUNTRY_TO_DIAL[memberCountry] ?? '+33'
+  )
+  const [localNumber, setLocalNumber] = useState(parsed.local)
+
   const [loading, setLoading] = useState(false)
   const [focused, setFocused] = useState(false)
 
-  const preview = cfg.preview(value)
-  const hasChanged = cfg.cleanValue(value) !== (currentValue || '')
+  const fullNumber = localNumber.trim()
+    ? `${dialCode}${localNumber.replace(/[\s\-().]/g, '')}`
+    : ''
+
+  const hasChanged = isWhatsapp
+    ? fullNumber !== (currentValue || '')
+    : cfg.cleanValue(value) !== (currentValue || '')
+
+  const isEmpty = isWhatsapp ? !localNumber.trim() : !value.trim()
 
   async function handleSave() {
     setLoading(true)
     try {
-      await onSave(cfg.cleanValue(value))
+      await onSave(isWhatsapp ? fullNumber : cfg.cleanValue(value))
     } finally {
       setLoading(false)
     }
@@ -82,12 +134,10 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
 
       <div className="relative bg-white rounded-t-3xl animate-slide-up shadow-xl flex flex-col"
            style={{ maxHeight: '80dvh', touchAction: 'pan-y' }}>
-        {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="h-1 w-10 rounded-full bg-gray-200" />
         </div>
 
-        {/* Colored header */}
         <div className={`${cfg.headerCls} px-5 py-4 flex items-center gap-3 shrink-0`}>
           <span className="h-8 w-8 text-white">
             {network === 'instagram' && <InstagramIcon />}
@@ -98,7 +148,6 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
         </div>
 
         <div className="px-5 py-4 space-y-4">
-          {/* Steps — masqués quand le clavier est ouvert */}
           {!focused && (
             <div className="rounded-2xl bg-gray-50 p-4 space-y-2.5">
               {cfg.steps.map((step, i) => (
@@ -112,41 +161,59 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
             </div>
           )}
 
-          {/* Input */}
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
-              {cfg.prefix ? `${cfg.prefix}Nom d'utilisateur` : 'Numéro de téléphone'}
+              {isWhatsapp ? 'Numéro de téléphone' : cfg.prefix ? "Nom d'utilisateur" : 'Numéro'}
             </label>
-            <div className="flex items-center rounded-xl border border-gray-200 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent">
-              {cfg.prefix && (
-                <span className="px-3 text-gray-400 text-sm font-medium border-r border-gray-100 py-3 bg-gray-50 shrink-0">
-                  {cfg.prefix}
-                </span>
-              )}
-              <input
-                type={cfg.inputType}
-                value={value}
-                onChange={e => setValue(
-                  cfg.inputType === 'tel'
-                    ? e.target.value.replace(/[^\d\s+\-().]/g, '')
-                    : e.target.value
-                )}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                placeholder={cfg.placeholder}
-                autoFocus
-                className="flex-1 px-3 py-3 text-sm outline-none bg-white"
-              />
-            </div>
-          </div>
 
+            {isWhatsapp ? (
+              <div className="flex items-center rounded-xl border border-gray-200 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent">
+                <select
+                  value={dialCode}
+                  onChange={e => setDialCode(e.target.value)}
+                  className="px-2 py-3 text-sm bg-gray-50 border-r border-gray-100 text-gray-700 outline-none shrink-0"
+                >
+                  {COUNTRY_CODES.map(({ code, flag }) => (
+                    <option key={code} value={code}>{flag} {code}</option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  value={localNumber}
+                  onChange={e => setLocalNumber(e.target.value.replace(/[^\d\s\-().]/g, ''))}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                  placeholder="6 12 34 56 78"
+                  autoFocus
+                  className="flex-1 px-3 py-3 text-sm outline-none bg-white min-w-0"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center rounded-xl border border-gray-200 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent">
+                {cfg.prefix && (
+                  <span className="px-3 text-gray-400 text-sm font-medium border-r border-gray-100 py-3 bg-gray-50 shrink-0">
+                    {cfg.prefix}
+                  </span>
+                )}
+                <input
+                  type={cfg.inputType}
+                  value={value}
+                  onChange={e => setValue(e.target.value)}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                  placeholder={cfg.placeholder}
+                  autoFocus
+                  className="flex-1 px-3 py-3 text-sm outline-none bg-white min-w-0"
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Footer */}
         <div className="px-5 pb-8 pt-1 space-y-2 shrink-0">
           <button
             onClick={handleSave}
-            disabled={!value.trim() || !hasChanged || loading}
+            disabled={isEmpty || !hasChanged || loading}
             className="w-full rounded-2xl bg-primary py-3.5 font-semibold text-white disabled:opacity-40 active:bg-primary/90 transition-colors"
           >
             {loading ? '...' : 'Enregistrer'}

@@ -3,6 +3,49 @@ import { createPortal } from 'react-dom'
 import { familiesApi } from '../../services/api'
 import Select from '../shared/Select'
 
+const COUNTRY_CODES = [
+  { code: '+33', flag: '🇫🇷' },
+  { code: '+32', flag: '🇧🇪' },
+  { code: '+41', flag: '🇨🇭' },
+  { code: '+352', flag: '🇱🇺' },
+  { code: '+1', flag: '🇨🇦' },
+  { code: '+44', flag: '🇬🇧' },
+  { code: '+34', flag: '🇪🇸' },
+  { code: '+39', flag: '🇮🇹' },
+  { code: '+49', flag: '🇩🇪' },
+  { code: '+351', flag: '🇵🇹' },
+  { code: '+31', flag: '🇳🇱' },
+  { code: '+212', flag: '🇲🇦' },
+  { code: '+213', flag: '🇩🇿' },
+  { code: '+216', flag: '🇹🇳' },
+]
+
+const COUNTRY_TO_DIAL = {
+  France: '+33', Belgique: '+32', Belgium: '+32',
+  Suisse: '+41', Switzerland: '+41',
+  Luxembourg: '+352',
+  Canada: '+1', 'États-Unis': '+1', 'United States': '+1', USA: '+1',
+  'Royaume-Uni': '+44', 'United Kingdom': '+44',
+  Espagne: '+34', Spain: '+34',
+  Italie: '+39', Italy: '+39',
+  Allemagne: '+49', Germany: '+49',
+  Portugal: '+351',
+  'Pays-Bas': '+31', Netherlands: '+31',
+  Maroc: '+212', Morocco: '+212',
+  Algérie: '+213', Algeria: '+213',
+  Tunisie: '+216', Tunisia: '+216',
+}
+
+function parsePhone(value) {
+  if (!value) return { dialCode: null, local: '' }
+  const normalized = value.replace(/[\s\-().]/g, '')
+  const sorted = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length)
+  for (const { code } of sorted) {
+    if (normalized.startsWith(code)) return { dialCode: code, local: normalized.slice(code.length) }
+  }
+  return { dialCode: null, local: normalized.replace(/^\+/, '') }
+}
+
 const EMPTY = {
   firstName: '', lastName: '', birthDate: '', deathDate: '', email: '',
   phone: '', bio: '', address: '', postalCode: '', city: '', country: '',
@@ -45,13 +88,19 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState(null) // { type: 'success'|'error', message }
   const [families, setFamilies] = useState([])
+  const [waDial, setWaDial] = useState('+33')
+  const [waLocal, setWaLocal] = useState('')
   const isEdit = !!initial
   const isDirty = isDirtyCheck(form, initial)
 
   useEffect(() => {
     if (open) {
-      setForm(initial ? toFormValues(initial) : EMPTY)
+      const vals = initial ? toFormValues(initial) : EMPTY
+      setForm(vals)
       setFeedback(null)
+      const parsed = parsePhone(vals.whatsappNumber)
+      setWaDial(parsed.dialCode ?? COUNTRY_TO_DIAL[vals.country] ?? '+33')
+      setWaLocal(parsed.local)
       familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
       document.body.style.overflowY = 'hidden'
     } else {
@@ -61,13 +110,7 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
   }, [open, initial])
 
   function set(field, value) {
-    setForm(f => {
-      const next = { ...f, [field]: value }
-      if (field === 'phone' && (!f.whatsappNumber || f.whatsappNumber === f.phone)) {
-        next.whatsappNumber = value
-      }
-      return next
-    })
+    setForm(f => ({ ...f, [field]: value }))
   }
 
   function handlePlaceSelect({ address, postalCode, city, country, latitude, longitude }) {
@@ -206,9 +249,31 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
                 </div>
                 <div className="flex items-center gap-3">
                   <WhatsappIcon className="h-5 w-5 text-[#25D366] shrink-0" />
-                  <input type="tel" value={form.whatsappNumber}
-                    onChange={e => set('whatsappNumber', e.target.value.replace(/[^\d\s+\-().]/g, ''))}
-                    className={inputCls} placeholder="+33 6 00 00 00 00" />
+                  <div className="flex flex-1 items-center rounded-xl border border-gray-200 bg-gray-50 overflow-hidden focus-within:border-primary focus-within:bg-white transition-colors min-w-0">
+                    <select
+                      value={waDial}
+                      onChange={e => {
+                        setWaDial(e.target.value)
+                        set('whatsappNumber', waLocal.trim() ? `${e.target.value}${waLocal.replace(/[\s\-().]/g, '')}` : '')
+                      }}
+                      className="px-2 py-2.5 text-sm bg-transparent border-r border-gray-200 text-gray-700 outline-none shrink-0"
+                    >
+                      {COUNTRY_CODES.map(({ code, flag }) => (
+                        <option key={code} value={code}>{flag} {code}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      value={waLocal}
+                      onChange={e => {
+                        const local = e.target.value.replace(/[^\d\s\-().]/g, '')
+                        setWaLocal(local)
+                        set('whatsappNumber', local.trim() ? `${waDial}${local.replace(/[\s\-().]/g, '')}` : '')
+                      }}
+                      className="flex-1 px-3 py-2.5 text-sm bg-transparent outline-none min-w-0"
+                      placeholder="6 12 34 56 78"
+                    />
+                  </div>
                 </div>
               </div>
             )}
