@@ -228,7 +228,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
             targetMemberName: $"{member.FirstName} {member.LastName}");
 
         await push.SendToAllAsync(
-            "👤 Nouveau membre !",
+            "Nouveau membre 👤",
             $"{member.FirstName} {member.LastName} vient de rejoindre la famille !",
             $"/profile/{member.Id}"
         );
