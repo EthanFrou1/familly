@@ -227,11 +227,11 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
             targetMemberId: member.Id,
             targetMemberName: $"{member.FirstName} {member.LastName}");
 
-        _ = Task.Run(() => push.SendToAllAsync(
+        await push.SendToAllAsync(
             "👤 Nouveau membre !",
             $"{member.FirstName} {member.LastName} vient de rejoindre la famille !",
             $"/profile/{member.Id}"
-        ));
+        );
 
         return CreatedAtAction(nameof(GetById), new { id = member.Id }, MapToDto(member));
     }
