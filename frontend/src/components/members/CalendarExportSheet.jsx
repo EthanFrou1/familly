@@ -81,12 +81,13 @@ export default function CalendarExportSheet({ onClose }) {
 
                 {showGoogleSteps && (
                   <div className="px-4 pb-4 space-y-3 border-t border-gray-100">
-                    <div className="space-y-1.5 pt-3">
+                    <p className="pt-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Depuis un ordinateur</p>
+                    <div className="space-y-1.5">
                       {[
                         'Copie le lien ci-dessous',
-                        'Appuie sur "Ouvrir Google Agenda"',
-                        'La page s\'ouvre dans ton navigateur',
-                        'Appuie sur "Ajouter un agenda" et confirme',
+                        'Ouvre Google Agenda dans ton navigateur',
+                        'Clique "+" à côté de "Autres agendas"',
+                        'Choisis "À partir de l\'URL", colle et valide',
                       ].map((step, i) => (
                         <div key={i} className="flex items-start gap-2.5">
                           <span className="h-5 w-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
@@ -94,6 +95,7 @@ export default function CalendarExportSheet({ onClose }) {
                         </div>
                       ))}
                     </div>
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Ou directement</p>
 
                     <button
                       onClick={handleCopyUrl}
