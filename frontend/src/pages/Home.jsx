@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
@@ -196,8 +197,9 @@ export default function Home() {
         <BirthdayPopup members={birthdays} onNavigate={navigate} />
       )}
 
-      {showPushBanner && (
-        <div className="mx-4 mt-4 flex items-center gap-3 rounded-2xl bg-primary/10 border border-primary/20 px-4 py-3">
+      {showPushBanner && createPortal(
+        <div style={{ top: 'env(safe-area-inset-top)' }}
+          className="fixed left-0 right-0 z-50 mx-4 mt-2 flex items-center gap-3 rounded-2xl bg-white border border-gray-200 shadow-lg px-4 py-3">
           <span className="text-xl shrink-0">🔔</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-800">Activer les notifications</p>
@@ -205,7 +207,7 @@ export default function Home() {
           </div>
           <button
             onClick={handleEnablePush}
-            className="shrink-0 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-white active:bg-primary-dark"
+            className="shrink-0 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-white active:opacity-80"
           >
             Activer
           </button>
@@ -214,7 +216,8 @@ export default function Home() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Header */}
