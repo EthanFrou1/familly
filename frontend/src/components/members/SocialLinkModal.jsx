@@ -97,7 +97,7 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
           <span className="text-lg font-bold text-white">Lier {cfg.label}</span>
         </div>
 
-        <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+        <div className="px-5 py-4 space-y-4 overflow-y-auto min-h-0">
           {/* Steps — masqués quand le clavier est ouvert */}
           {!focused && (
             <div className="rounded-2xl bg-gray-50 p-4 space-y-2.5">
@@ -140,15 +140,6 @@ export default function SocialLinkModal({ network, currentValue, onSave, onClose
             </div>
           </div>
 
-          {/* Preview */}
-          {preview && (
-            <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-3">
-              <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-              <span className="text-xs text-gray-500 truncate">{preview}</span>
-            </div>
-          )}
         </div>
 
         {/* Footer */}
