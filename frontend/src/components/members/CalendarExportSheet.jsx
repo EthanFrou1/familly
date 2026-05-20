@@ -7,7 +7,6 @@ export default function CalendarExportSheet({ onClose }) {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(new Set())
   const [view, setView] = useState('menu') // 'menu' | 'google'
-  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -37,21 +36,14 @@ export default function CalendarExportSheet({ onClose }) {
     setSelected(selected.size === members.length ? new Set() : new Set(members.map(m => m.id)))
   }
 
-  const handleExportContacts = async () => {
-    if (!selected.size) return
-    setExporting(true)
-    try {
-      const { data } = await membersApi.exportContacts([...selected])
-      const url = URL.createObjectURL(new Blob([data], { type: 'text/vcard' }))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'contacts-anniversaires.vcf'
-      a.click()
-      URL.revokeObjectURL(url)
-      onClose()
-    } catch {} finally {
-      setExporting(false)
-    }
+  const handleExportContacts = () => {
+    if (!selected.size || !urls) return
+    // Extract token from the calendar URL we already have
+    const token = new URL(urls.httpsUrl).searchParams.get('token') ?? ''
+    const idsParam = [...selected].join(',')
+    // Navigate directly — iOS Safari intercepts .vcf and opens Contacts app natively
+    window.location.href = `/api/members/export/contacts.vcf?token=${encodeURIComponent(token)}&ids=${idsParam}`
+    onClose()
   }
 
   const handleDownloadIcs = async () => {
@@ -215,10 +207,10 @@ export default function CalendarExportSheet({ onClose }) {
             <div className="pt-3 space-y-2 shrink-0">
               <button
                 onClick={handleExportContacts}
-                disabled={!selected.size || exporting}
+                disabled={!selected.size || !urls}
                 className="w-full rounded-2xl bg-primary py-3.5 font-semibold text-white disabled:opacity-40 active:bg-primary/90 transition-colors"
               >
-                {exporting ? '...' : `Télécharger ${selected.size} contact${selected.size > 1 ? 's' : ''}`}
+                {`Exporter ${selected.size} contact${selected.size > 1 ? 's' : ''}`}
               </button>
               <p className="text-center text-xs text-gray-400">
                 Importe dans <strong>Google Contacts</strong> ou <strong>Contacts iOS</strong> → anniversaires dans Google & Apple Agenda

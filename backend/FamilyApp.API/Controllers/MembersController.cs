@@ -80,8 +80,14 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
     }
 
     [HttpGet("export/contacts.vcf")]
-    public async Task<IActionResult> ExportContactsVcf([FromQuery] string? ids)
+    [AllowAnonymous]
+    public async Task<IActionResult> ExportContactsVcf([FromQuery] string? ids, [FromQuery] string? token)
     {
+        var authorized = User.Identity?.IsAuthenticated == true;
+        if (!authorized && token is not null)
+            authorized = ValidateCalendarToken(token) is not null;
+        if (!authorized) return Unauthorized();
+
         IQueryable<Member> query = db.Members.Where(m => m.BirthDate.HasValue);
 
         if (!string.IsNullOrEmpty(ids))
