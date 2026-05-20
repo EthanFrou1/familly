@@ -103,12 +103,16 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
             sb.Append("VERSION:3.0\r\n");
             sb.Append($"FN:{VCardEscape($"{m.FirstName} {m.LastName}")}\r\n");
             sb.Append($"N:{VCardEscape(m.LastName)};{VCardEscape(m.FirstName)};;;\r\n");
-            sb.Append($"BDAY:{m.BirthDate!.Value:yyyyMMdd}\r\n");
+            sb.Append($"BDAY:{m.BirthDate!.Value:yyyy-MM-dd}\r\n");
             sb.Append($"UID:mbf-{m.Id}@mybigfamily.fr\r\n");
             sb.Append("END:VCARD\r\n");
+            sb.Append("\r\n"); // blank line between entries required by some parsers
         }
 
-        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        // UTF-8 BOM helps some importers (Outlook, iOS) detect encoding correctly
+        var bom = System.Text.Encoding.UTF8.GetPreamble();
+        var content = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        var bytes = bom.Concat(content).ToArray();
         return File(bytes, "text/vcard; charset=utf-8", "contacts-anniversaires.vcf");
     }
 
