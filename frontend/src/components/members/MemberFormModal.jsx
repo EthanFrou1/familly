@@ -48,7 +48,7 @@ function parsePhone(value) {
 
 const EMPTY = {
   firstName: '', lastName: '', birthDate: '', deathDate: '', email: '',
-  phone: '', bio: '', address: '', postalCode: '', city: '', country: '',
+  phone: '', bio: '', occupation: '', address: '', postalCode: '', city: '', country: '',
   latitude: null, longitude: null,
   isAlive: true, facebookUrl: '', instagramUsername: '', whatsappNumber: '',
   familyId: ''
@@ -63,6 +63,7 @@ function toFormValues(initial) {
     email: initial.email ?? '',
     phone: initial.phone ?? '',
     bio: initial.bio ?? '',
+    occupation: initial.occupation ?? '',
     address: initial.address ?? '',
     postalCode: initial.postalCode ?? '',
     city: initial.city ?? '',
@@ -226,6 +227,11 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
               <input type="tel" value={form.phone}
                 onChange={e => set('phone', e.target.value.replace(/[^\d\s+\-().]/g, ''))}
                 className={inputCls} placeholder="+33 6 00 00 00 00" />
+            </Field>
+
+            <Field label="Métier / Études">
+              <input value={form.occupation} onChange={e => set('occupation', e.target.value)}
+                className={inputCls} placeholder="Ingénieur, Étudiant en droit, Retraité..." />
             </Field>
 
             <Field label="Bio">

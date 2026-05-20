@@ -192,6 +192,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
             Email = req.Email,
             Phone = req.Phone,
             Bio = req.Bio,
+            Occupation = req.Occupation,
             Address = req.Address,
             PostalCode = req.PostalCode,
             City = req.City,
@@ -241,6 +242,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         if (req.Email is not null) member.Email = req.Email;
         if (req.Phone is not null) member.Phone = req.Phone;
         if (req.Bio is not null) member.Bio = req.Bio;
+        if (req.Occupation is not null) member.Occupation = req.Occupation == "" ? null : req.Occupation;
         if (req.Address is not null) member.Address = req.Address == "" ? null : req.Address;
         if (req.PostalCode is not null) member.PostalCode = req.PostalCode == "" ? null : req.PostalCode;
         if (req.City is not null) member.City = req.City;
@@ -301,7 +303,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
 
     private static MemberDto MapToDto(Member m) => new(
         m.Id, m.FirstName, m.LastName, m.BirthDate, m.DeathDate,
-        m.Email, m.Phone, m.Bio, m.Address, m.PostalCode, m.City, m.Country,
+        m.Email, m.Phone, m.Bio, m.Occupation, m.Address, m.PostalCode, m.City, m.Country,
         m.Latitude, m.Longitude, m.ProfilePictureUrl, m.IsAlive, m.CreatedAt,
         m.FacebookUrl, m.InstagramUsername, m.WhatsappNumber,
         m.FamilyId, m.Family?.Name
@@ -312,7 +314,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
 
     private static readonly System.Linq.Expressions.Expression<Func<Member, MemberDto>> ToDto = m => new MemberDto(
         m.Id, m.FirstName, m.LastName, m.BirthDate, m.DeathDate,
-        m.Email, m.Phone, m.Bio, m.Address, m.PostalCode, m.City, m.Country,
+        m.Email, m.Phone, m.Bio, m.Occupation, m.Address, m.PostalCode, m.City, m.Country,
         m.Latitude, m.Longitude, m.ProfilePictureUrl, m.IsAlive, m.CreatedAt,
         m.FacebookUrl, m.InstagramUsername, m.WhatsappNumber,
         m.FamilyId, m.Family != null ? m.Family.Name : null
