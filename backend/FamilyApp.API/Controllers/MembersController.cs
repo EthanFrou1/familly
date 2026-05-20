@@ -27,9 +27,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var token = GenerateCalendarToken(userId);
-        var host = $"{Request.Scheme}://{Request.Host}";
-        var path = $"/api/members/export/birthdays.ics?token={Uri.EscapeDataString(token)}";
-        return Ok(new { httpsUrl = host + path, webcalUrl = "webcal://" + Request.Host + path });
+        return Ok(new { token });
     }
 
     [HttpGet("export/birthdays.ics")]
@@ -65,10 +63,11 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
 
             sb.Append("BEGIN:VEVENT\r\n");
             AppendFolded(sb, $"UID:birthday-{m.Id}@familyapp");
+            sb.Append($"DTSTAMP:{DateTime.UtcNow:yyyyMMddTHHmmssZ}\r\n");
             AppendFolded(sb, $"DTSTART;VALUE=DATE:{birth:yyyyMMdd}");
             AppendFolded(sb, $"DTEND;VALUE=DATE:{birth.AddDays(1):yyyyMMdd}");
             sb.Append("RRULE:FREQ=YEARLY\r\n");
-            AppendFolded(sb, $"SUMMARY:Anniversaire de {name}");
+            AppendFolded(sb, $"SUMMARY:🎂 Anniversaire de {name}");
             AppendFolded(sb, $"DESCRIPTION:Né(e) le {IcsEscape(dateStr)}");
             sb.Append("TRANSP:TRANSPARENT\r\n");
             sb.Append("END:VEVENT\r\n");

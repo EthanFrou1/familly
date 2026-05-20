@@ -18,7 +18,13 @@ export default function CalendarExportSheet({ onClose }) {
 
   useEffect(() => {
     membersApi.getCalendarUrl()
-      .then(({ data }) => setUrls(data))
+      .then(({ data }) => {
+        const icsPath = `/api/members/export/birthdays.ics?token=${encodeURIComponent(data.token)}`
+        setUrls({
+          httpsUrl: `${window.location.origin}${icsPath}`,
+          webcalUrl: `webcal://${window.location.host}${icsPath}`,
+        })
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])
