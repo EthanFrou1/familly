@@ -6,6 +6,7 @@ import { familiesApi, settingsApi, relationsApi, activityLogsApi } from '../serv
 import Avatar from '../components/shared/Avatar'
 import BirthdayPopup from '../components/home/BirthdayPopup'
 import CalendarExportSheet from '../components/members/CalendarExportSheet'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 function timeAgo(dateStr) {
   if (!dateStr) return ''
@@ -126,6 +127,21 @@ export default function Home() {
   const [relations, setRelations] = useState([])
   const [activityLogs, setActivityLogs] = useState([])
   const [showExportSheet, setShowExportSheet] = useState(false)
+  const { supported: pushSupported, subscribed, permission, subscribe } = usePushNotifications()
+  const [pushBannerDismissed, setPushBannerDismissed] = useState(
+    () => localStorage.getItem('push-banner-dismissed') === '1'
+  )
+  const showPushBanner = pushSupported && permission === 'default' && !subscribed && !pushBannerDismissed
+
+  function dismissPushBanner() {
+    localStorage.setItem('push-banner-dismissed', '1')
+    setPushBannerDismissed(true)
+  }
+
+  async function handleEnablePush() {
+    await subscribe()
+    dismissPushBanner()
+  }
 
   useEffect(() => {
     settingsApi.get().then(({ data }) => {
@@ -178,6 +194,27 @@ export default function Home() {
     <div className="overflow-y-auto h-full bg-gray-50 pb-6 animate-fade-in">
       {todayBirthdays.length > 0 && (
         <BirthdayPopup members={birthdays} onNavigate={navigate} />
+      )}
+
+      {showPushBanner && (
+        <div className="mx-4 mt-4 flex items-center gap-3 rounded-2xl bg-primary/10 border border-primary/20 px-4 py-3">
+          <span className="text-xl shrink-0">🔔</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-800">Activer les notifications</p>
+            <p className="text-xs text-gray-500 leading-snug">Anniversaires, nouveaux membres…</p>
+          </div>
+          <button
+            onClick={handleEnablePush}
+            className="shrink-0 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-white active:bg-primary-dark"
+          >
+            Activer
+          </button>
+          <button onClick={dismissPushBanner} className="shrink-0 text-gray-400 active:text-gray-600 p-1">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       )}
 
       {/* Header */}
