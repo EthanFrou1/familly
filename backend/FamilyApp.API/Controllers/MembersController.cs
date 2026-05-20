@@ -42,7 +42,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         var members = await db.Members
             .Where(m => m.BirthDate.HasValue)
             .OrderBy(m => m.FirstName).ThenBy(m => m.LastName)
-            .Select(m => new { m.Id, m.FirstName, m.LastName, m.BirthDate })
+            .Select(m => new { m.Id, m.FirstName, m.LastName, m.BirthDate, m.DeathDate, m.IsAlive })
             .ToListAsync();
 
         var culture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
@@ -61,14 +61,29 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
             var name = IcsEscape($"{m.FirstName} {m.LastName}");
             var dateStr = birth.ToString("dd MMMM yyyy", culture);
 
+            string summary, description;
+            if (m.IsAlive)
+            {
+                summary = $"🎂 Anniversaire de {name}";
+                description = $"Né(e) le {IcsEscape(dateStr)}";
+            }
+            else
+            {
+                summary = $"🕯️ Souvenir · {name}";
+                var deathStr = m.DeathDate.HasValue ? m.DeathDate.Value.ToString("dd MMMM yyyy", culture) : null;
+                description = deathStr != null
+                    ? $"Né(e) le {IcsEscape(dateStr)} · Décédé(e) le {IcsEscape(deathStr)}"
+                    : $"Né(e) le {IcsEscape(dateStr)} · Décédé(e)";
+            }
+
             sb.Append("BEGIN:VEVENT\r\n");
             AppendFolded(sb, $"UID:birthday-{m.Id}@familyapp");
             sb.Append($"DTSTAMP:{DateTime.UtcNow:yyyyMMddTHHmmssZ}\r\n");
             AppendFolded(sb, $"DTSTART;VALUE=DATE:{birth:yyyyMMdd}");
             AppendFolded(sb, $"DTEND;VALUE=DATE:{birth.AddDays(1):yyyyMMdd}");
             sb.Append("RRULE:FREQ=YEARLY\r\n");
-            AppendFolded(sb, $"SUMMARY:🎂 Anniversaire de {name}");
-            AppendFolded(sb, $"DESCRIPTION:Né(e) le {IcsEscape(dateStr)}");
+            AppendFolded(sb, $"SUMMARY:{summary}");
+            AppendFolded(sb, $"DESCRIPTION:{description}");
             sb.Append("TRANSP:TRANSPARENT\r\n");
             sb.Append("END:VEVENT\r\n");
         }
@@ -193,6 +208,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
             Phone = req.Phone,
             Bio = req.Bio,
             Occupation = req.Occupation,
+            Sport = req.Sport,
             Address = req.Address,
             PostalCode = req.PostalCode,
             City = req.City,
@@ -243,6 +259,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         if (req.Phone is not null) member.Phone = req.Phone;
         if (req.Bio is not null) member.Bio = req.Bio;
         if (req.Occupation is not null) member.Occupation = req.Occupation == "" ? null : req.Occupation;
+        if (req.Sport is not null) member.Sport = req.Sport == "" ? null : req.Sport;
         if (req.Address is not null) member.Address = req.Address == "" ? null : req.Address;
         if (req.PostalCode is not null) member.PostalCode = req.PostalCode == "" ? null : req.PostalCode;
         if (req.City is not null) member.City = req.City;
@@ -303,7 +320,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
 
     private static MemberDto MapToDto(Member m) => new(
         m.Id, m.FirstName, m.LastName, m.BirthDate, m.DeathDate,
-        m.Email, m.Phone, m.Bio, m.Occupation, m.Address, m.PostalCode, m.City, m.Country,
+        m.Email, m.Phone, m.Bio, m.Occupation, m.Sport, m.Address, m.PostalCode, m.City, m.Country,
         m.Latitude, m.Longitude, m.ProfilePictureUrl, m.IsAlive, m.CreatedAt,
         m.FacebookUrl, m.InstagramUsername, m.WhatsappNumber,
         m.FamilyId, m.Family?.Name
@@ -314,7 +331,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
 
     private static readonly System.Linq.Expressions.Expression<Func<Member, MemberDto>> ToDto = m => new MemberDto(
         m.Id, m.FirstName, m.LastName, m.BirthDate, m.DeathDate,
-        m.Email, m.Phone, m.Bio, m.Occupation, m.Address, m.PostalCode, m.City, m.Country,
+        m.Email, m.Phone, m.Bio, m.Occupation, m.Sport, m.Address, m.PostalCode, m.City, m.Country,
         m.Latitude, m.Longitude, m.ProfilePictureUrl, m.IsAlive, m.CreatedAt,
         m.FacebookUrl, m.InstagramUsername, m.WhatsappNumber,
         m.FamilyId, m.Family != null ? m.Family.Name : null

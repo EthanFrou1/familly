@@ -48,7 +48,7 @@ function parsePhone(value) {
 
 const EMPTY = {
   firstName: '', lastName: '', birthDate: '', deathDate: '', email: '',
-  phone: '', bio: '', occupation: '', address: '', postalCode: '', city: '', country: '',
+  phone: '', bio: '', occupation: '', sport: '', address: '', postalCode: '', city: '', country: '',
   latitude: null, longitude: null,
   isAlive: true, facebookUrl: '', instagramUsername: '', whatsappNumber: '',
   familyId: ''
@@ -64,6 +64,7 @@ function toFormValues(initial) {
     phone: initial.phone ?? '',
     bio: initial.bio ?? '',
     occupation: initial.occupation ?? '',
+    sport: initial.sport ?? '',
     address: initial.address ?? '',
     postalCode: initial.postalCode ?? '',
     city: initial.city ?? '',
@@ -232,6 +233,11 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
             <Field label="Métier / Études">
               <input value={form.occupation} onChange={e => set('occupation', e.target.value)}
                 className={inputCls} placeholder="Ingénieur, Étudiant en droit, Retraité..." />
+            </Field>
+
+            <Field label="Sport / Passion">
+              <input value={form.sport} onChange={e => set('sport', e.target.value)}
+                className={inputCls} placeholder="Football, Tennis, Cuisine, Photographie..." />
             </Field>
 
             <Field label="Bio">
