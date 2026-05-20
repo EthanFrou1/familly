@@ -4,17 +4,8 @@ import { membersApi } from '../../services/api'
 export default function CalendarExportSheet({ onClose }) {
   const [urls, setUrls] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [showGoogleSteps, setShowGoogleSteps] = useState(false)
   const [copied, setCopied] = useState(false)
-
-  const handleCopy = async () => {
-    if (!urls?.httpsUrl) return
-    try {
-      await navigator.clipboard.writeText(urls.httpsUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {}
-  }
 
   useEffect(() => {
     membersApi.getCalendarUrl()
@@ -25,9 +16,18 @@ export default function CalendarExportSheet({ onClose }) {
           webcalUrl: `webcal://${window.location.host}${icsPath}`,
         })
       })
-      .catch(() => setError(true))
+      .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  const handleCopyUrl = async () => {
+    if (!urls?.httpsUrl) return
+    try {
+      await navigator.clipboard.writeText(urls.httpsUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {}
+  }
 
   const handleDownload = async () => {
     try {
@@ -42,56 +42,11 @@ export default function CalendarExportSheet({ onClose }) {
     onClose()
   }
 
-  const subscriptionOptions = urls ? [
-    {
-      name: 'Google Calendar',
-      description: 'Abonnement — mise à jour automatique',
-      bg: '#FEEFC3',
-      icon: <GoogleCalendarIcon />,
-      action: () => {
-        window.open(
-          `https://calendar.google.com/calendar/r/settings/addbyurl?url=${encodeURIComponent(urls.httpsUrl)}`,
-          '_blank'
-        )
-        onClose()
-      },
-    },
-    {
-      name: 'Apple Calendar',
-      description: 'Abonnement — mise à jour automatique',
-      bg: '#FFE5E5',
-      icon: <AppleCalendarIcon />,
-      action: () => {
-        window.location.href = urls.webcalUrl
-        onClose()
-      },
-    },
-  ] : []
-
-  const fileOptions = [
-    {
-      name: 'Outlook',
-      description: 'Importer le fichier .ics',
-      bg: '#E3EEFF',
-      icon: <OutlookIcon />,
-      action: handleDownload,
-    },
-    {
-      name: 'Télécharger le fichier',
-      description: '.ics — compatible avec tout agenda',
-      bg: '#F0F0F0',
-      icon: <DownloadIcon />,
-      action: handleDownload,
-    },
-  ]
-
-  const allOptions = [...subscriptionOptions, ...fileOptions]
-
   return (
     <div className="fixed inset-0 z-50 flex items-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
-        className="relative w-full bg-white rounded-t-3xl px-5 pt-3 pb-24 animate-slide-up"
+        className="relative w-full bg-white rounded-t-3xl px-5 pt-3 pb-10 animate-slide-up"
         onClick={e => e.stopPropagation()}
       >
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
@@ -104,27 +59,113 @@ export default function CalendarExportSheet({ onClose }) {
           </div>
         ) : (
           <div className="space-y-2">
-            {allOptions.map(opt => (
+
+            {/* Google Calendar — affiche les étapes avec URL à copier */}
+            {urls && (
+              <div className="rounded-2xl bg-gray-50 overflow-hidden">
+                <button
+                  onClick={() => setShowGoogleSteps(o => !o)}
+                  className="w-full flex items-center gap-3 p-3.5 active:bg-gray-100 text-left transition-colors"
+                >
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#FEEFC3' }}>
+                    <GoogleCalendarIcon />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">Google Agenda</p>
+                    <p className="text-xs text-gray-400">Abonnement — mise à jour automatique</p>
+                  </div>
+                  <svg className={`h-4 w-4 text-gray-300 shrink-0 transition-transform ${showGoogleSteps ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+
+                {showGoogleSteps && (
+                  <div className="px-4 pb-4 space-y-3 border-t border-gray-100">
+                    <div className="space-y-1.5 pt-3">
+                      {[
+                        'Copie le lien ci-dessous',
+                        'Ouvre Google Agenda sur ordinateur',
+                        'Clique sur + → "Abonnement via URL"',
+                        'Colle le lien et confirme',
+                      ].map((step, i) => (
+                        <div key={i} className="flex items-start gap-2.5">
+                          <span className="h-5 w-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                          <span className="text-xs text-gray-600">{step}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={handleCopyUrl}
+                      className={`w-full flex items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors ${copied ? 'bg-emerald-50' : 'bg-white border border-gray-200 active:bg-gray-50'}`}
+                    >
+                      <svg className={`h-4 w-4 shrink-0 ${copied ? 'text-emerald-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        {copied
+                          ? <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          : <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        }
+                      </svg>
+                      <span className={`text-xs font-medium flex-1 truncate ${copied ? 'text-emerald-600' : 'text-gray-500'}`}>
+                        {copied ? 'Lien copié !' : urls.httpsUrl}
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Apple Calendar */}
+            {urls && (
               <button
-                key={opt.name}
-                onClick={opt.action}
+                onClick={() => { window.location.href = urls.webcalUrl; onClose() }}
                 className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50 active:bg-gray-100 text-left transition-colors"
               >
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: opt.bg }}
-                >
-                  {opt.icon}
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#FFE5E5' }}>
+                  <AppleCalendarIcon />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">{opt.name}</p>
-                  <p className="text-xs text-gray-400">{opt.description}</p>
+                  <p className="text-sm font-semibold text-gray-900">Apple Calendrier</p>
+                  <p className="text-xs text-gray-400">Abonnement — mise à jour automatique</p>
                 </div>
                 <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </button>
-            ))}
+            )}
+
+            {/* Outlook */}
+            <button
+              onClick={handleDownload}
+              className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50 active:bg-gray-100 text-left transition-colors"
+            >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#E3EEFF' }}>
+                <OutlookIcon />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">Outlook</p>
+                <p className="text-xs text-gray-400">Importer le fichier .ics</p>
+              </div>
+              <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            {/* Télécharger */}
+            <button
+              onClick={handleDownload}
+              className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-gray-50 active:bg-gray-100 text-left transition-colors"
+            >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#F0F0F0' }}>
+                <DownloadIcon />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">Télécharger le fichier</p>
+                <p className="text-xs text-gray-400">.ics — compatible avec tout agenda</p>
+              </div>
+              <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         )}
 
