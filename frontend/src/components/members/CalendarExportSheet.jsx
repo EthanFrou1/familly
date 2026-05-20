@@ -84,9 +84,9 @@ export default function CalendarExportSheet({ onClose }) {
                     <div className="space-y-1.5 pt-3">
                       {[
                         'Copie le lien ci-dessous',
-                        'Ouvre Google Agenda sur ordinateur',
-                        'Clique sur + → "Abonnement via URL"',
-                        'Colle le lien et confirme',
+                        'Appuie sur "Ouvrir Google Agenda"',
+                        'La page s\'ouvre dans ton navigateur',
+                        'Appuie sur "Ajouter un agenda" et confirme',
                       ].map((step, i) => (
                         <div key={i} className="flex items-start gap-2.5">
                           <span className="h-5 w-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
@@ -108,6 +108,17 @@ export default function CalendarExportSheet({ onClose }) {
                       <span className={`text-xs font-medium flex-1 truncate ${copied ? 'text-emerald-600' : 'text-gray-500'}`}>
                         {copied ? 'Lien copié !' : urls.httpsUrl}
                       </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        handleCopyUrl()
+                        window.location.href = `https://calendar.google.com/calendar/r/settings/addbyurl?url=${encodeURIComponent(urls.httpsUrl)}`
+                      }}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#1A73E8] px-3 py-2.5 active:opacity-80 transition-opacity"
+                    >
+                      <GoogleCalendarIcon />
+                      <span className="text-sm font-semibold text-white">Ouvrir Google Agenda</span>
                     </button>
                   </div>
                 )}
