@@ -51,6 +51,10 @@ export const membersApi = {
   },
   exportBirthdays: () => api.get('/members/export/birthdays.ics', { responseType: 'blob' }),
   getCalendarUrl: () => api.get('/members/export/calendar-url'),
+  exportContacts: (ids) => api.get('/members/export/contacts.vcf', {
+    responseType: 'blob',
+    params: ids?.length ? { ids: ids.join(',') } : {},
+  }),
 }
 
 export const relationsApi = {

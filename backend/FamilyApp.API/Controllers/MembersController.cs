@@ -79,6 +79,42 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         return File(bytes, "text/calendar; charset=utf-8", "anniversaires-famille.ics");
     }
 
+    [HttpGet("export/contacts.vcf")]
+    public async Task<IActionResult> ExportContactsVcf([FromQuery] string? ids)
+    {
+        IQueryable<Member> query = db.Members.Where(m => m.BirthDate.HasValue);
+
+        if (!string.IsNullOrEmpty(ids))
+        {
+            var idList = ids.Split(',')
+                .Select(id => Guid.TryParse(id.Trim(), out var g) ? g : (Guid?)null)
+                .Where(g => g.HasValue).Select(g => g!.Value).ToList();
+            query = query.Where(m => idList.Contains(m.Id));
+        }
+
+        var members = await query.OrderBy(m => m.FirstName).ThenBy(m => m.LastName)
+            .Select(m => new { m.Id, m.FirstName, m.LastName, m.BirthDate })
+            .ToListAsync();
+
+        var sb = new System.Text.StringBuilder();
+        foreach (var m in members)
+        {
+            sb.Append("BEGIN:VCARD\r\n");
+            sb.Append("VERSION:3.0\r\n");
+            sb.Append($"FN:{VCardEscape($"{m.FirstName} {m.LastName}")}\r\n");
+            sb.Append($"N:{VCardEscape(m.LastName)};{VCardEscape(m.FirstName)};;;\r\n");
+            sb.Append($"BDAY:{m.BirthDate!.Value:yyyyMMdd}\r\n");
+            sb.Append($"UID:mbf-{m.Id}@mybigfamily.fr\r\n");
+            sb.Append("END:VCARD\r\n");
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        return File(bytes, "text/vcard; charset=utf-8", "contacts-anniversaires.vcf");
+    }
+
+    private static string VCardEscape(string s) =>
+        s.Replace("\\", "\\\\").Replace(",", "\\,").Replace(";", "\\;").Replace("\n", "\\n");
+
     private string GenerateCalendarToken(Guid userId)
     {
         var key = System.Text.Encoding.UTF8.GetBytes(config["Jwt:Key"]! + ":calendar");
