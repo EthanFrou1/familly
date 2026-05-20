@@ -1,8 +1,16 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
 
-// __WB_MANIFEST est injecté par vite-plugin-pwa ([] en dev, liste des assets en prod)
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST ?? [])
+
+// Prend le contrôle immédiatement sans attendre la fermeture de toutes les fenêtres
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', event => event.waitUntil(clients.claim()))
+
+// Compatibilité avec vite-plugin-pwa autoUpdate (envoie ce message quand une MAJ est détectée)
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+})
 
 self.addEventListener('push', event => {
   if (!event.data) return
