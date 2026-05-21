@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { eventsApi, externalMediaApi, membersApi } from '../../services/api'
+import Select from '../shared/Select'
 
 export default function AddVideoModal({ open, onClose, onAdded }) {
   const [url, setUrl] = useState('')
@@ -106,32 +107,22 @@ export default function AddVideoModal({ open, onClose, onAdded }) {
           {events.length > 0 && (
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">Événement (optionnel)</label>
-              <select
-                value={eventId}
-                onChange={e => setEventId(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
-              >
-                <option value="">— Aucun événement —</option>
+              <Select value={eventId} onChange={e => setEventId(e.target.value)} placeholder="— Aucun événement —">
                 {events.map(ev => (
                   <option key={ev.id} value={ev.id}>{ev.title}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
 
           {members.length > 0 && (
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">Membre lié (optionnel)</label>
-              <select
-                value={linkedMemberId}
-                onChange={e => setLinkedMemberId(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
-              >
-                <option value="">— Aucun membre —</option>
+              <Select value={linkedMemberId} onChange={e => setLinkedMemberId(e.target.value)} placeholder="— Aucun membre —">
                 {members.map(m => (
                   <option key={m.id} value={m.id}>{m.firstName} {m.lastName}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
 
