@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Children } from 'react'
 import { createPortal } from 'react-dom'
 
 export default function Select({ value, onChange, children, placeholder = 'Sélectionner…', required, className = '' }) {
@@ -7,11 +7,11 @@ export default function Select({ value, onChange, children, placeholder = 'Séle
   const ref = useRef(null)
   const triggerRef = useRef(null)
 
-  // Parse options from children
+  // Parse options from children (handles nested arrays from .map())
   const options = []
   if (placeholder) options.push({ value: '', label: placeholder, isPlaceholder: true })
-  ;(Array.isArray(children) ? children : [children]).forEach(child => {
-    if (!child) return
+  Children.forEach(children, child => {
+    if (!child?.props) return
     options.push({ value: child.props.value, label: child.props.children })
   })
 
