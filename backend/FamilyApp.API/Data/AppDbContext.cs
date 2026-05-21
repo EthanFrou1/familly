@@ -37,6 +37,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(m => m.LastName).HasMaxLength(100).IsRequired();
             e.HasOne(m => m.User).WithOne(u => u.Member).HasForeignKey<User>(u => u.MemberId);
             e.HasOne(m => m.Family).WithMany(f => f.Members).HasForeignKey(m => m.FamilyId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(m => m.DelegateManager).WithMany().HasForeignKey(m => m.DelegateManagerId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<User>(e =>

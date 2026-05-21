@@ -70,6 +70,14 @@ public class AuthController(AuthService authService, EmailService emailService) 
         return Ok(new { status });
     }
 
+    [HttpGet("active-users")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetActiveUsers()
+    {
+        var users = await authService.GetActiveUsersAsync();
+        return Ok(users);
+    }
+
     [HttpGet("member/{memberId:guid}/invitation-token")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetMemberInvitationToken(Guid memberId)

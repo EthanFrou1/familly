@@ -42,6 +42,7 @@ export const membersApi = {
   create: (data) => api.post('/members', data),
   update: (id, data) => api.put(`/members/${id}`, data),
   delete: (id) => api.delete(`/members/${id}`),
+  setDelegateManager: (id, userId) => api.put(`/members/${id}/delegate-manager`, { userId }),
   updateProfilePicture: (id, file) => {
     const form = new FormData()
     form.append('file', file)
@@ -94,6 +95,7 @@ export const adminApi = {
     api.post('/auth/invitations', { email, role, memberId, appUrl, firstName, familyGroupName }),
   getMemberAccountStatus: (memberId) => api.get(`/auth/member/${memberId}/account-status`),
   getMemberInvitationToken: (memberId) => api.get(`/auth/member/${memberId}/invitation-token`),
+  getActiveUsers: () => api.get('/auth/active-users'),
 }
 
 export const familiesApi = {

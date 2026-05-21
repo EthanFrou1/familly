@@ -13,3 +13,4 @@ public record GenerateInvitationRequest(
 public record AuthResponse(string AccessToken, UserDto User);
 
 public record UserDto(Guid Id, string Email, string Role, Guid MemberId, string FirstName, string LastName);
+public record ActiveUserDto(Guid UserId, Guid MemberId, string FirstName, string LastName);

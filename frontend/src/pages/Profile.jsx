@@ -45,6 +45,9 @@ export default function Profile() {
   const [testPushState, setTestPushState] = useState('idle') // idle | loading | ok | error
   const [pushSubscribers, setPushSubscribers] = useState([])
   const [testUserIds, setTestUserIds] = useState(new Set())
+  const [activeUsers, setActiveUsers] = useState([])
+  const [showDelegatePicker, setShowDelegatePicker] = useState(false)
+  const [delegateSaving, setDelegateSaving] = useState(false)
 
   useEffect(() => {
     if (!memberId) { setError('Aucun profil associé à ce compte.'); setLoading(false); return }
@@ -187,6 +190,23 @@ export default function Profile() {
     }
   }, [isAdmin, isOwnProfile])
 
+  useEffect(() => {
+    if (isAdmin && id && id !== user?.memberId) {
+      adminApi.getActiveUsers().then(({ data }) => setActiveUsers(data)).catch(() => {})
+    }
+  }, [isAdmin, id, user?.memberId])
+
+  async function handleSetDelegate(userId) {
+    setDelegateSaving(true)
+    try {
+      const { data } = await membersApi.setDelegateManager(memberId, userId ?? null)
+      setMember(data)
+      setShowDelegatePicker(false)
+    } finally {
+      setDelegateSaving(false)
+    }
+  }
+
   function toggleTestUser(userId) {
     setTestUserIds(prev => {
       const next = new Set(prev)
@@ -242,7 +262,8 @@ export default function Profile() {
   if (!member) return <div className="flex h-full items-center justify-center text-gray-400">Membre introuvable</div>
 
   const fullName = `${member.firstName} ${member.lastName}`
-  const canEdit = isAdmin || isOwnProfile
+  const isDelegateManager = !isAdmin && !isOwnProfile && member?.delegateManagerId && user?.id === member.delegateManagerId
+  const canEdit = isAdmin || isOwnProfile || isDelegateManager
 
   const spouseRelation = !member.familyId
     ? relations.find(r => r.type === 'Spouse')
@@ -523,6 +544,99 @@ export default function Profile() {
                 <SuggestionRow key={`${s.relType}|${s.relatedId}`} suggestion={s} onAccept={handleCreateSuggestion} />
               ))}
             </div>
+          </Card>
+        )}
+
+        {/* Gestion déléguée — admin uniquement, profil d'un autre membre */}
+        {isAdmin && id && id !== user?.memberId && (
+          <Card title="Gestion déléguée">
+            {!showDelegatePicker ? (
+              <div className="space-y-3">
+                {member.delegateManagerId ? (
+                  <div className="flex items-center gap-3 rounded-xl bg-primary/6 border border-primary/15 px-3 py-2.5">
+                    <span className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                      <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" />
+                      </svg>
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-500">Gestionnaire actuel</p>
+                      <p className="text-sm font-semibold text-gray-900 truncate">{member.delegateManagerName}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 py-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-gray-300 shrink-0" />
+                    <p className="text-sm text-gray-500">Aucun gestionnaire délégué.</p>
+                  </div>
+                )}
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Un gestionnaire peut modifier ce profil (informations, photo, réseaux sociaux) même sans être admin.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowDelegatePicker(true)}
+                    className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white active:opacity-80"
+                  >
+                    {member.delegateManagerId ? 'Changer' : 'Désigner un gestionnaire'}
+                  </button>
+                  {member.delegateManagerId && (
+                    <button
+                      onClick={() => handleSetDelegate(null)}
+                      disabled={delegateSaving}
+                      className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 active:bg-red-50 disabled:opacity-50"
+                    >
+                      {delegateSaving ? '…' : 'Retirer'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Sélectionne le membre qui pourra gérer ce profil :</p>
+                <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                  {activeUsers.filter(u => u.memberId !== memberId).map(u => {
+                    const isCurrentDelegate = u.userId === member.delegateManagerId
+                    return (
+                      <button
+                        key={u.userId}
+                        type="button"
+                        onClick={() => handleSetDelegate(u.userId)}
+                        disabled={delegateSaving}
+                        className={`flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-left transition-colors disabled:opacity-50 ${
+                          isCurrentDelegate
+                            ? 'bg-primary/8 border border-primary/25'
+                            : 'bg-gray-50 border border-transparent active:bg-gray-100'
+                        }`}
+                      >
+                        <span className={`h-4 w-4 rounded flex items-center justify-center shrink-0 border transition-colors ${
+                          isCurrentDelegate ? 'bg-primary border-primary' : 'border-gray-300 bg-white'
+                        }`}>
+                          {isCurrentDelegate && (
+                            <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className="text-sm font-medium text-gray-800">
+                          {u.firstName} {u.lastName}
+                        </span>
+                      </button>
+                    )
+                  })}
+                  {activeUsers.filter(u => u.memberId !== memberId).length === 0 && (
+                    <p className="text-sm text-gray-400 py-2">Aucun utilisateur actif disponible.</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDelegatePicker(false)}
+                  className="w-full rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 active:bg-gray-50"
+                >
+                  Annuler
+                </button>
+              </div>
+            )}
           </Card>
         )}
 
