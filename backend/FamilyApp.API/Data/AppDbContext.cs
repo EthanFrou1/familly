@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<DuplicateCandidate> DuplicateCandidates => Set<DuplicateCandidate>();
+    public DbSet<ExternalMedia> ExternalMedias => Set<ExternalMedia>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -80,6 +81,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(d => new { d.MemberAId, d.MemberBId }).IsUnique();
             e.Property(d => d.Confidence).HasMaxLength(20);
             e.Property(d => d.Status).HasMaxLength(20);
+        });
+
+        b.Entity<ExternalMedia>(e =>
+        {
+            e.HasKey(em => em.Id);
+            e.Property(em => em.Platform).HasConversion<string>();
+            e.HasOne(em => em.Uploader).WithMany().HasForeignKey(em => em.UploaderId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(em => em.Event).WithMany().HasForeignKey(em => em.EventId).IsRequired(false);
+            e.HasOne(em => em.LinkedMember).WithMany().HasForeignKey(em => em.LinkedMemberId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

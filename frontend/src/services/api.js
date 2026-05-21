@@ -119,6 +119,12 @@ export const activityLogsApi = {
     api.get(`/activity-logs/member/${memberId}`, { params: { page, pageSize } }),
 }
 
+export const externalMediaApi = {
+  getAll: () => api.get('/external-media'),
+  create: (data) => api.post('/external-media', data),
+  delete: (id) => api.delete(`/external-media/${id}`),
+}
+
 export const pushApi = {
   getVapidPublicKey: () => api.get('/push/vapid-public-key'),
   subscribe: (endpoint, p256dh, auth) => api.post('/push/subscribe', { endpoint, p256dh, auth }),
