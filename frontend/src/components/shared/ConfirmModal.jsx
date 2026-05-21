@@ -1,10 +1,10 @@
 import { createPortal } from 'react-dom'
 
-export default function ConfirmModal({ open, title, message, confirmLabel = 'Supprimer', onConfirm, onCancel, danger = true }) {
+export default function ConfirmModal({ open, title, message, confirmLabel = 'Supprimer', onConfirm, onCancel, danger = true, zClassName = 'z-[70]' }) {
   if (!open) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center">
+    <div className={`fixed inset-0 ${zClassName} flex items-end justify-center sm:items-center`}>
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
       <div className="relative bg-white rounded-t-3xl animate-slide-up sm:rounded-2xl w-full sm:max-w-sm px-5 pt-6 pb-10 sm:pb-6">
         <div className="flex flex-col items-center text-center gap-4">
