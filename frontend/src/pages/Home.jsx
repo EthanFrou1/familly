@@ -89,7 +89,7 @@ function computeFunStats(members, relations) {
   // Pièces rapportées
   const pieceCount = members.filter(m => !m.familyId).length
   if (pieceCount >= 1) {
-    stats.push({ emoji: '💍', label: 'Pièces rapportées', value: `${pieceCount} membre${pieceCount > 1 ? 's' : ''}`, sub: 'en cours de validation', memberId: null })
+    stats.push({ emoji: '🧩', label: 'Pièces rapportées', value: `${pieceCount} membre${pieceCount > 1 ? 's' : ''}`, sub: 'en cours de validation', memberId: null })
   }
 
   return stats

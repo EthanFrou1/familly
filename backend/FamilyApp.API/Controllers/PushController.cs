@@ -47,17 +47,41 @@ public class PushController(AppDbContext db, IConfiguration config, PushNotifica
         return Ok();
     }
 
+    [HttpGet("subscribers")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetSubscribers()
+    {
+        var subs = await db.PushSubscriptions
+            .Include(s => s.User).ThenInclude(u => u.Member)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var grouped = subs
+            .GroupBy(s => s.UserId)
+            .Select(g => new
+            {
+                userId = g.Key,
+                firstName = g.First().User.Member.FirstName,
+                lastName = g.First().User.Member.LastName,
+                deviceCount = g.Count()
+            })
+            .OrderBy(x => x.firstName)
+            .ToList();
+
+        return Ok(grouped);
+    }
+
     [HttpPost("test")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> SendTest()
+    public async Task<IActionResult> SendTest([FromBody] SendTestDto dto)
     {
-        var count = await db.PushSubscriptions.CountAsync();
-        if (count == 0) return Ok(new { sent = 0, message = "Aucun abonné enregistré." });
-        await push.SendToAllAsync(
-            "🔔 Notification test",
-            "Les notifications fonctionnent correctement !",
-            "/"
-        );
+        if (dto.UserIds == null || dto.UserIds.Count == 0)
+            return BadRequest(new { message = "Sélectionnez au moins un utilisateur." });
+
+        var count = await db.PushSubscriptions.CountAsync(s => dto.UserIds.Contains(s.UserId));
+        if (count == 0) return Ok(new { sent = 0 });
+
+        await push.SendToUsersAsync(dto.UserIds, "🔔 Notification test", "Les notifications fonctionnent correctement !", "/");
         return Ok(new { sent = count });
     }
 
@@ -66,3 +90,4 @@ public class PushController(AppDbContext db, IConfiguration config, PushNotifica
 
 public record SubscribeDto(string Endpoint, string P256dh, string Auth);
 public record UnsubscribeDto(string Endpoint);
+public record SendTestDto(List<Guid> UserIds);

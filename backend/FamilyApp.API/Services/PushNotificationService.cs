@@ -13,9 +13,17 @@ public class PushNotificationService(AppDbContext db, IConfiguration config)
         config["Push:PrivateKey"]!
     );
 
-    public async Task SendToAllAsync(string title, string body, string url = "/")
+    public Task SendToAllAsync(string title, string body, string url = "/")
+        => SendAsync(null, title, body, url);
+
+    public Task SendToUsersAsync(List<Guid> userIds, string title, string body, string url = "/")
+        => SendAsync(userIds, title, body, url);
+
+    private async Task SendAsync(List<Guid>? userIds, string title, string body, string url)
     {
-        var subscriptions = await db.PushSubscriptions.AsNoTracking().ToListAsync();
+        var query = db.PushSubscriptions.AsNoTracking();
+        if (userIds != null) query = query.Where(s => userIds.Contains(s.UserId));
+        var subscriptions = await query.ToListAsync();
         if (subscriptions.Count == 0) return;
 
         var client = new WebPushClient();
@@ -38,10 +46,6 @@ public class PushNotificationService(AppDbContext db, IConfiguration config)
         }
 
         if (toRemove.Count > 0)
-        {
-            await db.PushSubscriptions
-                .Where(s => toRemove.Contains(s.Id))
-                .ExecuteDeleteAsync();
-        }
+            await db.PushSubscriptions.Where(s => toRemove.Contains(s.Id)).ExecuteDeleteAsync();
     }
 }
