@@ -46,6 +46,8 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<CloudinaryService>();
 builder.Services.AddScoped<ActivityLogService>();
 builder.Services.AddScoped<PushNotificationService>();
+builder.Services.AddScoped<DuplicateDetectionService>();
+builder.Services.AddScoped<RelationValidationService>();
 builder.Services.AddHostedService<PhotoCleanupService>();
 builder.Services.AddHostedService<BirthdayNotificationService>();
 

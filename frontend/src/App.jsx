@@ -10,6 +10,8 @@ import Photos from './pages/Photos'
 import Profile from './pages/Profile'
 import Families from './pages/Families'
 import Members from './pages/Members'
+import Admin from './pages/Admin'
+import Duplicates from './pages/Duplicates'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
 
@@ -39,6 +41,8 @@ function ProtectedLayout() {
             <Route path="/profile/:id" element={<Profile />} />
             <Route path="/families" element={<Families />} />
             <Route path="/members" element={<Members />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/duplicates" element={<Duplicates />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

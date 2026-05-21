@@ -197,6 +197,11 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
     [Authorize(Roles = "Admin,Member")]
     public async Task<IActionResult> Create([FromBody] CreateMemberRequest req)
     {
+        var dateError = RelationValidationService.ValidateDates(
+            ToUtc(req.BirthDate), ToUtc(req.DeathDate), req.IsAlive);
+        if (dateError is not null)
+            return BadRequest(new { message = dateError });
+
         if (!string.IsNullOrWhiteSpace(req.Email))
         {
             var emailTaken = await db.Members.AnyAsync(m => m.Email == req.Email.Trim());
@@ -250,6 +255,14 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         if (member is null) return NotFound();
 
         if (!CanEditMember(member)) return Forbid();
+
+        // Validate dates using merged values (fallback to existing if not provided)
+        var newBirth = req.BirthDate.HasValue ? ToUtc(req.BirthDate) : member.BirthDate;
+        var newDeath = req.DeathDate.HasValue ? ToUtc(req.DeathDate) : member.DeathDate;
+        var newAlive = req.IsAlive ?? member.IsAlive;
+        var dateError = RelationValidationService.ValidateDates(newBirth, newDeath, newAlive);
+        if (dateError is not null)
+            return BadRequest(new { message = dateError });
 
         if (req.FirstName is not null) member.FirstName = req.FirstName;
         if (req.LastName is not null) member.LastName = req.LastName;
