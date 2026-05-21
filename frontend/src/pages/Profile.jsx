@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
 import { membersApi, relationsApi, adminApi, settingsApi, familiesApi, pushApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
@@ -16,6 +16,7 @@ export default function Profile() {
   const { id } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const memberId = id ?? user?.memberId
   const fileRef = useRef(null)
 
@@ -245,6 +246,19 @@ export default function Profile() {
           style={{ background: familyColor ? familyColor.border : 'transparent' }}
         />
 
+        {/* Bouton retour vers la liste des membres */}
+        {location.state?.from === '/members' && (
+          <button
+            onClick={() => navigate('/members')}
+            className="absolute top-6 left-4 flex items-center gap-1 rounded-full bg-white/10 border border-white/20 px-3 py-1.5 text-xs font-semibold text-white active:bg-white/20 transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Membres
+          </button>
+        )}
+
         {/* Bouton ajouter contact — haut droite */}
         {!isOwnProfile && member?.phone && (
           <button
@@ -335,7 +349,7 @@ export default function Profile() {
           </div>
         )}
 
-        {isAdmin && (
+        {canEdit && (
           <button onClick={() => setShowEdit(true)}
             className="flex items-center gap-1.5 rounded-full border border-white/30 px-4 py-1.5 text-sm text-white active:bg-white/10 transition-colors mt-1">
             <EditIcon />

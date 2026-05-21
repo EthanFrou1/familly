@@ -48,8 +48,18 @@ public class AuthController(AuthService authService, EmailService emailService) 
     [HttpPost("accept-invitation")]
     public async Task<IActionResult> AcceptInvitation([FromBody] AcceptInvitationRequest req)
     {
-        var success = await authService.AcceptInvitationAsync(req.Token, req.Password);
-        return success ? NoContent() : BadRequest(new { message = "Lien invalide ou expiré." });
+        var result = await authService.AcceptInvitationAsync(req.Token, req.Password);
+        if (result is null) return BadRequest(new { message = "Lien invalide ou expiré." });
+
+        Response.Cookies.Append("access_token", result.AccessToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Expires = DateTimeOffset.UtcNow.AddDays(30)
+        });
+
+        return Ok(new { user = result.User, token = result.AccessToken });
     }
 
     [HttpGet("member/{memberId:guid}/account-status")]

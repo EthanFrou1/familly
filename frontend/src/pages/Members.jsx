@@ -143,7 +143,7 @@ export default function Members() {
                   return (
                     <button
                       key={m.id}
-                      onClick={() => navigate(`/profile/${m.id}`)}
+                      onClick={() => navigate(`/profile/${m.id}`, { state: { from: '/members' } })}
                       className={`flex items-center gap-3 w-full px-4 py-3 text-left active:bg-gray-50 ${idx < group.length - 1 ? 'border-b border-gray-50' : ''}`}
                     >
                       <Avatar src={m.profilePictureUrl} name={`${m.firstName} ${m.lastName}`} size="sm" />
