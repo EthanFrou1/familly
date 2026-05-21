@@ -228,6 +228,9 @@ function AlbumsTab() {
           setAlbums(prev => prev.filter(a => a.id !== selectedAlbum.id))
           setSelectedAlbum(null)
         }}
+        onPhotoCountChange={(albumId, count) =>
+          setAlbums(prev => prev.map(a => a.id === albumId ? { ...a, photoCount: count } : a))
+        }
       />
     )
   }
@@ -320,7 +323,7 @@ function AlbumsTab() {
   )
 }
 
-function AlbumDetail({ album, onBack, onDeleted }) {
+function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
   const { user } = useAuth()
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -341,6 +344,10 @@ function AlbumDetail({ album, onBack, onDeleted }) {
   useEffect(() => {
     albumsApi.getById(album.id).then(({ data }) => setDetail(data)).finally(() => setLoading(false))
   }, [album.id])
+
+  useEffect(() => {
+    if (detail) onPhotoCountChange?.(album.id, detail.photos.length)
+  }, [detail?.photos?.length])
 
   async function handleUpload(e) {
     const file = e.target.files[0]
@@ -464,7 +471,7 @@ function AlbumDetail({ album, onBack, onDeleted }) {
               <button onClick={() => setShowGalleryPicker(true)} title="Ajouter depuis la galerie"
                 className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 18h16.5M3.75 21h16.5" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-1.5m8.25-8.25h-6a2.25 2.25 0 00-2.25 2.25v6" />
                 </svg>
               </button>
               <button onClick={() => fileRef.current?.click()} disabled={uploading} title="Prendre une photo"
