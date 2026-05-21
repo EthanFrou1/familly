@@ -551,7 +551,7 @@ function ManagerModal({ member, activeUsers, onClose, onSaved }) {
           })}
         </div>
 
-        <button onClick={onClose} className="mt-4 w-full py-2 text-sm text-gray-400">Fermer</button>
+        <button onClick={onClose} className="mt-4 w-full py-3 rounded-2xl bg-primary text-white font-semibold text-sm active:opacity-80 transition-opacity">Fermer</button>
       </div>
     </div>,
     document.body
