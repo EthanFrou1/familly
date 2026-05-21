@@ -111,6 +111,8 @@ export const settingsApi = {
 
 export const activityLogsApi = {
   getAll: (limit = 30) => api.get('/activity-logs', { params: { limit } }),
+  getByMember: (memberId, page = 1, pageSize = 10) =>
+    api.get(`/activity-logs/member/${memberId}`, { params: { page, pageSize } }),
 }
 
 export const pushApi = {

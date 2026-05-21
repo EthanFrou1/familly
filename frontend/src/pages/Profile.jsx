@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
-import { membersApi, relationsApi, adminApi, settingsApi, familiesApi, pushApi } from '../services/api'
+import { membersApi, relationsApi, adminApi, settingsApi, familiesApi, pushApi, activityLogsApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { FAMILY_PALETTE } from '../components/tree/treeLayout'
@@ -48,6 +48,9 @@ export default function Profile() {
   const [activeUsers, setActiveUsers] = useState([])
   const [showDelegatePicker, setShowDelegatePicker] = useState(false)
   const [delegateSaving, setDelegateSaving] = useState(false)
+  const [logsPage, setLogsPage] = useState(1)
+  const [logsData, setLogsData] = useState(null) // { logs, total, totalPages }
+  const [logsLoading, setLogsLoading] = useState(false)
 
   useEffect(() => {
     if (!memberId) { setError('Aucun profil associé à ce compte.'); setLoading(false); return }
@@ -195,6 +198,15 @@ export default function Profile() {
       adminApi.getActiveUsers().then(({ data }) => setActiveUsers(data)).catch(() => {})
     }
   }, [isAdmin, id, user?.memberId])
+
+  useEffect(() => {
+    if (!isAdmin || !memberId) return
+    setLogsLoading(true)
+    activityLogsApi.getByMember(memberId, logsPage)
+      .then(({ data }) => setLogsData(data))
+      .catch(() => {})
+      .finally(() => setLogsLoading(false))
+  }, [isAdmin, memberId, logsPage])
 
   async function handleSetDelegate(userId) {
     setDelegateSaving(true)
@@ -867,6 +879,16 @@ export default function Profile() {
           </Card>
         )}
 
+        {/* Historique d'activité — admin uniquement */}
+        {isAdmin && (
+          <ActivityLogTable
+            data={logsData}
+            loading={logsLoading}
+            page={logsPage}
+            onPageChange={setLogsPage}
+          />
+        )}
+
         {/* Membre depuis */}
         <p className="text-center text-xs text-gray-300">
           Membre depuis {new Date(member.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
@@ -1194,6 +1216,151 @@ function SocialBtn({ href, label, color, icon }) {
       <span className="h-6 w-6">{icon}</span>
       <span className="text-xs font-medium">{label}</span>
     </a>
+  )
+}
+
+const LOG_LABELS = {
+  member_created:   { label: 'Membre ajouté',       color: 'bg-violet-100 text-violet-700' },
+  member_updated:   { label: 'Profil modifié',       color: 'bg-sky-100 text-sky-700' },
+  photo_updated:    { label: 'Photo modifiée',        color: 'bg-amber-100 text-amber-700' },
+  relation_created: { label: 'Lien familial ajouté', color: 'bg-emerald-100 text-emerald-700' },
+  relation_deleted: { label: 'Lien familial supprimé', color: 'bg-red-100 text-red-600' },
+  member_deleted:   { label: 'Membre supprimé',      color: 'bg-red-100 text-red-600' },
+}
+
+const REL_TYPE_LABELS = {
+  ParentChild: 'Parent / Enfant',
+  Spouse:      'Conjoint(e)',
+  Sibling:     'Frère / Sœur',
+  HalfSibling: 'Demi-frère/sœur',
+}
+
+function ActivityLogTable({ data, loading, page, onPageChange }) {
+  function formatDate(iso) {
+    const d = new Date(iso)
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+      + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  function getDetails(log) {
+    if (log.type === 'relation_created' || log.type === 'relation_deleted') {
+      const rel = REL_TYPE_LABELS[log.metadata] ?? log.metadata ?? ''
+      return log.relatedMemberName ? `${rel} · ${log.relatedMemberName}` : rel
+    }
+    return log.relatedMemberName ?? log.metadata ?? '—'
+  }
+
+  return (
+    <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Historique d'activité</h3>
+        {data && data.total > 0 && (
+          <span className="text-xs text-gray-400">{data.total} entrée{data.total > 1 ? 's' : ''}</span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-10">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      ) : !data || data.logs.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-8">Aucune activité enregistrée.</p>
+      ) : (
+        <>
+          {/* Tableau scrollable horizontalement sur mobile */}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide w-28">Date</th>
+                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Action</th>
+                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Par</th>
+                  <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Détails</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {data.logs.map(log => {
+                  const cfg = LOG_LABELS[log.type] ?? { label: log.type, color: 'bg-gray-100 text-gray-600' }
+                  return (
+                    <tr key={log.id} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap font-mono">
+                        {formatDate(log.createdAt)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${cfg.color}`}>
+                          {cfg.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">
+                        {log.actorName ?? <span className="text-gray-300 italic">Système</span>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500 max-w-[180px] truncate">
+                        {getDetails(log)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {data.totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-50">
+              <button
+                onClick={() => onPageChange(page - 1)}
+                disabled={page <= 1}
+                className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 disabled:opacity-30 active:bg-gray-50"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Préc.
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: data.totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === data.totalPages || Math.abs(p - page) <= 1)
+                  .reduce((acc, p, idx, arr) => {
+                    if (idx > 0 && p - arr[idx - 1] > 1) acc.push('…')
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((p, i) =>
+                    p === '…' ? (
+                      <span key={`ellipsis-${i}`} className="px-1 text-xs text-gray-300">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => onPageChange(p)}
+                        className={`h-7 w-7 rounded-lg text-xs font-semibold transition-colors ${
+                          p === page
+                            ? 'bg-primary text-white'
+                            : 'text-gray-500 hover:bg-gray-100'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )
+                }
+              </div>
+
+              <button
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= data.totalPages}
+                className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 disabled:opacity-30 active:bg-gray-50"
+              >
+                Suiv.
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 
