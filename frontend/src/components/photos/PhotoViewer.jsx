@@ -114,7 +114,7 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
             </div>
 
             {/* Image */}
-            <div className="relative bg-black">
+            <div className="relative" style={{ backgroundColor: '#2A1208' }}>
               <img src={photo.cloudinaryUrl} alt="" className="w-full max-h-[60vh] object-contain" />
               {index > 0 && (
                 <button onClick={onPrev} className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-full bg-black/50 text-white">
