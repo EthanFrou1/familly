@@ -8,6 +8,7 @@ import PhotoViewer from '../components/photos/PhotoViewer'
 import CreateAlbumModal from '../components/photos/CreateAlbumModal'
 import GalleryPickerModal from '../components/photos/GalleryPickerModal'
 import ConfirmModal from '../components/shared/ConfirmModal'
+import Select from '../components/shared/Select'
 
 const BATCH_SIZE = 30
 
@@ -63,6 +64,9 @@ function GalerieTab() {
   const [uploading, setUploading] = useState(false)
   const [showAddVideo, setShowAddVideo] = useState(false)
   const [viewerIndex, setViewerIndex] = useState(null)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [downloading, setDownloading] = useState(false)
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -97,6 +101,49 @@ function GalerieTab() {
     setViewerIndex(null)
   }
 
+  function toggleSelectionMode() {
+    setSelectionMode(prev => !prev)
+    setSelectedIds(new Set())
+  }
+
+  function togglePhotoSelect(photoId) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(photoId)) next.delete(photoId)
+      else next.add(photoId)
+      return next
+    })
+  }
+
+  async function handleDownloadSelected() {
+    const selected = filteredPhotos.filter(p => selectedIds.has(p.id))
+    if (!selected.length) return
+    setDownloading(true)
+    try {
+      const blobs = await Promise.all(
+        selected.map(p => fetch(`/api/photos/${p.id}/download`, { credentials: 'include' }).then(r => r.blob()))
+      )
+      const files = blobs.map((b, i) => new File([b], `photo-${i + 1}.jpg`, { type: b.type || 'image/jpeg' }))
+      if (navigator.canShare?.({ files })) {
+        await navigator.share({ files })
+      } else {
+        for (let i = 0; i < selected.length; i++) {
+          const a = document.createElement('a')
+          a.href = `/api/photos/${selected[i].id}/download`
+          a.download = `photo-${i + 1}.jpg`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          if (i < selected.length - 1) await new Promise(r => setTimeout(r, 150))
+        }
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') console.error('Download failed', e)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   const showPhotos = mediaFilter === 'tous' || mediaFilter === 'photos'
   const showVideos = mediaFilter === 'tous' || mediaFilter === 'videos'
 
@@ -114,29 +161,31 @@ function GalerieTab() {
 
   return (
     <>
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-100 shrink-0">
-        <div className="flex gap-2 flex-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-          {MEDIA_FILTERS.map(f => (
-            <button key={f} onClick={() => setMediaFilter(f)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors shrink-0 ${
-                mediaFilter === f ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
-              }`}
-            >
-              {FILTER_LABELS[f]}
-            </button>
-          ))}
-          <div className="w-px bg-gray-200 shrink-0 my-1" />
-          {AUTHOR_FILTERS.map(f => (
-            <button key={f} onClick={() => setAuthorFilter(prev => prev === f ? 'tous' : f)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors shrink-0 ${
-                authorFilter === f ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
-              }`}
-            >
-              {AUTHOR_LABELS[f]}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center gap-2 px-3 py-2 bg-white border-b border-gray-100 shrink-0">
+        <Select value={mediaFilter} onChange={e => setMediaFilter(e.target.value)} className="flex-1">
+          {MEDIA_FILTERS.map(f => <option key={f} value={f}>{FILTER_LABELS[f]}</option>)}
+        </Select>
+        <Select value={authorFilter} onChange={e => setAuthorFilter(e.target.value)} className="flex-1">
+          <option value="tous">Tous</option>
+          {AUTHOR_FILTERS.map(f => <option key={f} value={f}>{AUTHOR_LABELS[f]}</option>)}
+        </Select>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={toggleSelectionMode}
+            title={selectionMode ? 'Annuler la sélection' : 'Sélectionner des photos'}
+            className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
+              selectionMode ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+            }`}
+          >
+            {selectionMode
+              ? <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            }
+          </button>
           <button onClick={() => fileRef.current?.click()} disabled={uploading} title="Ajouter une photo"
             className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200 disabled:opacity-50">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -173,13 +222,33 @@ function GalerieTab() {
               <div className="grid grid-cols-3 gap-0.5">
                 {uploading && <UploadPlaceholder />}
                 {showPhotos && filteredPhotos.map((photo, i) => (
-                  <PhotoThumb key={photo.id} photo={photo} onClick={() => setViewerIndex(i)} />
+                  <PhotoThumb
+                    key={photo.id}
+                    photo={photo}
+                    onClick={selectionMode ? () => togglePhotoSelect(photo.id) : () => setViewerIndex(i)}
+                    selectionMode={selectionMode}
+                    isSelected={selectedIds.has(photo.id)}
+                  />
                 ))}
               </div>
             ) : null}
           </div>
         )}
       </div>
+
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="shrink-0 px-4 py-3 bg-white border-t border-gray-100">
+          <button
+            onClick={handleDownloadSelected}
+            disabled={downloading}
+            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white disabled:opacity-50 active:opacity-80"
+          >
+            {downloading
+              ? 'Téléchargement…'
+              : `Télécharger (${selectedIds.size} photo${selectedIds.size > 1 ? 's' : ''})`}
+          </button>
+        </div>
+      )}
 
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
 
@@ -550,7 +619,7 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
   )
 }
 
-function PhotoThumb({ photo, onClick, isDownloaded }) {
+function PhotoThumb({ photo, onClick, isDownloaded, selectionMode, isSelected }) {
   const daysLeft = photo.expiresAt
     ? Math.ceil((new Date(photo.expiresAt) - new Date()) / 86400000)
     : null
@@ -559,17 +628,31 @@ function PhotoThumb({ photo, onClick, isDownloaded }) {
   return (
     <button className="aspect-square active:opacity-80 relative overflow-hidden" onClick={onClick}>
       <img src={photo.cloudinaryUrl} alt="" className="h-full w-full object-cover" />
-      {photo.uploaderName && (
+      {photo.uploaderName && !selectionMode && (
         <span className="absolute bottom-1 left-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white truncate max-w-[80%]" style={{ backgroundColor: 'rgba(42,18,8,0.82)' }}>
           {photo.uploaderName.split(' ')[0]}
         </span>
       )}
-      {showExpiry && (
+      {showExpiry && !selectionMode && (
         <span className="absolute top-1 right-1 rounded-full bg-amber-500/90 px-1 py-px text-[9px] font-bold text-white">
           J-{daysLeft}
         </span>
       )}
-      {isDownloaded && (
+      {selectionMode && (
+        <>
+          {isSelected && <div className="absolute inset-0 bg-primary/30" />}
+          <span className={`absolute top-1.5 right-1.5 h-5 w-5 rounded-full border-2 border-white flex items-center justify-center transition-colors ${
+            isSelected ? 'bg-primary' : 'bg-black/40'
+          }`}>
+            {isSelected && (
+              <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            )}
+          </span>
+        </>
+      )}
+      {isDownloaded && !selectionMode && (
         <span className="absolute top-1 left-1 h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
           <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
