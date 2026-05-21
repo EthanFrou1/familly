@@ -36,6 +36,11 @@ export default function BottomNav() {
 
   const allActions = [
     {
+      label: 'Photos & Vidéos',
+      icon: PhotoIcon,
+      onClick: () => { setFabOpen(false); navigate('/photos') }
+    },
+    {
       label: 'Les familles',
       icon: FamilyIcon,
       onClick: () => { setFabOpen(false); navigate('/families') }
