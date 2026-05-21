@@ -67,9 +67,9 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
     <>
       {createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75" onClick={onClose}>
-          <div className="relative rounded-2xl overflow-hidden w-full max-w-lg shadow-2xl" style={{ backgroundColor: '#2A1208' }} onClick={e => e.stopPropagation()}>
+          <div className="relative rounded-2xl overflow-hidden w-full max-w-lg shadow-2xl flex flex-col" style={{ backgroundColor: '#2A1208', maxHeight: 'calc(100vh - 32px)' }} onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between px-3 bg-primary py-2 border-b border-white/10">
+            <div className="flex-none flex items-center justify-between px-3 bg-primary py-2 border-b border-white/10">
               {photos.length > 1 && (
                 <span className="text-xs text-white/50 font-medium">{index + 1} / {photos.length}</span>
               )}
@@ -114,8 +114,8 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
             </div>
 
             {/* Image */}
-            <div className="relative" style={{ backgroundColor: '#2A1208' }}>
-              <img src={photo.cloudinaryUrl} alt="" className="w-full max-h-[60vh] object-contain" />
+            <div className="relative flex-1 min-h-[200px] bg-white">
+              <img src={photo.cloudinaryUrl} alt="" className="w-full h-full object-contain" />
               {index > 0 && (
                 <button onClick={onPrev} className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-full bg-black/50 text-white">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -133,7 +133,7 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
             </div>
 
             {/* Info panel — always visible */}
-            <div className="px-4 py-3 flex flex-col gap-2 bg-primary">
+            <div className="flex-none px-4 py-3 flex flex-col gap-2 bg-primary">
               {photo.uploaderName && (
                 <div className="flex items-center gap-2 text-xs text-white/70">
                   <svg className="h-3.5 w-3.5 shrink-0 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

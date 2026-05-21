@@ -68,6 +68,8 @@ function GalerieTab() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [downloading, setDownloading] = useState(false)
+  const [galleryDeleting, setGalleryDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -142,6 +144,23 @@ function GalerieTab() {
       if (e.name !== 'AbortError') console.error('Download failed', e)
     } finally {
       setDownloading(false)
+    }
+  }
+
+  async function handleDeleteSelected() {
+    const toDelete = filteredPhotos.filter(p =>
+      selectedIds.has(p.id) && (p.uploaderId === user?.memberId || user?.role === 'Admin')
+    )
+    if (!toDelete.length) return
+    setGalleryDeleting(true)
+    try {
+      await Promise.all(toDelete.map(p => photosApi.delete(p.id)))
+      setPhotos(prev => prev.filter(p => !toDelete.some(d => d.id === p.id)))
+      setSelectedIds(new Set())
+      setSelectionMode(false)
+      setShowDeleteConfirm(false)
+    } finally {
+      setGalleryDeleting(false)
     }
   }
 
@@ -237,19 +256,31 @@ function GalerieTab() {
         )}
       </div>
 
-      {selectionMode && selectedIds.size > 0 && (
-        <div className="shrink-0 px-4 pt-3 pb-5 bg-white border-t border-gray-100">
-          <button
-            onClick={handleDownloadSelected}
-            disabled={downloading}
-            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white disabled:opacity-50 active:opacity-80"
-          >
-            {downloading
-              ? 'Téléchargement…'
-              : `Télécharger (${selectedIds.size} photo${selectedIds.size > 1 ? 's' : ''})`}
-          </button>
-        </div>
-      )}
+      {selectionMode && selectedIds.size > 0 && (() => {
+        const deletableCount = filteredPhotos.filter(p =>
+          selectedIds.has(p.id) && (p.uploaderId === user?.memberId || user?.role === 'Admin')
+        ).length
+        return (
+          <div className="shrink-0 px-4 pt-3 pb-5 bg-white border-t border-gray-100 flex gap-2">
+            {deletableCount > 0 && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={downloading || galleryDeleting}
+                className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white disabled:opacity-50 active:opacity-80"
+              >
+                Supprimer ({deletableCount})
+              </button>
+            )}
+            <button
+              onClick={handleDownloadSelected}
+              disabled={downloading || galleryDeleting}
+              className={`${deletableCount > 0 ? 'flex-1' : 'w-full'} rounded-xl bg-primary py-3 text-sm font-semibold text-white disabled:opacity-50 active:opacity-80`}
+            >
+              {downloading ? 'Téléchargement…' : `Télécharger (${selectedIds.size})`}
+            </button>
+          </div>
+        )
+      })()}
 
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
 
@@ -270,6 +301,15 @@ function GalerieTab() {
       })()}
 
       <AddVideoModal open={showAddVideo} onClose={() => setShowAddVideo(false)} onAdded={video => setVideos(prev => [video, ...prev])} />
+
+      <ConfirmModal
+        open={showDeleteConfirm}
+        title="Supprimer les photos ?"
+        message={`Les photos sélectionnées seront définitivement supprimées.`}
+        confirmLabel={galleryDeleting ? 'Suppression…' : 'Supprimer'}
+        onConfirm={handleDeleteSelected}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </>
   )
 }
