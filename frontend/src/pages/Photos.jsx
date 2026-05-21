@@ -7,6 +7,7 @@ import VideoCard from '../components/photos/VideoCard'
 import PhotoViewer from '../components/photos/PhotoViewer'
 import CreateAlbumModal from '../components/photos/CreateAlbumModal'
 import GalleryPickerModal from '../components/photos/GalleryPickerModal'
+import PhotoDeleteModal from '../components/photos/PhotoDeleteModal'
 import ConfirmModal from '../components/shared/ConfirmModal'
 import Select from '../components/shared/Select'
 
@@ -237,7 +238,7 @@ function GalerieTab() {
       </div>
 
       {selectionMode && selectedIds.size > 0 && (
-        <div className="shrink-0 px-4 py-3 bg-white border-t border-gray-100">
+        <div className="shrink-0 px-4 pt-3 pb-5 bg-white border-t border-gray-100">
           <button
             onClick={handleDownloadSelected}
             disabled={downloading}
@@ -403,6 +404,8 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
   const [downloading, setDownloading] = useState(false)
   const [downloadedIds, setDownloadedIds] = useState(() => getDownloadedIds(album.id))
   const [showGalleryPicker, setShowGalleryPicker] = useState(false)
+  const [photoDeleteTarget, setPhotoDeleteTarget] = useState(null)
+  const [photoDeleteLoading, setPhotoDeleteLoading] = useState(false)
   const fileRef = useRef(null)
 
   const isAdmin = user?.role === 'Admin'
@@ -432,10 +435,28 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
     }
   }
 
-  async function handleDeletePhoto(photoId) {
-    await albumsApi.removePhoto(album.id, photoId)
-    setDetail(prev => ({ ...prev, photos: prev.photos.filter(p => p.id !== photoId) }))
-    if (viewerIndex !== null) setViewerIndex(null)
+  async function handleRemoveFromAlbum(photoId) {
+    setPhotoDeleteLoading(true)
+    try {
+      await photosApi.setAlbum(photoId, null)
+      setDetail(prev => ({ ...prev, photos: prev.photos.filter(p => p.id !== photoId) }))
+      setViewerIndex(null)
+      setPhotoDeleteTarget(null)
+    } finally {
+      setPhotoDeleteLoading(false)
+    }
+  }
+
+  async function handleDeletePermanently(photoId) {
+    setPhotoDeleteLoading(true)
+    try {
+      await albumsApi.removePhoto(album.id, photoId)
+      setDetail(prev => ({ ...prev, photos: prev.photos.filter(p => p.id !== photoId) }))
+      setViewerIndex(null)
+      setPhotoDeleteTarget(null)
+    } finally {
+      setPhotoDeleteLoading(false)
+    }
   }
 
   function markPhotoDownloaded(photoId) {
@@ -539,8 +560,8 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
             <>
               <button onClick={() => setShowGalleryPicker(true)} title="Ajouter depuis la galerie"
                 className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-1.5m8.25-8.25h-6a2.25 2.25 0 00-2.25 2.25v6" />
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
               <button onClick={() => fileRef.current?.click()} disabled={uploading} title="Prendre une photo"
@@ -594,7 +615,7 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
           onClose={() => setViewerIndex(null)}
           onPrev={() => setViewerIndex(i => Math.max(0, i - 1))}
           onNext={() => setViewerIndex(i => Math.min(photos.length - 1, i + 1))}
-          onDelete={(isCreator || isAdmin) ? handleDeletePhoto : undefined}
+          onDeleteRequest={canDelete ? (id => setPhotoDeleteTarget(id)) : undefined}
           onShared={markPhotoDownloaded}
         />
       )}
@@ -614,6 +635,14 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
         existingPhotoIds={new Set(photos.map(p => p.id))}
         onClose={() => setShowGalleryPicker(false)}
         onAdded={handleGalleryAdded}
+      />
+
+      <PhotoDeleteModal
+        open={photoDeleteTarget !== null}
+        loading={photoDeleteLoading}
+        onClose={() => setPhotoDeleteTarget(null)}
+        onRemoveFromAlbum={() => handleRemoveFromAlbum(photoDeleteTarget)}
+        onDeletePermanently={() => handleDeletePermanently(photoDeleteTarget)}
       />
     </>
   )

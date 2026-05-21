@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import AlbumPickerModal from './AlbumPickerModal'
 import ConfirmModal from '../shared/ConfirmModal'
 
-export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, onDelete, onAlbumLinked, onShared }) {
+export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, onDelete, onDeleteRequest, onAlbumLinked, onShared }) {
   const [showAlbumPicker, setShowAlbumPicker] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -98,8 +98,8 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
                       </svg>
                   }
                 </button>
-                {onDelete && (
-                  <button onClick={() => setConfirmDelete(true)} className="h-8 w-8 flex items-center justify-center rounded-full text-red-400 hover:bg-white/10">
+                {(onDelete || onDeleteRequest) && (
+                  <button onClick={() => onDeleteRequest ? onDeleteRequest(photo.id) : setConfirmDelete(true)} className="h-8 w-8 flex items-center justify-center rounded-full text-red-400 hover:bg-white/10">
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3M3 7h18" />
                     </svg>
