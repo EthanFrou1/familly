@@ -70,7 +70,7 @@ function FeedTab() {
 
   const showPhotos = mediaFilter === 'tous' || mediaFilter === 'photos'
   const showVideos = mediaFilter === 'tous' || mediaFilter === 'videos'
-  const hasContent = (showPhotos && photos.length > 0) || (showVideos && videos.length > 0)
+  const hasContent = uploading || (showPhotos && photos.length > 0) || (showVideos && videos.length > 0)
 
   return (
     <>
@@ -121,15 +121,20 @@ function FeedTab() {
                 ))}
               </div>
             )}
-            {showPhotos && photos.length > 0 && (
+            {(showPhotos && photos.length > 0) || uploading ? (
               <div className="grid grid-cols-3 gap-0.5">
-                {photos.map((photo, i) => (
+                {uploading && (
+                  <div className="aspect-square bg-gray-100 flex items-center justify-center">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  </div>
+                )}
+                {showPhotos && photos.map((photo, i) => (
                   <button key={photo.id} className="aspect-square active:opacity-80" onClick={() => setViewerIndex(i)}>
                     <img src={photo.cloudinaryUrl} alt="" className="h-full w-full object-cover" />
                   </button>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>
@@ -293,6 +298,11 @@ function AlbumDetail({ albumId, albumName, onBack, onDeleted }) {
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-0.5 p-0.5">
+            {uploading && (
+              <div className="aspect-square bg-gray-100 flex items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            )}
             {photos.map((photo, i) => (
               <button key={photo.id} className="aspect-square active:opacity-80 relative" onClick={() => setViewerIndex(i)}>
                 <img src={photo.cloudinaryUrl} alt="" className="h-full w-full object-cover" />

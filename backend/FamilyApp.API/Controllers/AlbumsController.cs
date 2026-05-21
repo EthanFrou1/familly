@@ -14,8 +14,11 @@ namespace FamilyApp.API.Controllers;
 [Authorize]
 public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : ControllerBase
 {
-    private Guid CurrentMemberId => Guid.Parse(User.FindFirstValue("memberId")!);
-    private string CurrentRole => User.FindFirstValue(ClaimTypes.Role)!;
+    private async Task<User?> GetCurrentUserAsync()
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        return await db.Users.FindAsync(userId);
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
@@ -50,7 +53,7 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
                 a.EventId,
                 EventTitle = a.Event != null ? a.Event.Title : null,
                 Photos = a.Photos.OrderByDescending(p => p.CreatedAt)
-                    .Select(p => new { p.Id, p.CloudinaryUrl, p.CreatedAt, p.UploaderId })
+                    .Select(p => new { p.Id, p.CloudinaryUrl, p.CreatedAt, p.UploaderId, UploaderName = p.Uploader.FirstName + " " + p.Uploader.LastName })
             })
             .FirstOrDefaultAsync();
 
@@ -61,10 +64,13 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAlbumDto dto)
     {
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
+
         var album = new Album
         {
             Name = dto.Name.Trim(),
-            CreatorId = CurrentMemberId,
+            CreatorId = user.MemberId,
             EventId = dto.EventId,
         };
         db.Albums.Add(album);
@@ -75,9 +81,12 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
+
         var album = await db.Albums.Include(a => a.Photos).FirstOrDefaultAsync(a => a.Id == id);
         if (album is null) return NotFound();
-        if (album.CreatorId != CurrentMemberId && CurrentRole != "Admin") return Forbid();
+        if (album.CreatorId != user.MemberId && !User.IsInRole("Admin")) return Forbid();
 
         foreach (var photo in album.Photos)
         {
@@ -93,6 +102,9 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
     [HttpPost("{id:guid}/photos")]
     public async Task<IActionResult> AddPhoto(Guid id, IFormFile file)
     {
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
+
         var album = await db.Albums.FindAsync(id);
         if (album is null) return NotFound();
 
@@ -101,7 +113,7 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
         {
             CloudinaryUrl = url,
             CloudinaryPublicId = publicId,
-            UploaderId = CurrentMemberId,
+            UploaderId = user.MemberId,
             Category = PhotoCategory.Album,
             AlbumId = id,
         };
@@ -114,9 +126,12 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
     [HttpDelete("{albumId:guid}/photos/{photoId:guid}")]
     public async Task<IActionResult> RemovePhoto(Guid albumId, Guid photoId)
     {
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
+
         var photo = await db.Photos.FindAsync(photoId);
         if (photo is null || photo.AlbumId != albumId) return NotFound();
-        if (photo.UploaderId != CurrentMemberId && CurrentRole != "Admin") return Forbid();
+        if (photo.UploaderId != user.MemberId && !User.IsInRole("Admin")) return Forbid();
 
         await cloudinary.DeleteAsync(photo.CloudinaryPublicId);
         db.Photos.Remove(photo);
