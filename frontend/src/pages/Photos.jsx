@@ -356,11 +356,6 @@ function AlbumDetail({ album, onBack, onDeleted }) {
     setDownloadedIds(persistDownloadedIds(album.id, [photoId]))
   }
 
-  function resetDownloadTracking() {
-    localStorage.removeItem(`dl_${album.id}`)
-    setDownloadedIds(new Set())
-  }
-
   async function handleSaveToPhotos() {
     const photos = detail?.photos ?? []
     const remaining = photos.filter(p => !downloadedIds.has(p.id))
@@ -482,24 +477,12 @@ function AlbumDetail({ album, onBack, onDeleted }) {
             )}
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-3 gap-0.5 p-0.5">
-              {uploading && <UploadPlaceholder />}
-              {photos.map((photo, i) => (
-                <PhotoThumb key={photo.id} photo={photo} onClick={() => setViewerIndex(i)} isDownloaded={downloadedIds.has(photo.id)} />
-              ))}
-            </div>
-            {downloadedIds.size > 0 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 mt-0.5">
-                <p className="text-xs text-gray-400">
-                  {downloadedIds.size}/{photos.length} enregistrée{downloadedIds.size !== 1 ? 's' : ''} sur cet appareil
-                </p>
-                <button onClick={resetDownloadTracking} className="text-xs text-gray-400 underline active:opacity-60">
-                  Réinitialiser
-                </button>
-              </div>
-            )}
-          </>
+          <div className="grid grid-cols-3 gap-0.5 p-0.5">
+            {uploading && <UploadPlaceholder />}
+            {photos.map((photo, i) => (
+              <PhotoThumb key={photo.id} photo={photo} onClick={() => setViewerIndex(i)} isDownloaded={downloadedIds.has(photo.id)} />
+            ))}
+          </div>
         )}
       </div>
 
