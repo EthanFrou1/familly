@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { adminApi, familiesApi, membersApi } from '../services/api'
@@ -275,14 +276,27 @@ function StatChip({ label, value, color }) {
 }
 
 function FilterSelect({ value, onChange, children }) {
+  const hasValue = !!value
   return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="shrink-0 text-xs rounded-xl border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 text-gray-700 cursor-pointer"
-    >
-      {children}
-    </select>
+    <div className="relative shrink-0">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className={`appearance-none pl-3 pr-8 py-2 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors ${
+          hasValue
+            ? 'bg-primary/10 border-primary/30 text-primary'
+            : 'bg-white border-gray-200 text-gray-600'
+        }`}
+      >
+        {children}
+      </select>
+      <svg
+        className={`pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 ${hasValue ? 'text-primary' : 'text-gray-400'}`}
+        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
   )
 }
 
@@ -384,7 +398,7 @@ function InviteModal({ member, onClose, onInvited }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
       <div className="relative bg-white rounded-t-3xl px-6 pt-4 pb-8 space-y-4" onClick={e => e.stopPropagation()}>
@@ -438,7 +452,8 @@ function InviteModal({ member, onClose, onInvited }) {
         </button>
         <button onClick={onClose} className="w-full py-2 text-sm text-gray-400">Annuler</button>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -474,7 +489,7 @@ function ManagerModal({ member, activeUsers, onClose, onSaved }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
       <div
@@ -549,7 +564,8 @@ function ManagerModal({ member, activeUsers, onClose, onSaved }) {
 
         <button onClick={onClose} className="mt-4 w-full py-2 text-sm text-gray-400">Fermer</button>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

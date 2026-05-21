@@ -886,6 +886,7 @@ export default function Profile() {
             loading={logsLoading}
             page={logsPage}
             onPageChange={setLogsPage}
+            memberId={memberId}
           />
         )}
 
@@ -1235,7 +1236,7 @@ const REL_TYPE_LABELS = {
   HalfSibling: 'Demi-frère/sœur',
 }
 
-function ActivityLogTable({ data, loading, page, onPageChange }) {
+function ActivityLogTable({ data, loading, page, onPageChange, memberId }) {
   function formatDate(iso) {
     const d = new Date(iso)
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -1245,7 +1246,13 @@ function ActivityLogTable({ data, loading, page, onPageChange }) {
   function getDetails(log) {
     if (log.type === 'relation_created' || log.type === 'relation_deleted') {
       const rel = REL_TYPE_LABELS[log.metadata] ?? log.metadata ?? ''
-      return log.relatedMemberName ? `${rel} · ${log.relatedMemberName}` : rel
+      let otherName = null
+      if (log.targetMemberId && log.targetMemberId !== memberId) {
+        otherName = log.targetMemberName
+      } else if (log.relatedMemberId && log.relatedMemberId !== memberId) {
+        otherName = log.relatedMemberName
+      }
+      return otherName ? `${rel} · ${otherName}` : rel
     }
     return log.relatedMemberName ?? log.metadata ?? '—'
   }
@@ -1287,7 +1294,7 @@ function ActivityLogTable({ data, loading, page, onPageChange }) {
                         {formatDate(log.createdAt)}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${cfg.color}`}>
+                        <span className={`inline-block whitespace-nowrap text-[11px] font-semibold px-2 py-0.5 rounded-full ${cfg.color}`}>
                           {cfg.label}
                         </span>
                       </td>
