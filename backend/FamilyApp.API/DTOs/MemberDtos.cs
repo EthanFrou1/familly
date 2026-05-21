@@ -24,7 +24,9 @@ public record MemberDto(
     string? InstagramUsername,
     string? WhatsappNumber,
     Guid? FamilyId,
-    string? FamilyName
+    string? FamilyName,
+    Guid? DelegateManagerId,
+    string? DelegateManagerName
 );
 
 public record CreateMemberRequest(
@@ -49,6 +51,8 @@ public record CreateMemberRequest(
     string? WhatsappNumber = null,
     Guid? FamilyId = null
 );
+
+public record SetDelegateManagerRequest(Guid? UserId);
 
 public record UpdateMemberRequest(
     string? FirstName,

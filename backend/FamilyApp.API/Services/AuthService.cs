@@ -69,6 +69,16 @@ public class AuthService(AppDbContext db, IConfiguration config)
         return user;
     }
 
+    public async Task<List<ActiveUserDto>> GetActiveUsersAsync()
+    {
+        return await db.Users
+            .Include(u => u.Member)
+            .Where(u => u.InvitationUsedAt != null)
+            .OrderBy(u => u.Member.FirstName).ThenBy(u => u.Member.LastName)
+            .Select(u => new ActiveUserDto(u.Id, u.MemberId, u.Member.FirstName, u.Member.LastName))
+            .ToListAsync();
+    }
+
     public async Task<string?> GetMemberInvitationTokenAsync(Guid memberId)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.MemberId == memberId && u.InvitationToken != null && u.InvitationUsedAt == null);

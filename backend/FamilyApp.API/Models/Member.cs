@@ -31,6 +31,9 @@ public class Member
     public Guid? UserId { get; set; }
     public User? User { get; set; }
 
+    public Guid? DelegateManagerId { get; set; }
+    public User? DelegateManager { get; set; }
+
     public ICollection<Relation> RelationsAsA { get; set; } = [];
     public ICollection<Relation> RelationsAsB { get; set; } = [];
     public ICollection<Photo> Photos { get; set; } = [];

@@ -18,7 +18,10 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var members = await db.Members.Include(m => m.Family).Select(ToDto).ToListAsync();
+        var members = await db.Members
+            .Include(m => m.Family)
+            .Include(m => m.DelegateManager).ThenInclude(u => u!.Member)
+            .Select(ToDto).ToListAsync();
         return Ok(members);
     }
 
@@ -183,7 +186,10 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var member = await db.Members.Include(m => m.Family).Where(m => m.Id == id).Select(ToDto).FirstOrDefaultAsync();
+        var member = await db.Members
+            .Include(m => m.Family)
+            .Include(m => m.DelegateManager).ThenInclude(u => u!.Member)
+            .Where(m => m.Id == id).Select(ToDto).FirstOrDefaultAsync();
         return member is null ? NotFound() : Ok(member);
     }
 
@@ -299,6 +305,29 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         return Ok(new { profilePictureUrl = url });
     }
 
+    [HttpPut("{id:guid}/delegate-manager")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SetDelegateManager(Guid id, [FromBody] SetDelegateManagerRequest req)
+    {
+        var member = await db.Members.Include(m => m.Family).FirstOrDefaultAsync(m => m.Id == id);
+        if (member is null) return NotFound();
+
+        if (req.UserId.HasValue)
+        {
+            var userExists = await db.Users.AnyAsync(u => u.Id == req.UserId.Value && u.InvitationUsedAt != null);
+            if (!userExists) return BadRequest(new { message = "Utilisateur introuvable ou inactif." });
+        }
+
+        member.DelegateManagerId = req.UserId;
+        await db.SaveChangesAsync();
+
+        await db.Entry(member).Reference(m => m.DelegateManager).LoadAsync();
+        if (member.DelegateManager != null)
+            await db.Entry(member.DelegateManager).Reference(u => u.Member).LoadAsync();
+
+        return Ok(MapToDto(member));
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid id)
@@ -315,7 +344,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         var role = User.FindFirstValue(ClaimTypes.Role);
         if (role == "Admin") return true;
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        return member.User?.Id == userId;
+        return member.User?.Id == userId || member.DelegateManagerId == userId;
     }
 
     private static MemberDto MapToDto(Member m) => new(
@@ -323,7 +352,11 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         m.Email, m.Phone, m.Bio, m.Occupation, m.Sport, m.Address, m.PostalCode, m.City, m.Country,
         m.Latitude, m.Longitude, m.ProfilePictureUrl, m.IsAlive, m.CreatedAt,
         m.FacebookUrl, m.InstagramUsername, m.WhatsappNumber,
-        m.FamilyId, m.Family?.Name
+        m.FamilyId, m.Family?.Name,
+        m.DelegateManagerId,
+        m.DelegateManager?.Member != null
+            ? $"{m.DelegateManager.Member.FirstName} {m.DelegateManager.Member.LastName}"
+            : null
     );
 
     private static DateTime? ToUtc(DateTime? dt) =>
@@ -334,6 +367,10 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         m.Email, m.Phone, m.Bio, m.Occupation, m.Sport, m.Address, m.PostalCode, m.City, m.Country,
         m.Latitude, m.Longitude, m.ProfilePictureUrl, m.IsAlive, m.CreatedAt,
         m.FacebookUrl, m.InstagramUsername, m.WhatsappNumber,
-        m.FamilyId, m.Family != null ? m.Family.Name : null
+        m.FamilyId, m.Family != null ? m.Family.Name : null,
+        m.DelegateManagerId,
+        m.DelegateManager != null && m.DelegateManager.Member != null
+            ? m.DelegateManager.Member.FirstName + " " + m.DelegateManager.Member.LastName
+            : null
     );
 }
