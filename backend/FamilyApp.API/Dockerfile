@@ -5,7 +5,7 @@ COPY FamilyApp.API.csproj .
 RUN dotnet restore
 
 COPY . .
-RUN dotnet publish -c Release -o /app/out
+RUN dotnet publish --no-restore -c Release -o /app/out
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
