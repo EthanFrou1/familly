@@ -29,4 +29,36 @@ public class ActivityLogsController(AppDbContext db) : ControllerBase
 
         return Ok(logs);
     }
+
+    [HttpGet("member/{memberId:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetByMember(Guid memberId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 50);
+
+        var query = db.ActivityLogs
+            .Where(l => l.TargetMemberId == memberId || l.RelatedMemberId == memberId)
+            .OrderByDescending(l => l.CreatedAt);
+
+        var total = await query.CountAsync();
+        var logs = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(l => new ActivityLogDto(
+                l.Id, l.Type, l.ActorName,
+                l.TargetMemberId, l.TargetMemberName, l.TargetMemberPictureUrl,
+                l.RelatedMemberId, l.RelatedMemberName,
+                l.Metadata, l.CreatedAt))
+            .ToListAsync();
+
+        return Ok(new
+        {
+            logs,
+            total,
+            page,
+            pageSize,
+            totalPages = (int)Math.Ceiling((double)total / pageSize)
+        });
+    }
 }

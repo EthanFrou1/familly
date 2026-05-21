@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AppSettings> AppSettings => Set<AppSettings>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<DuplicateCandidate> DuplicateCandidates => Set<DuplicateCandidate>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -69,6 +70,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(ev => ev.Id);
             e.Property(ev => ev.Type).HasConversion<string>();
             e.HasOne(ev => ev.CreatedBy).WithMany().HasForeignKey(ev => ev.CreatedById).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<DuplicateCandidate>(e =>
+        {
+            e.HasKey(d => d.Id);
+            e.HasOne(d => d.MemberA).WithMany().HasForeignKey(d => d.MemberAId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(d => d.MemberB).WithMany().HasForeignKey(d => d.MemberBId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(d => new { d.MemberAId, d.MemberBId }).IsUnique();
+            e.Property(d => d.Confidence).HasMaxLength(20);
+            e.Property(d => d.Status).HasMaxLength(20);
         });
     }
 }

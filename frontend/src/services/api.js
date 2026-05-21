@@ -91,6 +91,10 @@ export const eventsApi = {
 }
 
 export const adminApi = {
+  getMembersOverview: () => api.get('/admin/members-overview'),
+  getDuplicates: () => api.get('/admin/duplicates'),
+  ignoreDuplicate: (id) => api.post(`/admin/duplicates/${id}/ignore`),
+  resolveDuplicate: (id) => api.post(`/admin/duplicates/${id}/resolve`),
   generateInvitation: (email, role, memberId, appUrl, firstName, familyGroupName) =>
     api.post('/auth/invitations', { email, role, memberId, appUrl, firstName, familyGroupName }),
   getMemberAccountStatus: (memberId) => api.get(`/auth/member/${memberId}/account-status`),
@@ -111,6 +115,8 @@ export const settingsApi = {
 
 export const activityLogsApi = {
   getAll: (limit = 30) => api.get('/activity-logs', { params: { limit } }),
+  getByMember: (memberId, page = 1, pageSize = 10) =>
+    api.get(`/activity-logs/member/${memberId}`, { params: { page, pageSize } }),
 }
 
 export const pushApi = {

@@ -11,7 +11,7 @@ namespace FamilyApp.API.Controllers;
 [ApiController]
 [Route("api/relations")]
 [Authorize]
-public class RelationsController(AppDbContext db, ActivityLogService activityLog) : ControllerBase
+public class RelationsController(AppDbContext db, ActivityLogService activityLog, RelationValidationService validator) : ControllerBase
 {
     private static readonly Dictionary<RelationType, (string AsA, string AsB)> TypeLabels = new()
     {
@@ -82,6 +82,10 @@ public class RelationsController(AppDbContext db, ActivityLogService activityLog
             (r.MemberAId == req.MemberBId && r.MemberBId == req.MemberAId && r.Type == type));
 
         if (exists) return Conflict(new { message = "Cette relation existe déjà." });
+
+        var validationError = await validator.ValidateAsync(req.MemberAId, req.MemberBId, type);
+        if (validationError is not null)
+            return BadRequest(new { message = validationError });
 
         var memberA = await db.Members.FindAsync(req.MemberAId);
         var memberB = await db.Members.FindAsync(req.MemberBId);
