@@ -22,7 +22,7 @@ export default function Avatar({ src, name, member, size = 'md', className = '' 
   const sizeCls   = isNumeric ? '' : (STRING_SIZES[size]?.cls ?? STRING_SIZES.md.cls)
   const sizeStyle = isNumeric
     ? { width: size, height: size, minWidth: size, minHeight: size, fontSize: Math.round(size * 0.38) }
-    : undefined
+    : { fontSize: STRING_SIZES[size]?.fontSize ?? STRING_SIZES.md.fontSize }
 
   return resolvedSrc ? (
     <img
