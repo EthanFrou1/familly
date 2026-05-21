@@ -18,5 +18,7 @@ public class Photo
     public DateTime? ExpiresAt { get; set; }
     public Guid? EventId { get; set; }
     public Event? Event { get; set; }
+    public Guid? AlbumId { get; set; }
+    public Album? Album { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
