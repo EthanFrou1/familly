@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<DuplicateCandidate> DuplicateCandidates => Set<DuplicateCandidate>();
     public DbSet<ExternalMedia> ExternalMedias => Set<ExternalMedia>();
+    public DbSet<Album> Albums => Set<Album>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -58,12 +59,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(r => r.MemberB).WithMany(m => m.RelationsAsB).HasForeignKey(r => r.MemberBId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        b.Entity<Album>(e =>
+        {
+            e.HasKey(a => a.Id);
+            e.Property(a => a.Name).HasMaxLength(100).IsRequired();
+            e.HasOne(a => a.Creator).WithMany().HasForeignKey(a => a.CreatorId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.Event).WithMany().HasForeignKey(a => a.EventId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+        });
+
         b.Entity<Photo>(e =>
         {
             e.HasKey(p => p.Id);
             e.Property(p => p.Category).HasConversion<string>();
             e.HasOne(p => p.Uploader).WithMany(m => m.Photos).HasForeignKey(p => p.UploaderId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.Event).WithMany(ev => ev.Photos).HasForeignKey(p => p.EventId).IsRequired(false);
+            e.HasOne(p => p.Album).WithMany(a => a.Photos).HasForeignKey(p => p.AlbumId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<Event>(e =>

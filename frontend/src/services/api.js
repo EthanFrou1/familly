@@ -119,6 +119,21 @@ export const activityLogsApi = {
     api.get(`/activity-logs/member/${memberId}`, { params: { page, pageSize } }),
 }
 
+export const albumsApi = {
+  getAll: () => api.get('/albums'),
+  getById: (id) => api.get(`/albums/${id}`),
+  create: (data) => api.post('/albums', data),
+  delete: (id) => api.delete(`/albums/${id}`),
+  addPhoto: (albumId, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/albums/${albumId}/photos`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  removePhoto: (albumId, photoId) => api.delete(`/albums/${albumId}/photos/${photoId}`),
+}
+
 export const externalMediaApi = {
   getAll: () => api.get('/external-media'),
   create: (data) => api.post('/external-media', data),
