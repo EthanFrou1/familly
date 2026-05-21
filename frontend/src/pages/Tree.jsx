@@ -83,14 +83,14 @@ export default function Tree() {
       <div className="relative flex-1 overflow-hidden bg-gray-50">
 
       {/* ── Filtres inline ── */}
-      <div className="absolute top-3 left-3 right-3 z-20 flex items-center gap-2 overflow-x-auto scrollbar-none">
+      <div className="absolute top-3 left-3 right-3 z-20 justify-center pb-3 flex items-center gap-2 overflow-x-auto scrollbar-none">
         <div className="flex items-center gap-2 bg-white rounded-2xl shadow-md px-3 py-2 shrink-0">
-          <svg className="h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
           </svg>
           <button
             onClick={() => setViewMode('all')}
-            className={`rounded-xl px-3 py-1 text-xs font-semibold transition-all ${
+            className={`rounded-xl px-3 py-1 font-semibold transition-all ${
               viewMode === 'all' ? 'bg-primary text-white' : 'text-gray-600 active:bg-gray-100'
             }`}
           >
@@ -98,29 +98,28 @@ export default function Tree() {
           </button>
           <button
             onClick={() => setViewMode('branch')}
-            className={`rounded-xl px-3 py-1 text-xs font-semibold transition-all ${
+            className={`rounded-xl px-3 py-1 font-semibold transition-all ${
               viewMode === 'branch' ? 'bg-primary text-white' : 'text-gray-600 active:bg-gray-100'
             }`}
           >
             Ma branche
           </button>
           {families.length > 0 && (
-            <select
-              value={viewMode === 'family' ? familyId : ''}
-              onChange={e => {
-                const val = e.target.value
-                if (val) { setFamilyId(val); setViewMode('family') }
-                else setViewMode('all')
-              }}
-              className={`text-xs font-semibold rounded-xl px-2 py-1 border-0 outline-none transition-all ${
-                viewMode === 'family' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              <option value="">Toutes familles</option>
-              {families.map(f => (
-                <option key={f.id} value={f.id}>{f.name}</option>
-              ))}
-            </select>
+            <div className="w-36 shrink-0">
+              <Select
+                value={viewMode === 'family' ? familyId : ''}
+                onChange={e => {
+                  const val = e.target.value
+                  if (val) { setFamilyId(val); setViewMode('family') }
+                  else setViewMode('all')
+                }}
+                placeholder="Toutes familles"
+              >
+                {families.map(f => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </Select>
+            </div>
           )}
         </div>
       </div>
