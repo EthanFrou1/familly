@@ -6,6 +6,7 @@ import Select from '../shared/Select'
 export default function CreateAlbumModal({ open, onClose, onCreated }) {
   const [name, setName] = useState('')
   const [eventId, setEventId] = useState('')
+  const [allowMemberUploads, setAllowMemberUploads] = useState(true)
   const [events, setEvents] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -18,6 +19,7 @@ export default function CreateAlbumModal({ open, onClose, onCreated }) {
   function handleClose() {
     setName('')
     setEventId('')
+    setAllowMemberUploads(true)
     setError(null)
     onClose()
   }
@@ -28,11 +30,15 @@ export default function CreateAlbumModal({ open, onClose, onCreated }) {
     setSubmitting(true)
     setError(null)
     try {
-      const { data } = await albumsApi.create({ name: name.trim(), eventId: eventId || null })
+      const { data } = await albumsApi.create({
+        name: name.trim(),
+        eventId: eventId || null,
+        allowMemberUploads,
+      })
       onCreated(data)
       handleClose()
-    } catch {
-      setError('Une erreur est survenue.')
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Une erreur est survenue.')
     } finally {
       setSubmitting(false)
     }
@@ -75,9 +81,37 @@ export default function CreateAlbumModal({ open, onClose, onCreated }) {
             </div>
           )}
 
+          {/* AllowMemberUploads toggle */}
+          <button
+            type="button"
+            onClick={() => setAllowMemberUploads(v => !v)}
+            className="flex items-center justify-between rounded-xl border border-gray-200 px-3.5 py-3"
+          >
+            <div className="text-left">
+              <p className="text-sm font-medium text-gray-900">Membres peuvent ajouter des photos</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {allowMemberUploads ? 'Tout le monde peut uploader dans cet album' : 'Seul vous (et les admins) pouvez uploader'}
+              </p>
+            </div>
+            <div className={`relative inline-flex h-6 w-11 shrink-0 ml-3 rounded-full transition-colors ${allowMemberUploads ? 'bg-primary' : 'bg-gray-200'}`}>
+              <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform mt-0.5 ${allowMemberUploads ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </div>
+          </button>
+
+          {/* Expiry notice */}
+          <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-3">
+            <svg className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+            </svg>
+            <p className="text-xs text-amber-700">
+              Les photos de cet album seront <strong>automatiquement supprimées 6 mois</strong> après sa création. Pensez à les télécharger avant.
+            </p>
+          </div>
+
           {error && <p className="rounded-xl bg-red-50 px-3.5 py-3 text-sm text-red-600">{error}</p>}
 
-          <button type="submit" disabled={submitting} className="w-full rounded-xl bg-primary py-3 font-semibold text-white min-h-touch active:bg-primary-dark disabled:opacity-50 mt-1">
+          <button type="submit" disabled={submitting}
+            className="w-full rounded-xl bg-primary py-3 font-semibold text-white min-h-touch active:bg-primary-dark disabled:opacity-50 mt-1">
             {submitting ? 'Création…' : 'Créer l\'album'}
           </button>
         </form>

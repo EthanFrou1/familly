@@ -8,6 +8,8 @@ public class Album
     public Member Creator { get; set; } = null!;
     public Guid? EventId { get; set; }
     public Event? Event { get; set; }
+    public bool AllowMemberUploads { get; set; } = true;
+    public DateTime? ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public ICollection<Photo> Photos { get; set; } = [];
 }

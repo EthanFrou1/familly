@@ -63,6 +63,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasKey(a => a.Id);
             e.Property(a => a.Name).HasMaxLength(100).IsRequired();
+            e.HasIndex(a => a.Name).IsUnique();
             e.HasOne(a => a.Creator).WithMany().HasForeignKey(a => a.CreatorId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(a => a.Event).WithMany().HasForeignKey(a => a.EventId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
         });
