@@ -26,20 +26,20 @@ const PHOTO_TABS = ['galerie', 'album']
 const TAB_LABELS = { galerie: 'Galerie', album: 'Albums' }
 const MEDIA_FILTERS = ['tous', 'photos', 'videos']
 const FILTER_LABELS = { tous: 'Tous', photos: 'Photos', videos: 'Vidéos' }
-const AUTHOR_FILTERS = ['tous', 'moi', 'autres']
-const AUTHOR_LABELS = { tous: 'Tous', moi: 'Mes photos', autres: 'Les autres' }
+const AUTHOR_FILTERS = ['moi', 'autres']
+const AUTHOR_LABELS = { moi: 'Mes photos', autres: 'Les autres' }
 
 export default function Photos() {
   const [tab, setTab] = useState('galerie')
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex shrink-0" style={{ backgroundColor: '#2A1208' }}>
+      <div className="flex shrink-0 bg-dark">
         {PHOTO_TABS.map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-3 text-sm font-medium transition-colors min-h-touch ${
+            className={`flex-1 py-5 text-sm font-medium transition-colors min-h-touch ${
               tab === t ? 'border-b-2 border-white text-white' : 'text-white/50'
             }`}
           >
@@ -90,6 +90,12 @@ function GalerieTab() {
     setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, albumId } : p))
   }
 
+  async function handleDelete(photoId) {
+    await photosApi.delete(photoId)
+    setPhotos(prev => prev.filter(p => p.id !== photoId))
+    setViewerIndex(null)
+  }
+
   const showPhotos = mediaFilter === 'tous' || mediaFilter === 'photos'
   const showVideos = mediaFilter === 'tous' || mediaFilter === 'videos'
 
@@ -120,7 +126,7 @@ function GalerieTab() {
           ))}
           <div className="w-px bg-gray-200 shrink-0 my-1" />
           {AUTHOR_FILTERS.map(f => (
-            <button key={f} onClick={() => setAuthorFilter(f)}
+            <button key={f} onClick={() => setAuthorFilter(prev => prev === f ? 'tous' : f)}
               className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors shrink-0 ${
                 authorFilter === f ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
               }`}
@@ -176,16 +182,21 @@ function GalerieTab() {
 
       <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleUpload} />
 
-      {viewerIndex !== null && (
-        <PhotoViewer
-          photos={filteredPhotos}
-          index={viewerIndex}
-          onClose={() => setViewerIndex(null)}
-          onPrev={() => setViewerIndex(i => Math.max(0, i - 1))}
-          onNext={() => setViewerIndex(i => Math.min(filteredPhotos.length - 1, i + 1))}
-          onAlbumLinked={handleAlbumLinked}
-        />
-      )}
+      {viewerIndex !== null && (() => {
+        const currentPhoto = filteredPhotos[viewerIndex]
+        const canDelete = user?.role === 'Admin' || currentPhoto?.uploaderId === user?.memberId
+        return (
+          <PhotoViewer
+            photos={filteredPhotos}
+            index={viewerIndex}
+            onClose={() => setViewerIndex(null)}
+            onPrev={() => setViewerIndex(i => Math.max(0, i - 1))}
+            onNext={() => setViewerIndex(i => Math.min(filteredPhotos.length - 1, i + 1))}
+            onAlbumLinked={handleAlbumLinked}
+            onDelete={canDelete ? handleDelete : undefined}
+          />
+        )
+      })()}
 
       <AddVideoModal open={showAddVideo} onClose={() => setShowAddVideo(false)} onAdded={video => setVideos(prev => [video, ...prev])} />
     </>

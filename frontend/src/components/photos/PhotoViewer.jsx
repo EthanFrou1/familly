@@ -53,7 +53,7 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75" onClick={onClose}>
           <div className="relative rounded-2xl overflow-hidden w-full max-w-lg shadow-2xl" style={{ backgroundColor: '#2A1208' }} onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+            <div className="flex items-center justify-between px-3 bg-primary py-2 border-b border-white/10">
               {photos.length > 1 && (
                 <span className="text-xs text-white/50 font-medium">{index + 1} / {photos.length}</span>
               )}
@@ -117,7 +117,7 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
             </div>
 
             {/* Info panel — always visible */}
-            <div className="px-4 py-3 flex flex-col gap-2" style={{ backgroundColor: '#1a0b05' }}>
+            <div className="px-4 py-3 flex flex-col gap-2 bg-primary">
               {photo.uploaderName && (
                 <div className="flex items-center gap-2 text-xs text-white/70">
                   <svg className="h-3.5 w-3.5 shrink-0 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
