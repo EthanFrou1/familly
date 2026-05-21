@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { authApi } from '../services/api'
+import { authApi, setToken } from '../services/api'
 
 export default function Login() {
   const { token } = useParams()
-  const { login, user } = useAuth()
+  const { login, user, setUser } = useAuth()
   const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
@@ -13,7 +13,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [inviteDone, setInviteDone] = useState(false)
   const inviteMode = !!token
 
   useEffect(() => {
@@ -39,40 +38,15 @@ export default function Login() {
     setLoading(true)
     setError('')
     try {
-      await authApi.acceptInvitation(token, password)
-      setInviteDone(true)
+      const { data } = await authApi.acceptInvitation(token, password)
+      setToken(data.token)
+      setUser(data.user)
+      navigate('/', { replace: true })
     } catch {
       setError('Lien invalide ou expiré.')
     } finally {
       setLoading(false)
     }
-  }
-
-  if (inviteDone) {
-    return (
-      <div className="relative flex h-full flex-col items-center justify-center overflow-hidden bg-dark px-6">
-        <Background />
-        <div className="relative z-10 w-full max-w-sm text-center space-y-6">
-          <div className="mx-auto h-20 w-20 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-            <svg className="h-10 w-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white">Bienvenue !</h2>
-            <p className="mt-2 text-white text-sm leading-relaxed">
-              Ton compte est créé. Tu peux maintenant rejoindre ta famille.
-            </p>
-          </div>
-          <button
-            onClick={() => navigate('/login')}
-            className="w-full rounded-2xl bg-primary py-3.5 font-bold text-white active:bg-primary-dark"
-          >
-            Se connecter
-          </button>
-        </div>
-      </div>
-    )
   }
 
   return (

@@ -21,16 +21,18 @@ public class AuthService(AppDbContext db, IConfiguration config)
         return new AuthResponse(token, MapToDto(user));
     }
 
-    public async Task<bool> AcceptInvitationAsync(string token, string password)
+    public async Task<AuthResponse?> AcceptInvitationAsync(string token, string password)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.InvitationToken == token && u.InvitationUsedAt == null);
-        if (user is null) return false;
+        var user = await db.Users.Include(u => u.Member).FirstOrDefaultAsync(u => u.InvitationToken == token && u.InvitationUsedAt == null);
+        if (user is null) return null;
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
         user.InvitationUsedAt = DateTime.UtcNow;
         user.InvitationToken = null;
         await db.SaveChangesAsync();
-        return true;
+
+        var jwt = GenerateJwt(user);
+        return new AuthResponse(jwt, MapToDto(user));
     }
 
     public async Task<string> GetMemberAccountStatusAsync(Guid memberId)
