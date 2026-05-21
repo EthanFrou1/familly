@@ -14,6 +14,8 @@ namespace FamilyApp.API.Controllers;
 [Authorize]
 public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : ControllerBase
 {
+    private const int MaxAlbumsPerMember = 10;
+
     private async Task<User?> GetCurrentUserAsync()
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -30,10 +32,13 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
                 a.Id,
                 a.Name,
                 a.CreatedAt,
+                a.ExpiresAt,
+                a.AllowMemberUploads,
                 a.EventId,
                 EventTitle = a.Event != null ? a.Event.Title : null,
                 PhotoCount = a.Photos.Count,
                 CoverUrl = a.Photos.OrderByDescending(p => p.CreatedAt).Select(p => p.CloudinaryUrl).FirstOrDefault(),
+                CreatorName = a.Creator.FirstName + " " + a.Creator.LastName,
             })
             .ToListAsync();
 
@@ -50,10 +55,16 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
                 a.Id,
                 a.Name,
                 a.CreatedAt,
+                a.ExpiresAt,
+                a.AllowMemberUploads,
+                a.CreatorId,
                 a.EventId,
                 EventTitle = a.Event != null ? a.Event.Title : null,
                 Photos = a.Photos.OrderByDescending(p => p.CreatedAt)
-                    .Select(p => new { p.Id, p.CloudinaryUrl, p.CreatedAt, p.UploaderId, UploaderName = p.Uploader.FirstName + " " + p.Uploader.LastName })
+                    .Select(p => new {
+                        p.Id, p.CloudinaryUrl, p.CreatedAt, p.UploaderId,
+                        UploaderName = p.Uploader.FirstName + " " + p.Uploader.LastName
+                    })
             })
             .FirstOrDefaultAsync();
 
@@ -67,15 +78,40 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
         var user = await GetCurrentUserAsync();
         if (user is null) return Unauthorized();
 
+        var isAdmin = User.IsInRole("Admin");
+
+        // Limit 10 albums per non-admin member
+        if (!isAdmin)
+        {
+            var count = await db.Albums.CountAsync(a => a.CreatorId == user.MemberId);
+            if (count >= MaxAlbumsPerMember)
+                return BadRequest(new { message = $"Vous avez atteint la limite de {MaxAlbumsPerMember} albums." });
+        }
+
+        // Unique name
+        var nameExists = await db.Albums.AnyAsync(a => a.Name.ToLower() == dto.Name.Trim().ToLower());
+        if (nameExists)
+            return BadRequest(new { message = "Un album avec ce nom existe déjà." });
+
+        // Albums always expire after 6 months for everyone
+        var expiresAt = DateTime.UtcNow.AddMonths(6);
+
         var album = new Album
         {
             Name = dto.Name.Trim(),
             CreatorId = user.MemberId,
             EventId = dto.EventId,
+            AllowMemberUploads = dto.AllowMemberUploads,
+            ExpiresAt = expiresAt,
         };
         db.Albums.Add(album);
         await db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = album.Id }, new { album.Id, album.Name, album.CreatedAt, PhotoCount = 0, CoverUrl = (string?)null });
+
+        return CreatedAtAction(nameof(GetById), new { id = album.Id }, new
+        {
+            album.Id, album.Name, album.CreatedAt, album.ExpiresAt, album.AllowMemberUploads,
+            PhotoCount = 0, CoverUrl = (string?)null
+        });
     }
 
     [HttpDelete("{id:guid}")]
@@ -108,6 +144,12 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
         var album = await db.Albums.FindAsync(id);
         if (album is null) return NotFound();
 
+        var isAdmin = User.IsInRole("Admin");
+        var isCreator = album.CreatorId == user.MemberId;
+
+        if (!album.AllowMemberUploads && !isCreator && !isAdmin)
+            return BadRequest(new { message = "Seul le créateur ou un admin peut ajouter des photos à cet album." });
+
         var (url, publicId) = await cloudinary.UploadAsync(file, "albums");
         var photo = new Photo
         {
@@ -120,7 +162,10 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
         db.Photos.Add(photo);
         await db.SaveChangesAsync();
 
-        return Ok(new { photo.Id, photo.CloudinaryUrl, photo.CreatedAt, photo.UploaderId });
+        return Ok(new {
+            photo.Id, photo.CloudinaryUrl, photo.CreatedAt, photo.UploaderId,
+            UploaderName = user.Member?.FirstName + " " + user.Member?.LastName
+        });
     }
 
     [HttpDelete("{albumId:guid}/photos/{photoId:guid}")]
