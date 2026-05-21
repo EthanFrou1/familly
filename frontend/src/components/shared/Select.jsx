@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 export default function Select({ value, onChange, children, placeholder = 'Sélectionner…', required, className = '' }) {
   const [open, setOpen] = useState(false)
@@ -44,6 +45,46 @@ export default function Select({ value, onChange, children, placeholder = 'Séle
     setOpen(false)
   }
 
+  const dropdown = open ? createPortal(
+    <div
+      className="z-[9999] rounded-2xl border border-gray-100 bg-white shadow-xl overflow-hidden"
+      style={dropStyle}
+      onMouseDown={e => e.stopPropagation()}
+    >
+      <div className="max-h-52 overflow-y-auto py-1">
+        {options.map((opt, i) => {
+          const isSelected = String(opt.value) === String(value)
+          const isPlaceholder = opt.isPlaceholder
+
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => select(opt.value)}
+              className={`
+                w-full flex items-center justify-between px-4 py-2.5 text-sm text-left
+                transition-colors
+                ${isSelected
+                  ? 'bg-primary/10 text-primary font-semibold'
+                  : isPlaceholder
+                    ? 'text-gray-400 hover:bg-gray-50'
+                    : 'text-gray-800 hover:bg-gray-50 active:bg-gray-100'}
+              `}
+            >
+              <span>{opt.label}</span>
+              {isSelected && !isPlaceholder && (
+                <svg className="h-4 w-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>,
+    document.body
+  ) : null
+
   return (
     <div ref={ref} className={`relative ${className}`}>
       {/* Trigger */}
@@ -56,7 +97,7 @@ export default function Select({ value, onChange, children, placeholder = 'Séle
           rounded-xl border bg-gray-50 pl-3.5 pr-3 py-2.5
           text-sm transition-all
           ${open
-            ? 'border-primary bg-white ring-2 ring-primary/15'
+            ? 'border-primary bg-white ring-2 ring-primary/20'
             : 'border-gray-200 hover:border-gray-300'}
           ${!value ? 'text-gray-400' : 'text-gray-900'}
         `}
@@ -70,41 +111,7 @@ export default function Select({ value, onChange, children, placeholder = 'Séle
         </svg>
       </button>
 
-      {/* Dropdown panel — fixed to escape any overflow-hidden ancestor */}
-      {open && (
-        <div className="z-[9999] rounded-2xl border border-gray-100 bg-white shadow-xl overflow-hidden" style={dropStyle}>
-          <div className="max-h-52 overflow-y-auto py-1">
-            {options.map((opt, i) => {
-              const isSelected = String(opt.value) === String(value)
-              const isPlaceholder = opt.isPlaceholder
-
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => select(opt.value)}
-                  className={`
-                    w-full flex items-center justify-between px-4 py-2.5 text-sm text-left
-                    transition-colors
-                    ${isSelected
-                      ? 'bg-primary/8 text-primary font-semibold'
-                      : isPlaceholder
-                        ? 'text-gray-400 hover:bg-gray-50'
-                        : 'text-gray-800 hover:bg-gray-50 active:bg-gray-100'}
-                  `}
-                >
-                  <span>{opt.label}</span>
-                  {isSelected && !isPlaceholder && (
-                    <svg className="h-4 w-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {dropdown}
 
       {/* Hidden native select for form validation */}
       {required && (
