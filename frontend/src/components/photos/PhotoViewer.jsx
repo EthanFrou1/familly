@@ -1,10 +1,13 @@
 import { useEffect, useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AlbumPickerModal from './AlbumPickerModal'
+import ConfirmModal from '../shared/ConfirmModal'
 
 export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, onDelete, onAlbumLinked, onShared }) {
   const [showAlbumPicker, setShowAlbumPicker] = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const photo = photos[index]
 
   const handleKey = useCallback((e) => {
@@ -83,7 +86,7 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
                   }
                 </button>
                 {onDelete && (
-                  <button onClick={() => onDelete(photo.id)} className="h-8 w-8 flex items-center justify-center rounded-full text-red-400 hover:bg-white/10">
+                  <button onClick={() => setConfirmDelete(true)} className="h-8 w-8 flex items-center justify-center rounded-full text-red-400 hover:bg-white/10">
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4h6v3M3 7h18" />
                     </svg>
@@ -153,6 +156,24 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
         onLinked={(albumId) => {
           onAlbumLinked?.(photo.id, albumId)
           setShowAlbumPicker(false)
+        }}
+      />
+
+      <ConfirmModal
+        open={confirmDelete}
+        title="Supprimer cette photo ?"
+        message="Cette action est irréversible."
+        confirmLabel={deleting ? 'Suppression…' : 'Supprimer'}
+        zClassName="z-[120]"
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={async () => {
+          setDeleting(true)
+          try {
+            await onDelete(photo.id)
+          } finally {
+            setDeleting(false)
+            setConfirmDelete(false)
+          }
         }}
       />
     </>
