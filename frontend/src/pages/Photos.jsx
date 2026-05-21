@@ -8,6 +8,20 @@ import PhotoViewer from '../components/photos/PhotoViewer'
 import CreateAlbumModal from '../components/photos/CreateAlbumModal'
 import ConfirmModal from '../components/shared/ConfirmModal'
 
+const BATCH_SIZE = 30
+
+function getDownloadedIds(albumId) {
+  try { return new Set(JSON.parse(localStorage.getItem(`dl_${albumId}`) ?? '[]')) }
+  catch { return new Set() }
+}
+
+function persistDownloadedIds(albumId, newIds) {
+  const all = getDownloadedIds(albumId)
+  newIds.forEach(id => all.add(id))
+  localStorage.setItem(`dl_${albumId}`, JSON.stringify([...all]))
+  return all
+}
+
 const PHOTO_TABS = ['galerie', 'album']
 const TAB_LABELS = { galerie: 'Galerie', album: 'Albums' }
 const MEDIA_FILTERS = ['tous', 'photos', 'videos']
@@ -305,6 +319,8 @@ function AlbumDetail({ album, onBack, onDeleted }) {
   const [viewerIndex, setViewerIndex] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [downloadedIds, setDownloadedIds] = useState(() => getDownloadedIds(album.id))
   const fileRef = useRef(null)
 
   const isAdmin = user?.role === 'Admin'
@@ -336,6 +352,37 @@ function AlbumDetail({ album, onBack, onDeleted }) {
     if (viewerIndex !== null) setViewerIndex(null)
   }
 
+  function markPhotoDownloaded(photoId) {
+    setDownloadedIds(persistDownloadedIds(album.id, [photoId]))
+  }
+
+  async function handleSaveToPhotos() {
+    const photos = detail?.photos ?? []
+    const remaining = photos.filter(p => !downloadedIds.has(p.id))
+    const batch = remaining.slice(0, BATCH_SIZE)
+    if (batch.length === 0) return
+    setDownloading(true)
+    try {
+      const blobs = await Promise.all(batch.map(p => fetch(p.cloudinaryUrl).then(r => r.blob())))
+      const files = blobs.map((b, i) => new File([b], `photo-${i + 1}.jpg`, { type: b.type || 'image/jpeg' }))
+      if (navigator.canShare?.({ files })) {
+        await navigator.share({ files, title: album.name })
+        setDownloadedIds(persistDownloadedIds(album.id, batch.map(p => p.id)))
+      } else {
+        // Fallback desktop : téléchargement de la première photo
+        const url = batch[0].cloudinaryUrl.replace('/upload/', '/upload/fl_attachment/')
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'photo.jpg'
+        a.click()
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') console.error('Share failed', e)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   async function handleDeleteAlbum() {
     setDeleting(true)
     try {
@@ -348,6 +395,10 @@ function AlbumDetail({ album, onBack, onDeleted }) {
   }
 
   const photos = detail?.photos ?? []
+  const remaining = photos.filter(p => !downloadedIds.has(p.id))
+  const allSaved = photos.length > 0 && remaining.length === 0
+  const batchCount = Math.min(remaining.length, BATCH_SIZE)
+
   const expiryLabel = album.expiresAt
     ? new Date(album.expiresAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
@@ -367,6 +418,33 @@ function AlbumDetail({ album, onBack, onDeleted }) {
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {/* Save to Photos */}
+          {photos.length > 0 && (
+            <button
+              onClick={handleSaveToPhotos}
+              disabled={downloading || allSaved}
+              title={allSaved ? 'Toutes les photos enregistrées' : `Enregistrer dans Photos (${batchCount})`}
+              className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 active:bg-gray-200 disabled:opacity-50 relative"
+            >
+              {downloading
+                ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                : allSaved
+                  ? <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  : <>
+                      <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                      </svg>
+                      {remaining.length < photos.length && remaining.length > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-primary text-white text-[9px] flex items-center justify-center font-bold leading-none">
+                          {remaining.length}
+                        </span>
+                      )}
+                    </>
+              }
+            </button>
+          )}
           {canUpload && (
             <button onClick={() => fileRef.current?.click()} disabled={uploading} title="Ajouter une photo"
               className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200 disabled:opacity-50">
@@ -402,7 +480,7 @@ function AlbumDetail({ album, onBack, onDeleted }) {
           <div className="grid grid-cols-3 gap-0.5 p-0.5">
             {uploading && <UploadPlaceholder />}
             {photos.map((photo, i) => (
-              <PhotoThumb key={photo.id} photo={photo} onClick={() => setViewerIndex(i)} />
+              <PhotoThumb key={photo.id} photo={photo} onClick={() => setViewerIndex(i)} isDownloaded={downloadedIds.has(photo.id)} />
             ))}
           </div>
         )}
@@ -418,6 +496,7 @@ function AlbumDetail({ album, onBack, onDeleted }) {
           onPrev={() => setViewerIndex(i => Math.max(0, i - 1))}
           onNext={() => setViewerIndex(i => Math.min(photos.length - 1, i + 1))}
           onDelete={(isCreator || isAdmin) ? handleDeletePhoto : undefined}
+          onShared={markPhotoDownloaded}
         />
       )}
 
@@ -433,7 +512,7 @@ function AlbumDetail({ album, onBack, onDeleted }) {
   )
 }
 
-function PhotoThumb({ photo, onClick }) {
+function PhotoThumb({ photo, onClick, isDownloaded }) {
   const daysLeft = photo.expiresAt
     ? Math.ceil((new Date(photo.expiresAt) - new Date()) / 86400000)
     : null
@@ -450,6 +529,13 @@ function PhotoThumb({ photo, onClick }) {
       {showExpiry && (
         <span className="absolute top-1 right-1 rounded-full bg-amber-500/90 px-1 py-px text-[9px] font-bold text-white">
           J-{daysLeft}
+        </span>
+      )}
+      {isDownloaded && (
+        <span className="absolute top-1 left-1 h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
+          <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
         </span>
       )}
     </button>

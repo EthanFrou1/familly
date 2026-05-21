@@ -1,10 +1,10 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AlbumPickerModal from './AlbumPickerModal'
-import { useState } from 'react'
 
-export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, onDelete, onAlbumLinked }) {
+export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, onDelete, onAlbumLinked, onShared }) {
   const [showAlbumPicker, setShowAlbumPicker] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const photo = photos[index]
 
   const handleKey = useCallback((e) => {
@@ -23,6 +23,29 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
   const date = new Date(photo.createdAt).toLocaleDateString('fr-FR', {
     day: 'numeric', month: 'long', year: 'numeric'
   })
+
+  async function handleShare() {
+    setSharing(true)
+    try {
+      const blob = await fetch(photo.cloudinaryUrl).then(r => r.blob())
+      const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' })
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] })
+        onShared?.(photo.id)
+      } else {
+        const url = photo.cloudinaryUrl.replace('/upload/', '/upload/fl_attachment/')
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'photo.jpg'
+        a.click()
+        onShared?.(photo.id)
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') console.error('Share failed', e)
+    } finally {
+      setSharing(false)
+    }
+  }
 
   return (
     <>
@@ -46,6 +69,19 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
                     </svg>
                   </button>
                 )}
+                <button
+                  onClick={handleShare}
+                  disabled={sharing}
+                  className="h-8 w-8 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-40"
+                  title="Enregistrer dans Photos"
+                >
+                  {sharing
+                    ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-transparent" />
+                    : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                      </svg>
+                  }
+                </button>
                 {onDelete && (
                   <button onClick={() => onDelete(photo.id)} className="h-8 w-8 flex items-center justify-center rounded-full text-red-400 hover:bg-white/10">
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
