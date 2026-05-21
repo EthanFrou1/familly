@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { albumsApi, photosApi } from '../../services/api'
+import { useAuth } from '../../hooks/useAuth'
 
 export default function AlbumPickerModal({ open, photo, onClose, onLinked }) {
+  const { user } = useAuth()
   const [albums, setAlbums] = useState([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(null)
@@ -12,6 +14,12 @@ export default function AlbumPickerModal({ open, photo, onClose, onLinked }) {
     setLoading(true)
     albumsApi.getAll().then(({ data }) => setAlbums(data)).finally(() => setLoading(false))
   }, [open])
+
+  function canAdd(album) {
+    return album.allowMemberUploads
+      || album.creatorId === user?.memberId
+      || user?.role === 'Admin'
+  }
 
   async function handlePick(albumId) {
     setSaving(albumId)
@@ -36,6 +44,9 @@ export default function AlbumPickerModal({ open, photo, onClose, onLinked }) {
   }
 
   if (!open) return null
+
+  const currentAlbum = albums.find(a => a.id === photo.albumId)
+  const canRemove = !currentAlbum || canAdd(currentAlbum)
 
   return createPortal(
     <div className="fixed inset-0 z-[110] flex items-end justify-center sm:items-center">
@@ -62,12 +73,15 @@ export default function AlbumPickerModal({ open, photo, onClose, onLinked }) {
               {albums.map(album => {
                 const isCurrent = photo.albumId === album.id
                 const isLoading = saving === album.id
+                const allowed = canAdd(album)
                 return (
                   <button
                     key={album.id}
-                    onClick={() => !isCurrent && handlePick(album.id)}
+                    onClick={() => !isCurrent && allowed && handlePick(album.id)}
                     disabled={isLoading}
-                    className={`flex items-center gap-3 w-full px-5 py-3 active:bg-gray-50 transition-colors ${isCurrent ? 'opacity-50 cursor-default' : ''}`}
+                    className={`flex items-center gap-3 w-full px-5 py-3 transition-colors ${
+                      isCurrent || !allowed ? 'opacity-50 cursor-default' : 'active:bg-gray-50'
+                    }`}
                   >
                     <div className="h-10 w-10 rounded-xl bg-gray-100 overflow-hidden shrink-0">
                       {album.coverUrl
@@ -84,8 +98,13 @@ export default function AlbumPickerModal({ open, photo, onClose, onLinked }) {
                       <p className="text-xs text-gray-400">{album.photoCount} photo{album.photoCount !== 1 ? 's' : ''}</p>
                     </div>
                     {isCurrent && <span className="text-xs text-primary font-semibold shrink-0">Déjà ajouté</span>}
+                    {!isCurrent && !allowed && (
+                      <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                      </svg>
+                    )}
                     {isLoading && <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent shrink-0" />}
-                    {!isCurrent && !isLoading && (
+                    {!isCurrent && allowed && !isLoading && (
                       <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
@@ -97,10 +116,13 @@ export default function AlbumPickerModal({ open, photo, onClose, onLinked }) {
           )}
         </div>
 
-        {photo.albumId && (
+        {photo.albumId && canRemove && (
           <div className="border-t border-gray-100 px-5 py-3">
-            <button onClick={handleRemove} disabled={saving === 'none'}
-              className="w-full text-sm text-red-500 font-medium py-2 active:opacity-70 disabled:opacity-50">
+            <button
+              onClick={handleRemove}
+              disabled={saving === 'none'}
+              className="w-full rounded-xl bg-red-500 py-2.5 text-sm font-semibold text-white active:opacity-80 disabled:opacity-50"
+            >
               {saving === 'none' ? 'Retrait…' : 'Retirer de l\'album'}
             </button>
           </div>
