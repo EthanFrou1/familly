@@ -406,6 +406,11 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
   const [showGalleryPicker, setShowGalleryPicker] = useState(false)
   const [photoDeleteTarget, setPhotoDeleteTarget] = useState(null)
   const [photoDeleteLoading, setPhotoDeleteLoading] = useState(false)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [batchDownloading, setBatchDownloading] = useState(false)
+  const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false)
+  const [batchDeleteLoading, setBatchDeleteLoading] = useState(false)
   const fileRef = useRef(null)
 
   const isAdmin = user?.role === 'Admin'
@@ -494,6 +499,75 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
     setDetail(prev => ({ ...prev, photos: [...(prev?.photos ?? []), ...newPhotos] }))
   }
 
+  function toggleSelectionMode() {
+    setSelectionMode(prev => !prev)
+    setSelectedIds(new Set())
+  }
+
+  function togglePhotoSelect(photoId) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(photoId)) next.delete(photoId)
+      else next.add(photoId)
+      return next
+    })
+  }
+
+  async function handleBatchDownload() {
+    const selected = photos.filter(p => selectedIds.has(p.id))
+    if (!selected.length) return
+    setBatchDownloading(true)
+    try {
+      const blobs = await Promise.all(
+        selected.map(p => fetch(`/api/photos/${p.id}/download`, { credentials: 'include' }).then(r => r.blob()))
+      )
+      const files = blobs.map((b, i) => new File([b], `photo-${i + 1}.jpg`, { type: b.type || 'image/jpeg' }))
+      if (navigator.canShare?.({ files })) {
+        await navigator.share({ files })
+      } else {
+        for (let i = 0; i < selected.length; i++) {
+          const a = document.createElement('a')
+          a.href = `/api/photos/${selected[i].id}/download`
+          a.download = `photo-${i + 1}.jpg`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          if (i < selected.length - 1) await new Promise(r => setTimeout(r, 150))
+        }
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') console.error('Download failed', e)
+    } finally {
+      setBatchDownloading(false)
+    }
+  }
+
+  async function handleBatchRemoveFromAlbum() {
+    setBatchDeleteLoading(true)
+    try {
+      await Promise.all([...selectedIds].map(id => photosApi.setAlbum(id, null)))
+      setDetail(prev => ({ ...prev, photos: prev.photos.filter(p => !selectedIds.has(p.id)) }))
+      setSelectedIds(new Set())
+      setShowBatchDeleteModal(false)
+      setSelectionMode(false)
+    } finally {
+      setBatchDeleteLoading(false)
+    }
+  }
+
+  async function handleBatchDeletePermanently() {
+    setBatchDeleteLoading(true)
+    try {
+      await Promise.all([...selectedIds].map(id => albumsApi.removePhoto(album.id, id)))
+      setDetail(prev => ({ ...prev, photos: prev.photos.filter(p => !selectedIds.has(p.id)) }))
+      setSelectedIds(new Set())
+      setShowBatchDeleteModal(false)
+      setSelectionMode(false)
+    } finally {
+      setBatchDeleteLoading(false)
+    }
+  }
+
   async function handleDeleteAlbum() {
     setDeleting(true)
     try {
@@ -556,7 +630,25 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
               }
             </button>
           )}
-          {canUpload && (
+          {photos.length > 0 && (
+            <button
+              onClick={toggleSelectionMode}
+              title={selectionMode ? 'Annuler la sélection' : 'Sélectionner des photos'}
+              className={`h-8 w-8 flex items-center justify-center rounded-full transition-colors ${
+                selectionMode ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+              }`}
+            >
+              {selectionMode
+                ? <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+              }
+            </button>
+          )}
+          {canUpload && !selectionMode && (
             <>
               <button onClick={() => setShowGalleryPicker(true)} title="Ajouter depuis la galerie"
                 className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200">
@@ -573,7 +665,7 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
               </button>
             </>
           )}
-          {canDelete && (
+          {canDelete && !selectionMode && (
             <button onClick={() => setConfirmDelete(true)} title="Supprimer l'album"
               className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-red-400 active:bg-red-50">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -600,15 +692,41 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
           <div className="grid grid-cols-3 gap-0.5 p-0.5">
             {uploading && <UploadPlaceholder />}
             {photos.map((photo, i) => (
-              <PhotoThumb key={photo.id} photo={photo} onClick={() => setViewerIndex(i)} isDownloaded={downloadedIds.has(photo.id)} />
+              <PhotoThumb
+                key={photo.id}
+                photo={photo}
+                onClick={selectionMode ? () => togglePhotoSelect(photo.id) : () => setViewerIndex(i)}
+                isDownloaded={!selectionMode && downloadedIds.has(photo.id)}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(photo.id)}
+              />
             ))}
           </div>
         )}
       </div>
 
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="shrink-0 px-4 pt-3 pb-5 bg-white border-t border-gray-100 flex gap-2">
+          <button
+            onClick={() => setShowBatchDeleteModal(true)}
+            disabled={batchDownloading}
+            className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white disabled:opacity-50 active:opacity-80"
+          >
+            Supprimer ({selectedIds.size})
+          </button>
+          <button
+            onClick={handleBatchDownload}
+            disabled={batchDownloading}
+            className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-white disabled:opacity-50 active:opacity-80"
+          >
+            {batchDownloading ? 'En cours…' : `Télécharger (${selectedIds.size})`}
+          </button>
+        </div>
+      )}
+
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
 
-      {viewerIndex !== null && (
+      {viewerIndex !== null && !selectionMode && (
         <PhotoViewer
           photos={photos}
           index={viewerIndex}
@@ -643,6 +761,15 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
         onClose={() => setPhotoDeleteTarget(null)}
         onRemoveFromAlbum={() => handleRemoveFromAlbum(photoDeleteTarget)}
         onDeletePermanently={() => handleDeletePermanently(photoDeleteTarget)}
+      />
+
+      <PhotoDeleteModal
+        open={showBatchDeleteModal}
+        loading={batchDeleteLoading}
+        count={selectedIds.size}
+        onClose={() => setShowBatchDeleteModal(false)}
+        onRemoveFromAlbum={handleBatchRemoveFromAlbum}
+        onDeletePermanently={handleBatchDeletePermanently}
       />
     </>
   )
