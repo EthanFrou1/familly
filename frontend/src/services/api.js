@@ -93,6 +93,7 @@ export const adminApi = {
   generateInvitation: (email, role, memberId, appUrl, firstName, familyGroupName) =>
     api.post('/auth/invitations', { email, role, memberId, appUrl, firstName, familyGroupName }),
   getMemberAccountStatus: (memberId) => api.get(`/auth/member/${memberId}/account-status`),
+  getMemberInvitationToken: (memberId) => api.get(`/auth/member/${memberId}/invitation-token`),
 }
 
 export const familiesApi = {
@@ -114,7 +115,8 @@ export const pushApi = {
   getVapidPublicKey: () => api.get('/push/vapid-public-key'),
   subscribe: (endpoint, p256dh, auth) => api.post('/push/subscribe', { endpoint, p256dh, auth }),
   unsubscribe: (endpoint) => api.delete('/push/unsubscribe', { data: { endpoint } }),
-  sendTest: () => api.post('/push/test'),
+  sendTest: (userIds) => api.post('/push/test', { userIds }),
+  getSubscribers: () => api.get('/push/subscribers'),
 }
 
 export default api

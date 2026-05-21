@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 export default function Select({ value, onChange, children, placeholder = 'Sélectionner…', required, className = '' }) {
   const [open, setOpen] = useState(false)
-  const [dropUp, setDropUp] = useState(false)
+  const [dropStyle, setDropStyle] = useState({})
   const ref = useRef(null)
   const triggerRef = useRef(null)
 
@@ -30,7 +30,11 @@ export default function Select({ value, onChange, children, placeholder = 'Séle
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
       const spaceBelow = window.innerHeight - rect.bottom
-      setDropUp(spaceBelow < 230)
+      if (spaceBelow < 230) {
+        setDropStyle({ position: 'fixed', bottom: window.innerHeight - rect.top + 6, left: rect.left, width: rect.width })
+      } else {
+        setDropStyle({ position: 'fixed', top: rect.bottom + 6, left: rect.left, width: rect.width })
+      }
     }
     setOpen(o => !o)
   }
@@ -66,9 +70,9 @@ export default function Select({ value, onChange, children, placeholder = 'Séle
         </svg>
       </button>
 
-      {/* Dropdown panel */}
+      {/* Dropdown panel — fixed to escape any overflow-hidden ancestor */}
       {open && (
-        <div className={`absolute left-0 right-0 z-50 rounded-2xl border border-gray-100 bg-white shadow-xl overflow-hidden ${dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}>
+        <div className="z-[9999] rounded-2xl border border-gray-100 bg-white shadow-xl overflow-hidden" style={dropStyle}>
           <div className="max-h-52 overflow-y-auto py-1">
             {options.map((opt, i) => {
               const isSelected = String(opt.value) === String(value)

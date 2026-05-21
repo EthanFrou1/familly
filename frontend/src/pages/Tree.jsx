@@ -80,7 +80,7 @@ export default function Tree() {
         </p>
       </div>
 
-      <div className="relative flex-1 overflow-hidden bg-gray-50">
+      <div className="relative flex-1 bg-gray-50">
 
       {/* ── Filtres inline ── */}
       <div className="absolute top-3 left-3 right-3 z-20 justify-center pb-3 flex items-center gap-2 overflow-x-auto scrollbar-none">
@@ -195,16 +195,18 @@ export default function Tree() {
       )}
 
       {/* ── Tree ── */}
-      <ReactFlowProvider>
-        <FamilyTree
-          key={treeKey}
-          members={filteredMembers}
-          relations={relations}
-          families={families}
-          currentMemberId={user?.memberId}
-          onNodeClick={m => navigate(`/profile/${m.id}`)}
-        />
-      </ReactFlowProvider>
+      <div className="absolute inset-0 overflow-hidden">
+        <ReactFlowProvider>
+          <FamilyTree
+            key={treeKey}
+            members={filteredMembers}
+            relations={relations}
+            families={families}
+            currentMemberId={user?.memberId}
+            onNodeClick={m => navigate(`/profile/${m.id}`)}
+          />
+        </ReactFlowProvider>
+      </div>
 
       {/* ── Siblings suggestion modal ── */}
       {showSuggestions && siblingsSuggestions.length > 0 && (

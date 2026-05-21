@@ -69,6 +69,12 @@ public class AuthService(AppDbContext db, IConfiguration config)
         return user;
     }
 
+    public async Task<string?> GetMemberInvitationTokenAsync(Guid memberId)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.MemberId == memberId && u.InvitationToken != null && u.InvitationUsedAt == null);
+        return user?.InvitationToken;
+    }
+
     public async Task<UserDto?> GetCurrentUserAsync(Guid userId)
     {
         var user = await db.Users.Include(u => u.Member).FirstOrDefaultAsync(u => u.Id == userId);
