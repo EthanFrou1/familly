@@ -17,7 +17,7 @@ const edgeTypes = { siblingBracket: SiblingEdge, siblingArch: SiblingArchEdge }
 function ZoomControls() {
   const { zoomIn, zoomOut, fitView } = useReactFlow()
   return (
-    <Panel position="bottom-right" style={{ bottom: 16, right: 16 }}>
+    <Panel position="bottom-right" style={{ bottom: 16, right: 0 }}>
       <div className="flex flex-col bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
         <button
           onClick={() => zoomIn({ duration: 200 })}
@@ -96,7 +96,7 @@ export default function FamilyTree({ members, relations, families, currentMember
       <MiniMap
         nodeColor={n => n.data?.color?.border || '#D1D5DB'}
         position="bottom-right"
-        style={{ bottom: 16, right: 52, width: 110, height: 70 }}
+        style={{ bottom: 16, right: 50, width: 110, height: 70 }}
         pannable
         zoomable
       />
