@@ -182,11 +182,16 @@ function GalerieTab() {
   )
 }
 
+const ALBUM_FILTERS = ['tous', 'moi']
+const ALBUM_FILTER_LABELS = { tous: 'Tous', moi: 'Mes albums' }
+
 function AlbumsTab() {
+  const { user } = useAuth()
   const [albums, setAlbums] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [selectedAlbum, setSelectedAlbum] = useState(null)
+  const [albumFilter, setAlbumFilter] = useState('tous')
 
   useEffect(() => {
     albumsApi.getAll().then(({ data }) => setAlbums(data)).finally(() => setLoading(false))
@@ -205,17 +210,34 @@ function AlbumsTab() {
     )
   }
 
+  const filteredAlbums = albumFilter === 'moi'
+    ? albums.filter(a => a.creatorId === user?.memberId)
+    : albums
+
   return (
     <>
-      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-100 shrink-0">
-        <span className="text-xs text-gray-500 font-medium">{albums.length} album{albums.length !== 1 ? 's' : ''}</span>
-        <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-white active:bg-primary-dark">
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Nouvel album
-        </button>
+      <div className="flex flex-col bg-white border-b border-gray-100 shrink-0">
+        <div className="flex items-center justify-between px-4 pt-2.5 pb-1.5">
+          <div className="flex gap-2">
+            {ALBUM_FILTERS.map(f => (
+              <button key={f} onClick={() => setAlbumFilter(f)}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                  albumFilter === f ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+                }`}
+              >
+                {ALBUM_FILTER_LABELS[f]}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-white active:bg-primary-dark">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Nouvel album
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 px-4 pb-2">{filteredAlbums.length} album{filteredAlbums.length !== 1 ? 's' : ''}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -223,16 +245,16 @@ function AlbumsTab() {
           <div className="flex h-40 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
-        ) : albums.length === 0 ? (
+        ) : filteredAlbums.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2 text-gray-400">
             <svg className="h-10 w-10 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
             </svg>
-            <p className="text-sm">Aucun album</p>
+            <p className="text-sm">{albumFilter === 'moi' ? 'Aucun album créé par vous' : 'Aucun album'}</p>
           </div>
         ) : (
           <div className="p-3 grid grid-cols-2 gap-3">
-            {albums.map(album => {
+            {filteredAlbums.map(album => {
               const daysLeft = album.expiresAt
                 ? Math.ceil((new Date(album.expiresAt) - new Date()) / 86400000)
                 : null
@@ -420,15 +442,11 @@ function PhotoThumb({ photo, onClick }) {
   return (
     <button className="aspect-square active:opacity-80 relative overflow-hidden" onClick={onClick}>
       <img src={photo.cloudinaryUrl} alt="" className="h-full w-full object-cover" />
-      {/* Gradient + uploader name */}
       {photo.uploaderName && (
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent pt-3 pb-1 px-1">
-          <p className="text-[9px] text-white font-medium truncate leading-tight">
-            {photo.uploaderName.split(' ')[0]}
-          </p>
-        </div>
+        <span className="absolute bottom-1 left-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white truncate max-w-[80%]" style={{ backgroundColor: 'rgba(42,18,8,0.82)' }}>
+          {photo.uploaderName.split(' ')[0]}
+        </span>
       )}
-      {/* Expiry badge */}
       {showExpiry && (
         <span className="absolute top-1 right-1 rounded-full bg-amber-500/90 px-1 py-px text-[9px] font-bold text-white">
           J-{daysLeft}

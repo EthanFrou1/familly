@@ -38,6 +38,7 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
                 EventTitle = a.Event != null ? a.Event.Title : null,
                 PhotoCount = a.Photos.Count,
                 CoverUrl = a.Photos.OrderByDescending(p => p.CreatedAt).Select(p => p.CloudinaryUrl).FirstOrDefault(),
+                a.CreatorId,
                 CreatorName = a.Creator.FirstName + " " + a.Creator.LastName,
             })
             .ToListAsync();
