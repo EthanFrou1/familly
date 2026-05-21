@@ -54,6 +54,13 @@ public class CloudinaryService
         return ($"{_publicUrl}/{key}", key);
     }
 
+    public async Task<(Stream Stream, string ContentType)> GetStreamAsync(string key)
+    {
+        if (_s3 is null) throw new InvalidOperationException("Le stockage R2 n'est pas configuré.");
+        var response = await _s3.GetObjectAsync(_bucket, key);
+        return (response.ResponseStream, response.Headers.ContentType ?? "image/jpeg");
+    }
+
     public async Task DeleteAsync(string publicId)
     {
         if (_s3 is null || string.IsNullOrEmpty(publicId)) return;

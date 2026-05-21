@@ -103,6 +103,17 @@ public class PhotosController(AppDbContext db, CloudinaryService cloudinary) : C
         return Ok(new { photo.Id, photo.AlbumId });
     }
 
+    [HttpGet("{id:guid}/download")]
+    public async Task<IActionResult> Download(Guid id)
+    {
+        var photo = await db.Photos.FindAsync(id);
+        if (photo is null) return NotFound();
+
+        var (stream, contentType) = await cloudinary.GetStreamAsync(photo.CloudinaryPublicId);
+        Response.Headers.Append("Cache-Control", "private, max-age=86400");
+        return File(stream, contentType, $"photo-{id}.jpg");
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
