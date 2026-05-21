@@ -64,20 +64,45 @@ export default function Photos() {
         ))}
       </div>
 
-      <div className="flex gap-2 px-4 py-2.5 bg-white border-b border-gray-100">
-        {MEDIA_FILTERS.map(f => (
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-white border-b border-gray-100">
+        <div className="flex gap-2 flex-1">
+          {MEDIA_FILTERS.map(f => (
+            <button
+              key={f}
+              onClick={() => setMediaFilter(f)}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                mediaFilter === f
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+              }`}
+            >
+              {FILTER_LABELS[f]}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
           <button
-            key={f}
-            onClick={() => setMediaFilter(f)}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-              mediaFilter === f
-                ? 'bg-primary text-white'
-                : 'bg-gray-100 text-gray-600 active:bg-gray-200'
-            }`}
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            title="Ajouter une photo"
+            className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200 disabled:opacity-50"
           >
-            {FILTER_LABELS[f]}
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
           </button>
-        ))}
+          <button
+            onClick={() => setShowAddVideo(true)}
+            title="Ajouter une vidéo"
+            className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -119,22 +144,7 @@ export default function Photos() {
         )}
       </div>
 
-      <div className="p-4 bg-white border-t border-gray-200 flex gap-2">
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleUpload} />
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="flex-1 rounded-xl bg-primary py-3 font-semibold text-white min-h-touch active:bg-primary-dark disabled:opacity-50"
-        >
-          {uploading ? 'Envoi…' : '+ Photo'}
-        </button>
-        <button
-          onClick={() => setShowAddVideo(true)}
-          className="flex-1 rounded-xl border-2 border-primary py-3 font-semibold text-primary min-h-touch active:bg-primary/5"
-        >
-          + Vidéo
-        </button>
-      </div>
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleUpload} />
 
       <AddVideoModal
         open={showAddVideo}
