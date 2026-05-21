@@ -8,13 +8,15 @@ import PhotoViewer from '../components/photos/PhotoViewer'
 import CreateAlbumModal from '../components/photos/CreateAlbumModal'
 import ConfirmModal from '../components/shared/ConfirmModal'
 
-const PHOTO_TABS = ['feed', 'album']
-const TAB_LABELS = { feed: 'Éphémères (30j)', album: 'Albums' }
+const PHOTO_TABS = ['galerie', 'album']
+const TAB_LABELS = { galerie: 'Galerie', album: 'Albums' }
 const MEDIA_FILTERS = ['tous', 'photos', 'videos']
 const FILTER_LABELS = { tous: 'Tous', photos: 'Photos', videos: 'Vidéos' }
+const AUTHOR_FILTERS = ['tous', 'moi', 'autres']
+const AUTHOR_LABELS = { tous: 'Tous', moi: 'Mes photos', autres: 'Les autres' }
 
 export default function Photos() {
-  const [tab, setTab] = useState('feed')
+  const [tab, setTab] = useState('galerie')
 
   return (
     <div className="flex flex-col h-full">
@@ -31,13 +33,15 @@ export default function Photos() {
           </button>
         ))}
       </div>
-      {tab === 'feed' ? <FeedTab /> : <AlbumsTab />}
+      {tab === 'galerie' ? <GalerieTab /> : <AlbumsTab />}
     </div>
   )
 }
 
-function FeedTab() {
+function GalerieTab() {
+  const { user } = useAuth()
   const [mediaFilter, setMediaFilter] = useState('tous')
+  const [authorFilter, setAuthorFilter] = useState('tous')
   const [photos, setPhotos] = useState([])
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -49,7 +53,7 @@ function FeedTab() {
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      photosApi.getAll('feed').then(({ data }) => setPhotos(data)),
+      photosApi.getAll().then(({ data }) => setPhotos(data)),
       externalMediaApi.getAll().then(({ data }) => setVideos(data)),
     ]).finally(() => setLoading(false))
   }, [])
@@ -60,8 +64,7 @@ function FeedTab() {
     setUploading(true)
     try {
       const compressed = await imageCompression(file, { maxSizeMB: 0.4, maxWidthOrHeight: 1200 })
-      const expiresAt = new Date(Date.now() + 30 * 86400 * 1000).toISOString()
-      const { data } = await photosApi.upload(compressed, 'feed', null, expiresAt)
+      const { data } = await photosApi.upload(compressed, 'feed', null, null)
       setPhotos(prev => [data, ...prev])
     } finally {
       setUploading(false)
@@ -69,38 +72,67 @@ function FeedTab() {
     }
   }
 
+  function handleAlbumLinked(photoId, albumId) {
+    setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, albumId } : p))
+  }
+
   const showPhotos = mediaFilter === 'tous' || mediaFilter === 'photos'
   const showVideos = mediaFilter === 'tous' || mediaFilter === 'videos'
-  const hasContent = uploading || (showPhotos && photos.length > 0) || (showVideos && videos.length > 0)
+
+  const filteredPhotos = photos.filter(p => {
+    if (authorFilter === 'moi') return p.uploaderId === user?.memberId
+    if (authorFilter === 'autres') return p.uploaderId !== user?.memberId
+    return true
+  })
+
+  const filteredVideos = authorFilter === 'tous' ? videos
+    : authorFilter === 'moi' ? videos.filter(v => v.uploaderId === user?.memberId)
+    : videos.filter(v => v.uploaderId !== user?.memberId)
+
+  const hasContent = uploading || (showPhotos && filteredPhotos.length > 0) || (showVideos && filteredVideos.length > 0)
 
   return (
     <>
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-white border-b border-gray-100 shrink-0">
-        <div className="flex gap-2 flex-1">
-          {MEDIA_FILTERS.map(f => (
-            <button key={f} onClick={() => setMediaFilter(f)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-                mediaFilter === f ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+      <div className="flex flex-col bg-white border-b border-gray-100 shrink-0">
+        <div className="flex items-center gap-2 px-4 pt-2.5 pb-1.5">
+          <div className="flex gap-2 flex-1 flex-wrap">
+            {MEDIA_FILTERS.map(f => (
+              <button key={f} onClick={() => setMediaFilter(f)}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                  mediaFilter === f ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+                }`}
+              >
+                {FILTER_LABELS[f]}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => fileRef.current?.click()} disabled={uploading} title="Ajouter une photo"
+              className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200 disabled:opacity-50">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+            <button onClick={() => setShowAddVideo(true)} title="Ajouter une vidéo"
+              className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        {/* Author filter */}
+        <div className="flex gap-2 px-4 pb-2.5">
+          {AUTHOR_FILTERS.map(f => (
+            <button key={f} onClick={() => setAuthorFilter(f)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                authorFilter === f ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 active:bg-gray-200'
               }`}
             >
-              {FILTER_LABELS[f]}
+              {AUTHOR_LABELS[f]}
             </button>
           ))}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => fileRef.current?.click()} disabled={uploading} title="Ajouter une photo"
-            className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200 disabled:opacity-50">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
-          <button onClick={() => setShowAddVideo(true)} title="Ajouter une vidéo"
-            className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -113,17 +145,17 @@ function FeedTab() {
           <EmptyState />
         ) : (
           <div className="p-3 flex flex-col gap-4">
-            {showVideos && videos.length > 0 && (
+            {showVideos && filteredVideos.length > 0 && (
               <div className="flex flex-col gap-2">
-                {videos.map(video => (
+                {filteredVideos.map(video => (
                   <VideoCard key={video.id} video={video} onDelete={id => setVideos(prev => prev.filter(v => v.id !== id))} />
                 ))}
               </div>
             )}
-            {(showPhotos && photos.length > 0) || uploading ? (
+            {(showPhotos && filteredPhotos.length > 0) || uploading ? (
               <div className="grid grid-cols-3 gap-0.5">
                 {uploading && <UploadPlaceholder />}
-                {showPhotos && photos.map((photo, i) => (
+                {showPhotos && filteredPhotos.map((photo, i) => (
                   <PhotoThumb key={photo.id} photo={photo} onClick={() => setViewerIndex(i)} />
                 ))}
               </div>
@@ -136,11 +168,12 @@ function FeedTab() {
 
       {viewerIndex !== null && (
         <PhotoViewer
-          photos={photos}
+          photos={filteredPhotos}
           index={viewerIndex}
           onClose={() => setViewerIndex(null)}
           onPrev={() => setViewerIndex(i => Math.max(0, i - 1))}
-          onNext={() => setViewerIndex(i => Math.min(photos.length - 1, i + 1))}
+          onNext={() => setViewerIndex(i => Math.min(filteredPhotos.length - 1, i + 1))}
+          onAlbumLinked={handleAlbumLinked}
         />
       )}
 

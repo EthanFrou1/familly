@@ -79,6 +79,7 @@ export const photosApi = {
     })
   },
   delete: (id) => api.delete(`/photos/${id}`),
+  setAlbum: (photoId, albumId) => api.put(`/photos/${photoId}/album`, { albumId }),
 }
 
 export const eventsApi = {
