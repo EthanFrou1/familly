@@ -4,6 +4,7 @@ import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { adminApi, familiesApi, membersApi } from '../services/api'
 import Avatar from '../components/shared/Avatar'
+import Select from '../components/shared/Select'
 
 const PAGE_SIZE = 10
 
@@ -156,25 +157,37 @@ export default function Admin() {
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-0.5 no-scrollbar">
-          <FilterSelect value={statusFilter} onChange={setStatusFilter}>
-            <option value="">Tous statuts</option>
+          <Select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            placeholder="Tous statuts"
+            className="shrink-0 w-36"
+          >
             <option value="active">Actif</option>
             <option value="pending">En attente</option>
             <option value="none">Sans compte</option>
-          </FilterSelect>
+          </Select>
 
-          <FilterSelect value={typeFilter} onChange={setTypeFilter}>
-            <option value="">Tous types</option>
+          <Select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            placeholder="Tous types"
+            className="shrink-0 w-36"
+          >
             <option value="autonomous">Autonome</option>
             <option value="managed">Géré</option>
             <option value="deceased">Décédé</option>
-          </FilterSelect>
+          </Select>
 
-          <FilterSelect value={familyFilter} onChange={setFamilyFilter}>
-            <option value="">Toutes familles</option>
+          <Select
+            value={familyFilter}
+            onChange={e => setFamilyFilter(e.target.value)}
+            placeholder="Toutes familles"
+            className="shrink-0 w-40"
+          >
             <option value="__none__">Sans famille</option>
             {families.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </FilterSelect>
+          </Select>
         </div>
 
         {filtered.length !== overview.length && (
@@ -275,30 +288,6 @@ function StatChip({ label, value, color }) {
   )
 }
 
-function FilterSelect({ value, onChange, children }) {
-  const hasValue = !!value
-  return (
-    <div className="relative shrink-0">
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className={`appearance-none pl-3 pr-8 py-2 rounded-2xl border text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors ${
-          hasValue
-            ? 'bg-primary/10 border-primary/30 text-primary'
-            : 'bg-white border-gray-200 text-gray-600'
-        }`}
-      >
-        {children}
-      </select>
-      <svg
-        className={`pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 ${hasValue ? 'text-primary' : 'text-gray-400'}`}
-        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-  )
-}
 
 function MemberCard({ member: m, onNavigate, onInvite, onCopyLink, onManage }) {
   const st = STATUS_CONFIG[m.accountStatus] ?? STATUS_CONFIG.none
