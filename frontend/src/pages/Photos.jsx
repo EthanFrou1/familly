@@ -396,7 +396,7 @@ function AlbumsTab() {
               return (
                 <button key={album.id} onClick={() => setSelectedAlbum(album)}
                   className="flex flex-col rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 active:opacity-80 text-left">
-                  <div className="aspect-square w-full bg-gray-100 relative">
+                  <div className="aspect-square w-full bg-gray-100 relative overflow-hidden flex-shrink-0">
                     {album.coverUrl
                       ? <img src={album.coverUrl} alt="" className="h-full w-full object-cover" />
                       : <div className="h-full w-full flex items-center justify-center text-gray-300">
