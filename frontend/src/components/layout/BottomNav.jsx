@@ -175,7 +175,17 @@ function HomeIcon({ className }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
 }
 function TreeIcon({ className }) {
-  return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="3.5" r="1.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v3" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 8h12M6 8v3M18 8v3" />
+      <circle cx="6" cy="13" r="1.5" />
+      <circle cx="18" cy="13" r="1.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 14.5v3M18 14.5v3" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 20h4M16 20h4" />
+    </svg>
+  )
 }
 function MapIcon({ className }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" /><line x1="8" y1="2" x2="8" y2="18" /><line x1="16" y1="6" x2="16" y2="22" /></svg>

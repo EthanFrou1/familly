@@ -2,8 +2,9 @@ import { useMemo } from 'react'
 import {
   ReactFlow,
   Background,
-  Controls,
   MiniMap,
+  Panel,
+  useReactFlow,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import PersonNode from './PersonNode'
@@ -13,12 +14,56 @@ import { buildTreeLayout, buildFamilyColorMap } from './treeLayout'
 const nodeTypes = { person: PersonNode }
 const edgeTypes = { siblingBracket: SiblingEdge, siblingArch: SiblingArchEdge }
 
-export default function FamilyTree({ members, relations, families, onNodeClick }) {
+function ZoomControls() {
+  const { zoomIn, zoomOut, fitView } = useReactFlow()
+  return (
+    <Panel position="bottom-right" style={{ bottom: 16, right: 16 }}>
+      <div className="flex flex-col bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+        <button
+          onClick={() => zoomIn({ duration: 200 })}
+          className="h-9 w-9 flex items-center justify-center text-gray-600 hover:bg-gray-50 active:bg-gray-100 text-lg font-bold"
+          title="Zoom avant"
+        >
+          +
+        </button>
+        <div className="h-px bg-gray-100" />
+        <button
+          onClick={() => zoomOut({ duration: 200 })}
+          className="h-9 w-9 flex items-center justify-center text-gray-600 hover:bg-gray-50 active:bg-gray-100 text-lg font-bold"
+          title="Zoom arrière"
+        >
+          −
+        </button>
+        <div className="h-px bg-gray-100" />
+        <button
+          onClick={() => fitView({ duration: 300, padding: 0.25 })}
+          className="h-9 w-9 flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100"
+          title="Centrer"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V6a2 2 0 012-2h2M4 16v2a2 2 0 002 2h2M16 4h2a2 2 0 012 2v2M16 20h2a2 2 0 002-2v-2" />
+          </svg>
+        </button>
+      </div>
+    </Panel>
+  )
+}
+
+export default function FamilyTree({ members, relations, families, currentMemberId, onNodeClick }) {
   const colorMap = useMemo(() => buildFamilyColorMap(families), [families])
 
-  const { rfNodes: nodes, rfEdges: edges } = useMemo(
+  const { rfNodes: rawNodes, rfEdges: edges } = useMemo(
     () => buildTreeLayout(members, relations, colorMap),
     [members, relations, colorMap]
+  )
+
+  const nodes = useMemo(
+    () => rawNodes.map(n =>
+      n.data.member.id === currentMemberId
+        ? { ...n, data: { ...n.data, isCurrentUser: true } }
+        : n
+    ),
+    [rawNodes, currentMemberId]
   )
 
   if (!members.length) {
@@ -48,18 +93,14 @@ export default function FamilyTree({ members, relations, families, onNodeClick }
       zoomOnPinch
     >
       <Background color="#E5E7EB" gap={24} size={1} />
-      <Controls
-        showInteractive={false}
-        position="bottom-right"
-        style={{ bottom: '108px', right: '16px' }}
-      />
       <MiniMap
         nodeColor={n => n.data?.color?.border || '#D1D5DB'}
         position="bottom-right"
-        style={{ bottom: '20px', right: '16px', width: 120, height: 80 }}
+        style={{ bottom: 16, right: 52, width: 110, height: 70 }}
         pannable
         zoomable
       />
+      <ZoomControls />
     </ReactFlow>
   )
 }
