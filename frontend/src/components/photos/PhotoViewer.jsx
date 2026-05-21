@@ -29,11 +29,12 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
 
   async function handleShare() {
     setSharing(true)
+    const proxyUrl = `/api/photos/${photo.id}/download`
     try {
       let done = false
       if (typeof navigator.canShare === 'function') {
         try {
-          const response = await fetch(photo.cloudinaryUrl)
+          const response = await fetch(proxyUrl, { credentials: 'include' })
           const blob = await response.blob()
           const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' })
           if (navigator.canShare({ files: [file] })) {
@@ -46,9 +47,8 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
         }
       }
       if (!done) {
-        const url = photo.cloudinaryUrl.replace('/upload/', '/upload/fl_attachment/')
         const a = document.createElement('a')
-        a.href = url
+        a.href = proxyUrl
         a.download = 'photo.jpg'
         a.rel = 'noopener'
         document.body.appendChild(a)

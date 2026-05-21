@@ -380,7 +380,7 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
     if (batch.length === 0) return
     setDownloading(true)
     try {
-      const blobs = await Promise.all(batch.map(p => fetch(p.cloudinaryUrl).then(r => r.blob())))
+      const blobs = await Promise.all(batch.map(p => fetch(`/api/photos/${p.id}/download`, { credentials: 'include' }).then(r => r.blob())))
       const files = blobs.map((b, i) => new File([b], `photo-${i + 1}.jpg`, { type: b.type || 'image/jpeg' }))
       if (navigator.canShare?.({ files })) {
         await navigator.share({ files, title: album.name })
