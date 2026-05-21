@@ -30,17 +30,30 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
   async function handleShare() {
     setSharing(true)
     try {
-      const blob = await fetch(photo.cloudinaryUrl).then(r => r.blob())
-      const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' })
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file] })
-        onShared?.(photo.id)
-      } else {
+      let done = false
+      if (typeof navigator.canShare === 'function') {
+        try {
+          const response = await fetch(photo.cloudinaryUrl)
+          const blob = await response.blob()
+          const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' })
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file] })
+            onShared?.(photo.id)
+            done = true
+          }
+        } catch (e) {
+          if (e.name === 'AbortError') return
+        }
+      }
+      if (!done) {
         const url = photo.cloudinaryUrl.replace('/upload/', '/upload/fl_attachment/')
         const a = document.createElement('a')
         a.href = url
         a.download = 'photo.jpg'
+        a.rel = 'noopener'
+        document.body.appendChild(a)
         a.click()
+        document.body.removeChild(a)
         onShared?.(photo.id)
       }
     } catch (e) {

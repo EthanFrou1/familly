@@ -32,21 +32,7 @@ export default function AlbumPickerModal({ open, photo, onClose, onLinked }) {
     }
   }
 
-  async function handleRemove() {
-    setSaving('none')
-    try {
-      await photosApi.setAlbum(photo.id, null)
-      onLinked(null)
-      onClose()
-    } finally {
-      setSaving(null)
-    }
-  }
-
   if (!open) return null
-
-  const currentAlbum = albums.find(a => a.id === photo.albumId)
-  const canRemove = !currentAlbum || canAdd(currentAlbum)
 
   return createPortal(
     <div className="fixed inset-0 z-[110] flex items-end justify-center sm:items-center">
@@ -116,17 +102,6 @@ export default function AlbumPickerModal({ open, photo, onClose, onLinked }) {
           )}
         </div>
 
-        {photo.albumId && canRemove && (
-          <div className="border-t border-gray-100 px-5 py-3">
-            <button
-              onClick={handleRemove}
-              disabled={saving === 'none'}
-              className="w-full rounded-xl bg-red-500 py-2.5 text-sm font-semibold text-white active:opacity-80 disabled:opacity-50"
-            >
-              {saving === 'none' ? 'Retrait…' : 'Retirer de l\'album'}
-            </button>
-          </div>
-        )}
       </div>
     </div>,
     document.body
