@@ -53,7 +53,7 @@ public class AlbumsController(AppDbContext db, CloudinaryService cloudinary) : C
                 a.EventId,
                 EventTitle = a.Event != null ? a.Event.Title : null,
                 Photos = a.Photos.OrderByDescending(p => p.CreatedAt)
-                    .Select(p => new { p.Id, p.CloudinaryUrl, p.CreatedAt, p.UploaderId })
+                    .Select(p => new { p.Id, p.CloudinaryUrl, p.CreatedAt, p.UploaderId, UploaderName = p.Uploader.FirstName + " " + p.Uploader.LastName })
             })
             .FirstOrDefaultAsync();
 

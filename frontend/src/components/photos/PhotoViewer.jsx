@@ -90,25 +90,27 @@ export default function PhotoViewer({ photos, index, onClose, onPrev, onNext, on
 
         {/* Info panel */}
         {showInfo && (
-          <div className="bg-gray-900 px-4 py-3 flex flex-col gap-1.5">
+          <div className="bg-gray-900 px-4 py-3 flex flex-col gap-2">
+            {photo.uploaderName && (
+              <div className="flex items-center gap-2 text-xs text-gray-300">
+                <svg className="h-3.5 w-3.5 shrink-0 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>{photo.uploaderName}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
               </svg>
               <span>{date}</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" /><path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 015.656 0l4 4a4 4 0 01-5.656 5.656l-1.1-1.1" />
-              </svg>
-              <span className="truncate text-gray-500">{photo.cloudinaryUrl.split('/').pop()}</span>
-            </div>
             {photo.expiresAt && (
               <div className="flex items-center gap-2 text-xs text-amber-400">
                 <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
                 </svg>
-                <span>Expire le {new Date(photo.expiresAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</span>
+                <span>Éphémère · expire le {new Date(photo.expiresAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}</span>
               </div>
             )}
           </div>

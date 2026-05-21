@@ -22,7 +22,10 @@ public class PhotosController(AppDbContext db, CloudinaryService cloudinary) : C
 
         var photos = await query
             .OrderByDescending(p => p.CreatedAt)
-            .Select(p => new { p.Id, p.CloudinaryUrl, p.Category, p.ExpiresAt, p.CreatedAt, p.UploaderId })
+            .Select(p => new {
+                p.Id, p.CloudinaryUrl, p.Category, p.ExpiresAt, p.CreatedAt, p.UploaderId,
+                UploaderName = p.Uploader.FirstName + " " + p.Uploader.LastName
+            })
             .ToListAsync();
 
         return Ok(photos);
