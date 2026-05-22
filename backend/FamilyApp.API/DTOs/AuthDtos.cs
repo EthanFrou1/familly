@@ -1,9 +1,9 @@
 namespace FamilyApp.API.DTOs;
 
 public record LoginRequest(string Email, string Password);
-public record AcceptInvitationRequest(string Token, string Password);
+public record AcceptInvitationRequest(string Token, string Password, string? Email = null);
 public record GenerateInvitationRequest(
-    string Email,
+    string? Email,
     string Role,
     Guid MemberId,
     string? AppUrl = null,
@@ -11,6 +11,7 @@ public record GenerateInvitationRequest(
     string? FamilyGroupName = null);
 
 public record AuthResponse(string AccessToken, UserDto User);
+public record InviteInfoDto(bool NeedsEmail, string? FirstName);
 
 public record UserDto(Guid Id, string Email, string Role, Guid MemberId, string FirstName, string LastName);
 public record ActiveUserDto(Guid UserId, Guid MemberId, string FirstName, string LastName);

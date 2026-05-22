@@ -13,11 +13,19 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [inviteNeedsEmail, setInviteNeedsEmail] = useState(false)
   const inviteMode = !!token
 
   useEffect(() => {
     if (user && !inviteMode) navigate('/', { replace: true })
   }, [user, navigate, inviteMode])
+
+  useEffect(() => {
+    if (!token) return
+    authApi.inviteInfo(token)
+      .then(({ data }) => setInviteNeedsEmail(data.needsEmail))
+      .catch(() => {})
+  }, [token])
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -38,7 +46,7 @@ export default function Login() {
     setLoading(true)
     setError('')
     try {
-      const { data } = await authApi.acceptInvitation(token, password)
+      const { data } = await authApi.acceptInvitation(token, password, inviteNeedsEmail ? email : undefined)
       setToken(data.token)
       setUser(data.user)
       navigate('/', { replace: true })
@@ -78,7 +86,7 @@ export default function Login() {
           )}
 
           <form onSubmit={inviteMode ? handleAcceptInvite : handleLogin} className="space-y-3">
-            {!inviteMode && (
+            {(!inviteMode || inviteNeedsEmail) && (
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -87,7 +95,7 @@ export default function Login() {
                 </span>
                 <input
                   type="email"
-                  placeholder="Email"
+                  placeholder={inviteNeedsEmail ? 'Ton adresse email (pour te connecter)' : 'Email'}
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required

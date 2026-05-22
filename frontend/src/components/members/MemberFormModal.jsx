@@ -164,8 +164,8 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-          <div className="px-5 py-4 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
             {/* Identité */}
             <div className="grid grid-cols-2 gap-3">
@@ -226,7 +226,9 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
 
             <Field label="Téléphone">
               <input type="tel" value={form.phone}
+                autoComplete="tel"
                 onChange={e => set('phone', e.target.value.replace(/[^\d\s+\-().]/g, ''))}
+                onBlur={e => { const v = e.target.value.replace(/[^\d\s+\-().]/g, ''); if (v !== form.phone) set('phone', v) }}
                 className={inputCls} placeholder="+33 6 00 00 00 00" />
             </Field>
 
@@ -312,7 +314,7 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
 
           </div>
 
-          <div className="px-5 pb-8 pt-2 space-y-3">
+          <div className="shrink-0 px-5 pt-3 pb-8 space-y-3 border-t border-gray-100 bg-white">
             {feedback && (
               <div className={`rounded-xl px-4 py-3 text-sm font-medium text-center ${
                 feedback.type === 'success'
