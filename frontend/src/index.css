@@ -56,8 +56,8 @@ input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
   transition: background-color 0s 600000s, color 0s 600000s !important;
-  -webkit-text-fill-color: white !important;
-  caret-color: white;
+  -webkit-text-fill-color: currentColor !important;
+  caret-color: currentColor;
 }
 
 @layer utilities {
