@@ -75,11 +75,20 @@ public class EmailService(IHttpClientFactory http, IConfiguration config, ILogge
             var client = http.CreateClient();
             client.DefaultRequestHeaders.Add("api-key", apiKey);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
+
             var response = await client.PostAsJsonAsync("https://api.brevo.com/v3/smtp/email", payload);
+            var body     = await response.Content.ReadAsStringAsync();
+
             if (response.IsSuccessStatusCode)
-                logger.LogInformation("Password reset email sent to {Email}", toEmail);
+            {
+                using var doc = JsonDocument.Parse(body);
+                var id = doc.RootElement.GetProperty("messageId").GetString();
+                logger.LogInformation("Password reset email sent to {Email} — brevo id={Id}", toEmail, id);
+            }
             else
-                logger.LogError("Brevo error {Status} for reset email {Email}", (int)response.StatusCode, toEmail);
+            {
+                logger.LogError("Brevo error {Status} for {Email}: {Body}", (int)response.StatusCode, toEmail, body);
+            }
         }
         catch (Exception ex)
         {
