@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
-import { membersApi, relationsApi, adminApi, settingsApi, familiesApi, pushApi, activityLogsApi } from '../services/api'
+import { membersApi, relationsApi, adminApi, settingsApi, familiesApi, pushApi, activityLogsApi, authApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { FAMILY_PALETTE } from '../components/tree/treeLayout'
@@ -14,7 +14,7 @@ import { usePushNotifications } from '../hooks/usePushNotifications'
 
 export default function Profile() {
   const { id } = useParams()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const memberId = id ?? user?.memberId
@@ -51,6 +51,8 @@ export default function Profile() {
   const [logsPage, setLogsPage] = useState(1)
   const [logsData, setLogsData] = useState(null) // { logs, total, totalPages }
   const [logsLoading, setLogsLoading] = useState(false)
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false)
+  const [exportingData, setExportingData] = useState(false)
 
   useEffect(() => {
     if (!memberId) { setError('Aucun profil associé à ce compte.'); setLoading(false); return }
@@ -127,6 +129,30 @@ export default function Profile() {
     await membersApi.delete(memberId)
     refreshMembers()
     navigate(-1)
+  }
+
+  async function handleDeleteAccount() {
+    await authApi.deleteAccount()
+    logout()
+    navigate('/login')
+  }
+
+  async function handleExportMyData() {
+    setExportingData(true)
+    try {
+      const { data } = await authApi.exportMyData()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mybigfamily_mes_donnees_${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } finally {
+      setExportingData(false)
+    }
   }
 
   async function handleEdit(form) {
@@ -903,6 +929,42 @@ export default function Profile() {
           />
         )}
 
+        {/* Mon compte — visible uniquement sur son propre profil */}
+        {isOwnProfile && (
+          <Card title="Mon compte">
+            <button
+              onClick={handleExportMyData}
+              disabled={exportingData}
+              className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50"
+            >
+              <svg className="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              {exportingData ? 'Export en cours…' : 'Télécharger mes données (RGPD)'}
+            </button>
+
+            <a
+              href="/privacy"
+              className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 active:bg-gray-100 transition-colors"
+            >
+              <svg className="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Politique de confidentialité
+            </a>
+
+            <button
+              onClick={() => setShowDeleteAccountConfirm(true)}
+              className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-red-500 bg-red-50 active:bg-red-100 transition-colors"
+            >
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Supprimer mon compte
+            </button>
+          </Card>
+        )}
+
         {/* Membre depuis */}
         <p className="text-center text-xs text-gray-300">
           Membre depuis {new Date(member.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
@@ -947,6 +1009,15 @@ export default function Profile() {
         confirmLabel="Supprimer"
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      <ConfirmModal
+        open={showDeleteAccountConfirm}
+        title="Supprimer mon compte ?"
+        message="Votre compte sera supprimé et vos données de contact effacées. Votre profil restera dans l'arbre familial. Cette action est irréversible."
+        confirmLabel="Supprimer mon compte"
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowDeleteAccountConfirm(false)}
       />
 
       {linkModal && (

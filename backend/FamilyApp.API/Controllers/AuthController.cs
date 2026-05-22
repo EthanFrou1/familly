@@ -115,6 +115,25 @@ public class AuthController(AuthService authService, EmailService emailService) 
         return Ok(new { message = "Mot de passe réinitialisé avec succès." });
     }
 
+    [HttpDelete("me")]
+    [Authorize]
+    public async Task<IActionResult> DeleteAccount()
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await authService.DeleteAccountAsync(userId);
+        Response.Cookies.Delete("access_token");
+        return NoContent();
+    }
+
+    [HttpGet("me/export")]
+    [Authorize]
+    public async Task<IActionResult> ExportMyData()
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var data = await authService.GetMyExportAsync(userId);
+        return Ok(data);
+    }
+
     [HttpPost("invitations")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GenerateInvitation([FromBody] GenerateInvitationRequest req)

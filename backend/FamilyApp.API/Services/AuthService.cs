@@ -132,6 +132,108 @@ public class AuthService(AppDbContext db, IConfiguration config)
         return user is null ? null : MapToDto(user);
     }
 
+    public async Task<bool> DeleteAccountAsync(Guid userId)
+    {
+        var user = await db.Users.Include(u => u.Member).FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null) return false;
+
+        var memberId = user.MemberId;
+
+        // Anonymize activity logs where this member is target or related
+        var logsAsTarget = await db.ActivityLogs.Where(l => l.TargetMemberId == memberId).ToListAsync();
+        foreach (var log in logsAsTarget)
+        {
+            log.TargetMemberName = "Membre supprimé";
+            log.TargetMemberPictureUrl = null;
+        }
+
+        var logsAsRelated = await db.ActivityLogs.Where(l => l.RelatedMemberId == memberId).ToListAsync();
+        foreach (var log in logsAsRelated)
+            log.RelatedMemberName = "Membre supprimé";
+
+        // Remove personal contact data from member profile (keep name/birthdate for family tree)
+        var member = user.Member;
+        member.Email = null;
+        member.Phone = null;
+        member.Bio = null;
+        member.Address = null;
+        member.PostalCode = null;
+        member.City = null;
+        member.Country = null;
+        member.Latitude = null;
+        member.Longitude = null;
+        member.FacebookUrl = null;
+        member.InstagramUsername = null;
+        member.WhatsappNumber = null;
+
+        // Delete push subscriptions
+        var pushSubs = db.PushSubscriptions.Where(p => p.UserId == userId);
+        db.PushSubscriptions.RemoveRange(pushSubs);
+
+        // Delete user account
+        db.Users.Remove(user);
+
+        await db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<object> GetMyExportAsync(Guid userId)
+    {
+        var user = await db.Users
+            .Include(u => u.Member)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user is null) return new { };
+
+        var memberId = user.MemberId;
+
+        var photos = await db.Photos
+            .Where(p => p.UploaderId == memberId)
+            .Select(p => new { p.Id, p.Url, p.Category, p.CreatedAt })
+            .ToListAsync();
+
+        var activityLogs = await db.ActivityLogs
+            .Where(l => l.TargetMemberId == memberId)
+            .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new { l.Type, l.ActorName, l.CreatedAt })
+            .ToListAsync();
+
+        return new
+        {
+            exportedAt = DateTime.UtcNow,
+            account = new
+            {
+                user.Id,
+                user.Email,
+                user.Role,
+                user.CreatedAt,
+            },
+            profile = new
+            {
+                user.Member.Id,
+                user.Member.FirstName,
+                user.Member.LastName,
+                user.Member.BirthDate,
+                user.Member.Email,
+                user.Member.Phone,
+                user.Member.Bio,
+                user.Member.Occupation,
+                user.Member.Sport,
+                user.Member.Address,
+                user.Member.PostalCode,
+                user.Member.City,
+                user.Member.Country,
+                user.Member.Latitude,
+                user.Member.Longitude,
+                user.Member.FacebookUrl,
+                user.Member.InstagramUsername,
+                user.Member.WhatsappNumber,
+            },
+            photos,
+            activityLogs,
+        };
+    }
+
     private string GenerateJwt(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]!));

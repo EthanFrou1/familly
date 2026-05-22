@@ -37,6 +37,8 @@ export const authApi = {
   inviteInfo: (token) => api.get(`/auth/invite/${token}/info`),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
+  deleteAccount: () => api.delete('/auth/me'),
+  exportMyData: () => api.get('/auth/me/export'),
 }
 
 export const membersApi = {
