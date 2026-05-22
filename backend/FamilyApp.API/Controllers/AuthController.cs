@@ -101,7 +101,7 @@ public class AuthController(AuthService authService, EmailService emailService) 
         {
             var appUrl = Request.Headers["Origin"].FirstOrDefault()?.TrimEnd('/') ?? "https://mybigfamily.fr";
             var resetLink = $"{appUrl}/reset-password/{result.Value.token}";
-            _ = emailService.SendPasswordResetAsync(req.Email, result.Value.firstName, resetLink);
+            await emailService.SendPasswordResetAsync(req.Email, result.Value.firstName, resetLink);
         }
         // Always return OK to avoid user enumeration
         return Ok(new { message = "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé." });
@@ -129,8 +129,8 @@ public class AuthController(AuthService authService, EmailService emailService) 
         var appUrl = req.AppUrl?.TrimEnd('/') ?? "https://mybigfamily.fr";
         var inviteLink = $"{appUrl}/invite/{token}";
 
-        // Send email in background — don't block the response
-        _ = emailService.SendInvitationAsync(req.Email, req.FirstName ?? "là", inviteLink, req.FamilyGroupName);
+        if (!string.IsNullOrEmpty(req.Email))
+            await emailService.SendInvitationAsync(req.Email, req.FirstName ?? "là", inviteLink, req.FamilyGroupName);
 
         return Ok(new { token });
     }
