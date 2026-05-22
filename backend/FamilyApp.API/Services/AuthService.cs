@@ -189,7 +189,7 @@ public class AuthService(AppDbContext db, IConfiguration config)
 
         var photos = await db.Photos
             .Where(p => p.UploaderId == memberId)
-            .Select(p => new { p.Id, p.Url, p.Category, p.CreatedAt })
+            .Select(p => new { p.Id, p.CloudinaryUrl, p.Category, p.CreatedAt })
             .ToListAsync();
 
         var activityLogs = await db.ActivityLogs
