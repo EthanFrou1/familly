@@ -90,11 +90,12 @@ export default function Admin() {
 
   async function handleCopyLink(member) {
     const link = `${window.location.origin}/invite/${member.invitationToken}`
+    const message = `Bonjour ${member.firstName} !\n\nTu es invité(e) à rejoindre notre espace famille sur MyBigFamily.\n\nCrée ton compte en cliquant sur ce lien :\n${link}\n\nCe lien est à usage unique.`
     try {
-      await navigator.clipboard.writeText(link)
-      showToast('Lien copié dans le presse-papier !')
+      await navigator.clipboard.writeText(message)
+      showToast('Message copié !')
     } catch {
-      showToast('Impossible de copier le lien', 'error')
+      showToast('Impossible de copier', 'error')
     }
   }
 
@@ -386,11 +387,7 @@ function InviteModal({ member, onClose, onInvited }) {
         window.location.origin,
         member.firstName
       )
-      if (!hasEmail) {
-        setGeneratedToken(data.token)
-      } else {
-        onInvited(data.token)
-      }
+      setGeneratedToken(data.token)
     } catch (e) {
       setError(e.response?.data?.message ?? "Erreur lors de l'envoi.")
     } finally {
@@ -445,10 +442,15 @@ function InviteModal({ member, onClose, onInvited }) {
           </div>
         </div>
 
-        {/* Cas sans email : message généré à copier */}
-        {!hasEmail && generatedToken ? (
+        {/* Message à copier — affiché après génération/envoi pour tous les cas */}
+        {generatedToken ? (
           <>
-            <p className="text-xs text-gray-500">Copiez ce message et envoyez-le manuellement à {member.firstName}.</p>
+            {hasEmail && (
+              <p className="text-xs text-green-600 bg-green-50 rounded-xl px-4 py-2">
+                Invitation envoyée par email à {member.email}
+              </p>
+            )}
+            <p className="text-xs text-gray-500">Vous pouvez aussi copier ce message et l'envoyer manuellement.</p>
             <pre className="whitespace-pre-wrap text-xs bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-700 font-sans select-all">
               {inviteMessage}
             </pre>

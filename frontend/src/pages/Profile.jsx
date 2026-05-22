@@ -162,11 +162,10 @@ export default function Profile() {
   }
 
   async function handleGenerateInvite() {
-    if (!member.email) return
     setInviteState('loading')
     try {
       const { data } = await adminApi.generateInvitation(
-        member.email, 'Member', member.id,
+        member.email || null, 'Member', member.id,
         window.location.origin,
         member.firstName,
         familyGroupName ?? undefined
@@ -662,10 +661,17 @@ export default function Profile() {
               </div>
             )}
 
-            {accountStatus === 'none' && !member.email && (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-500">Ce membre n'a pas d'email — impossible d'envoyer une invitation.</p>
-                <p className="text-xs text-gray-400">Ajoutez un email dans son profil puis revenez ici pour l'inviter.</p>
+            {accountStatus === 'none' && !member.email && inviteState === 'idle' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-gray-300 shrink-0" />
+                  <p className="text-sm text-gray-700">Aucun compte — pas encore d'accès à l'appli.</p>
+                </div>
+                <p className="text-xs text-gray-400">Ce membre n'a pas d'email. Un lien sera généré — vous pourrez le copier et l'envoyer manuellement.</p>
+                <button onClick={handleGenerateInvite}
+                  className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white active:bg-primary-dark">
+                  Générer un lien d'invitation
+                </button>
               </div>
             )}
 
@@ -709,6 +715,12 @@ export default function Profile() {
                   )
                 })()}
 
+                {inviteLink && (
+                  <button onClick={handleCopyInviteMessage}
+                    className="w-full rounded-xl bg-primary/10 py-2.5 text-sm font-semibold text-primary active:bg-primary/20">
+                    {copiedMsg ? 'Message copié !' : 'Copier le message d\'invitation'}
+                  </button>
+                )}
                 {member.email && (
                   <button onClick={handleGenerateInvite}
                     className="w-full rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 active:bg-gray-50">
