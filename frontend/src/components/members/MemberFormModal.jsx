@@ -242,7 +242,7 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
             </Field>
 
             <Field label="Téléphone">
-              <input name="phone" type="tel" value={form.phone}
+              <input name="phone" type="text" inputMode="tel" value={form.phone}
                 autoComplete="tel"
                 onChange={e => set('phone', e.target.value.replace(/[^\d\s+\-().]/g, ''))}
                 className={inputCls} placeholder="+33 6 00 00 00 00" />
