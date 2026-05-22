@@ -227,8 +227,12 @@ export default function OnboardingModal({ user, onDone }) {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={e => { setPhone(e.target.value); setErrors(v => ({ ...v, phone: null })) }}
+                  onChange={e => {
+                    setPhone(e.target.value.replace(/[^0-9\s+\-().]/g, ''))
+                    setErrors(v => ({ ...v, phone: null }))
+                  }}
                   placeholder="06 12 34 56 78"
+                  inputMode="tel"
                   className={inputCls}
                 />
                 {errors.phone && <p className={errorCls}>{errors.phone}</p>}
