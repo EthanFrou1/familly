@@ -411,7 +411,7 @@ function InviteModal({ member, onClose, onInvited }) {
       <div className="flex gap-2">
         {[
           { value: 'Member', label: 'Membre', desc: 'Peut modifier son profil' },
-          { value: 'ReadOnly', label: 'Lecture seule', desc: 'Consultation uniquement' },
+          { value: 'Admin', label: 'Administrateur', desc: 'Accès complet' },
         ].map(r => (
           <button
             key={r.value}
@@ -451,7 +451,7 @@ function InviteModal({ member, onClose, onInvited }) {
               </p>
             )}
             <p className="text-xs text-gray-500">Vous pouvez aussi copier ce message et l'envoyer manuellement.</p>
-            <pre className="whitespace-pre-wrap text-xs bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-700 font-sans select-all">
+            <pre className="whitespace-pre-wrap break-all text-xs bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-700 font-sans select-all">
               {inviteMessage}
             </pre>
             {error && <p className="text-sm text-red-500">{error}</p>}

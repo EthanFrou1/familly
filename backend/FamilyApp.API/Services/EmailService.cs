@@ -144,9 +144,6 @@ public class EmailService(IHttpClientFactory http, IConfiguration config, ILogge
                      style="display:block;text-align:center;background:#A87048;color:#fff;font-weight:700;font-size:15px;padding:14px 24px;border-radius:12px;text-decoration:none;margin-bottom:24px">
                     Créer mon compte →
                   </a>
-                  <p style="color:#aaa;font-size:11px;word-break:break-all;margin:0">
-                    Lien alternatif&nbsp;: <a href="{inviteLink}" style="color:#A87048">{inviteLink}</a>
-                  </p>
                 </div>
                 <div style="padding:16px 24px;border-top:1px solid #f0f0f0;text-align:center">
                   <p style="color:#bbb;font-size:11px;margin:0">MyBigFamily · Accès sur invitation uniquement</p>
