@@ -33,7 +33,7 @@ export default function Privacy() {
 
         <Section title="1. Responsable du traitement">
           <p className="text-sm text-gray-600 leading-relaxed">
-            Le responsable du traitement des données est l'administrateur de l'espace famille MyBigFamily.
+            Le responsable du traitement des données est l&apos;administrateur de l&apos;espace famille MyBigFamily.
             Pour toute question ou demande relative à vos données, contactez-nous à{' '}
             <a href="mailto:bonjour@mybigfamily.fr" className="text-primary font-medium underline">
               bonjour@mybigfamily.fr
@@ -51,8 +51,8 @@ export default function Privacy() {
               { label: 'Adresse', value: 'Adresse postale, code postal, ville, pays, coordonnées GPS' },
               { label: 'Réseaux sociaux', value: 'Lien Facebook, nom Instagram, numéro WhatsApp (facultatifs)' },
               { label: 'Compte', value: 'Adresse e-mail, mot de passe chiffré (bcrypt), rôle' },
-              { label: 'Activité', value: 'Logs des actions réalisées dans l'application' },
-              { label: 'Notifications', value: 'Identifiant d'abonnement aux notifications push' },
+              { label: 'Activité', value: "Logs des actions réalisées dans l'application" },
+              { label: 'Notifications', value: "Identifiant d'abonnement aux notifications push" },
             ].map(({ label, value }) => (
               <div key={label} className="flex gap-2 text-sm">
                 <span className="shrink-0 font-semibold text-gray-800">{label} :</span>
@@ -66,7 +66,7 @@ export default function Privacy() {
           <ul className="space-y-2 text-sm text-gray-600">
             {[
               'Fournir un espace de partage familial privé (arbre généalogique, photos, carte, événements)',
-              'Gérer l'authentification et la sécurité des accès',
+              "Gérer l'authentification et la sécurité des accès",
               'Envoyer des emails transactionnels (invitations, réinitialisation de mot de passe)',
               'Envoyer des notifications push pour les événements familiaux',
             ].map((item) => (
@@ -87,10 +87,10 @@ export default function Privacy() {
         <Section title="4. Durée de conservation">
           <div className="space-y-2">
             {[
-              { label: 'Compte utilisateur', value: 'Jusqu'à suppression du compte' },
-              { label: 'Profil membre', value: 'Tant que l'espace famille est actif' },
-              { label: 'Logs d'activité', value: '12 mois maximum' },
-              { label: 'Photos', value: 'Jusqu'à suppression manuelle ou date d'expiration définie' },
+              { label: 'Compte utilisateur', value: "Jusqu'à suppression du compte" },
+              { label: 'Profil membre', value: "Tant que l'espace famille est actif" },
+              { label: "Logs d'activité", value: '12 mois maximum' },
+              { label: 'Photos', value: "Jusqu'à suppression manuelle ou date d'expiration définie" },
               { label: 'Tokens de réinitialisation', value: 'Expirés après 1 heure' },
             ].map(({ label, value }) => (
               <div key={label} className="flex gap-2 text-sm">
@@ -103,11 +103,11 @@ export default function Privacy() {
 
         <Section title="5. Sous-traitants">
           <p className="text-sm text-gray-600 mb-3">
-            Vos données peuvent transiter par les prestataires suivants, dans le cadre strict de l'hébergement et de l'envoi d'emails :
+            Vos données peuvent transiter par les prestataires suivants, dans le cadre strict de l&apos;hébergement et de l&apos;envoi d&apos;emails :
           </p>
           <div className="space-y-2">
             {[
-              { name: 'Brevo', role: 'Envoi d'emails transactionnels (e-mail, prénom)' },
+              { name: 'Brevo', role: "Envoi d'emails transactionnels (e-mail, prénom)" },
               { name: 'Cloudflare R2', role: 'Stockage des photos et images de profil' },
               { name: 'Railway', role: 'Hébergement du serveur backend' },
               { name: 'Neon', role: 'Base de données PostgreSQL hébergée' },
@@ -119,17 +119,17 @@ export default function Privacy() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-3">Aucune donnée n'est vendue ni partagée à des fins publicitaires.</p>
+          <p className="text-xs text-gray-400 mt-3">Aucune donnée n&apos;est vendue ni partagée à des fins publicitaires.</p>
         </Section>
 
         <Section title="6. Vos droits (RGPD)">
           <div className="space-y-2">
             {[
-              { right: 'Droit d'accès', desc: 'Obtenir une copie de vos données personnelles' },
+              { right: "Droit d'accès", desc: 'Obtenir une copie de vos données personnelles' },
               { right: 'Droit de rectification', desc: 'Corriger vos informations depuis votre profil' },
-              { right: 'Droit à l'effacement', desc: 'Supprimer votre compte depuis les paramètres de votre profil' },
+              { right: "Droit à l'effacement", desc: 'Supprimer votre compte depuis les paramètres de votre profil' },
               { right: 'Droit à la portabilité', desc: 'Télécharger vos données au format JSON depuis votre profil' },
-              { right: 'Droit d'opposition', desc: 'Désactiver les notifications push à tout moment' },
+              { right: "Droit d'opposition", desc: 'Désactiver les notifications push à tout moment' },
             ].map(({ right, desc }) => (
               <div key={right} className="flex items-start gap-3 rounded-xl bg-primary/5 px-3 py-2.5">
                 <div className="mt-0.5 h-4 w-4 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
@@ -150,22 +150,22 @@ export default function Privacy() {
           </p>
           <p className="text-sm text-gray-600 mt-2 leading-relaxed">
             Vous pouvez également déposer une réclamation auprès de la{' '}
-            <span className="font-semibold text-gray-800">CNIL</span> (Commission Nationale de l'Informatique et des Libertés) : cnil.fr
+            <span className="font-semibold text-gray-800">CNIL</span> (Commission Nationale de l&apos;Informatique et des Libertés) : cnil.fr
           </p>
         </Section>
 
         <Section title="7. Sécurité">
           <p className="text-sm text-gray-600 leading-relaxed">
-            Vos mots de passe sont chiffrés avec l'algorithme bcrypt et ne sont jamais stockés en clair.
+            Vos mots de passe sont chiffrés avec l&apos;algorithme bcrypt et ne sont jamais stockés en clair.
             Les accès sont sécurisés par token JWT et cookies HttpOnly.
-            L'accès à l'application est strictement limité aux membres invités.
+            L&apos;accès à l&apos;application est strictement limité aux membres invités.
           </p>
         </Section>
 
         <Section title="8. Cookies">
           <p className="text-sm text-gray-600 leading-relaxed">
             MyBigFamily utilise un cookie technique (<span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">access_token</span>) nécessaire
-            au fonctionnement de l'authentification. Aucun cookie publicitaire ou analytique n'est utilisé.
+            au fonctionnement de l&apos;authentification. Aucun cookie publicitaire ou analytique n&apos;est utilisé.
           </p>
         </Section>
 
