@@ -92,8 +92,25 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
   const [families, setFamilies] = useState([])
   const [waDial, setWaDial] = useState('+33')
   const [waLocal, setWaLocal] = useState('')
+  const formRef = useRef(null)
   const isEdit = !!initial
   const isDirty = isDirtyCheck(form, initial)
+
+  // iOS autofill et Google autofill déclenchent l'event natif `change` (pas `input`).
+  // React écoute `input`, donc les inputs contrôlés ne reçoivent pas la valeur et la
+  // réécrivent vide au prochain re-render. On intercepte `change` au niveau form pour syncer.
+  useEffect(() => {
+    const el = formRef.current
+    if (!el) return
+    const sync = (e) => {
+      const { name, value, tagName } = e.target
+      if (!name || tagName === 'SELECT') return
+      const cleaned = name === 'phone' ? value.replace(/[^\d\s+\-().]/g, '') : value
+      setForm(f => ({ ...f, [name]: cleaned }))
+    }
+    el.addEventListener('change', sync)
+    return () => el.removeEventListener('change', sync)
+  }, [])
 
   useEffect(() => {
     if (open) {
@@ -164,18 +181,18 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+        <form ref={formRef} onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
             {/* Identité */}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Prénom *">
-                <input value={form.firstName} onChange={e => set('firstName', e.target.value)}
-                  required className={inputCls} placeholder="Jean" />
+                <input name="firstName" value={form.firstName} onChange={e => set('firstName', e.target.value)}
+                  required className={inputCls} placeholder="Jean" autoComplete="given-name" />
               </Field>
               <Field label="Nom *">
-                <input value={form.lastName} onChange={e => set('lastName', e.target.value)}
-                  required className={inputCls} placeholder="Dupont" />
+                <input name="lastName" value={form.lastName} onChange={e => set('lastName', e.target.value)}
+                  required className={inputCls} placeholder="Dupont" autoComplete="family-name" />
               </Field>
             </div>
 
@@ -199,51 +216,50 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
             </Field>
 
             <Field label="Ville">
-              <input value={form.city} onChange={e => set('city', e.target.value)}
-                className={inputCls} placeholder="Paris" />
+              <input name="city" value={form.city} onChange={e => set('city', e.target.value)}
+                className={inputCls} placeholder="Paris" autoComplete="address-level2" />
             </Field>
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Code postal">
-                <input value={form.postalCode} onChange={e => set('postalCode', e.target.value)}
-                  className={inputCls} placeholder="75001" />
+                <input name="postalCode" value={form.postalCode} onChange={e => set('postalCode', e.target.value)}
+                  className={inputCls} placeholder="75001" autoComplete="postal-code" />
               </Field>
               <Field label="Pays">
-                <input value={form.country} onChange={e => set('country', e.target.value)}
-                  className={inputCls} placeholder="France" />
+                <input name="country" value={form.country} onChange={e => set('country', e.target.value)}
+                  className={inputCls} placeholder="France" autoComplete="country-name" />
               </Field>
             </div>
 
             <Field label="Date de naissance">
-              <input type="date" value={form.birthDate} onChange={e => set('birthDate', e.target.value)}
-                className={inputCls} />
+              <input name="birthDate" type="date" value={form.birthDate} onChange={e => set('birthDate', e.target.value)}
+                className={inputCls} autoComplete="bday" />
             </Field>
 
             <Field label="Email">
-              <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
-                className={inputCls} placeholder="jean@exemple.fr" />
+              <input name="email" type="email" value={form.email} onChange={e => set('email', e.target.value)}
+                className={inputCls} placeholder="jean@exemple.fr" autoComplete="email" />
             </Field>
 
             <Field label="Téléphone">
-              <input type="tel" value={form.phone}
+              <input name="phone" type="tel" value={form.phone}
                 autoComplete="tel"
                 onChange={e => set('phone', e.target.value.replace(/[^\d\s+\-().]/g, ''))}
-                onBlur={e => { const v = e.target.value.replace(/[^\d\s+\-().]/g, ''); if (v !== form.phone) set('phone', v) }}
                 className={inputCls} placeholder="+33 6 00 00 00 00" />
             </Field>
 
             <Field label="Métier / Études">
-              <input value={form.occupation} onChange={e => set('occupation', e.target.value)}
-                className={inputCls} placeholder="Ingénieur, Étudiant en droit, Retraité..." />
+              <input name="occupation" value={form.occupation} onChange={e => set('occupation', e.target.value)}
+                className={inputCls} placeholder="Ingénieur, Étudiant en droit, Retraité..." autoComplete="organization-title" />
             </Field>
 
             <Field label="Sport / Passion">
-              <input value={form.sport} onChange={e => set('sport', e.target.value)}
+              <input name="sport" value={form.sport} onChange={e => set('sport', e.target.value)}
                 className={inputCls} placeholder="Football, Tennis, Cuisine, Photographie..." />
             </Field>
 
             <Field label="Bio">
-              <textarea value={form.bio} onChange={e => set('bio', e.target.value)}
+              <textarea name="bio" value={form.bio} onChange={e => set('bio', e.target.value)}
                 rows={3} className={inputCls + ' resize-none'} placeholder="Quelques mots..." />
             </Field>
 
@@ -253,12 +269,12 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
                 <p className="text-sm font-medium text-gray-600">Réseaux sociaux</p>
                 <div className="flex items-center gap-3">
                   <FacebookIcon className="h-5 w-5 text-[#1877F2] shrink-0" />
-                  <input value={form.facebookUrl} onChange={e => set('facebookUrl', e.target.value)}
+                  <input name="facebookUrl" value={form.facebookUrl} onChange={e => set('facebookUrl', e.target.value)}
                     className={inputCls} placeholder="URL ou profil Facebook" />
                 </div>
                 <div className="flex items-center gap-3">
                   <InstagramIcon className="h-5 w-5 text-[#E1306C] shrink-0" />
-                  <input value={form.instagramUsername} onChange={e => set('instagramUsername', e.target.value)}
+                  <input name="instagramUsername" value={form.instagramUsername} onChange={e => set('instagramUsername', e.target.value)}
                     className={inputCls} placeholder="@username Instagram" />
                 </div>
                 <div className="flex items-center gap-3">
