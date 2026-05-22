@@ -932,36 +932,38 @@ export default function Profile() {
         {/* Mon compte — visible uniquement sur son propre profil */}
         {isOwnProfile && (
           <Card title="Mon compte">
-            <button
-              onClick={handleExportMyData}
-              disabled={exportingData}
-              className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50"
-            >
-              <svg className="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              {exportingData ? 'Export en cours…' : 'Télécharger mes données (RGPD)'}
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={handleExportMyData}
+                disabled={exportingData}
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50"
+              >
+                <svg className="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                {exportingData ? 'Export en cours…' : 'Télécharger mes données (RGPD)'}
+              </button>
 
-            <a
-              href="/privacy"
-              className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 active:bg-gray-100 transition-colors"
-            >
-              <svg className="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Politique de confidentialité
-            </a>
+              <a
+                href="/privacy"
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 active:bg-gray-100 transition-colors"
+              >
+                <svg className="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Politique de confidentialité
+              </a>
 
-            <button
-              onClick={() => setShowDeleteAccountConfirm(true)}
-              className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-red-500 bg-red-50 active:bg-red-100 transition-colors"
-            >
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Supprimer mon compte
-            </button>
+              <button
+                onClick={() => setShowDeleteAccountConfirm(true)}
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-red-500 bg-red-50 active:bg-red-100 transition-colors"
+              >
+                <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Supprimer mon compte
+              </button>
+            </div>
           </Card>
         )}
 
