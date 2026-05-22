@@ -35,6 +35,8 @@ export const authApi = {
   me: () => api.get('/auth/me'),
   acceptInvitation: (token, password, email) => api.post('/auth/accept-invitation', { token, password, email }),
   inviteInfo: (token) => api.get(`/auth/invite/${token}/info`),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, newPassword }),
 }
 
 export const membersApi = {

@@ -474,6 +474,12 @@ namespace FamilyApp.API.Migrations
                     b.Property<DateTime?>("InvitationUsedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ResetPasswordToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ResetPasswordTokenExpiry")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("MemberId")
                         .HasColumnType("uuid");
 

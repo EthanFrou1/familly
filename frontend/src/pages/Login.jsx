@@ -3,6 +3,81 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { authApi, setToken } from '../services/api'
 
+function ForgotPasswordModal({ onClose }) {
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await authApi.forgotPassword(email)
+    } finally {
+      setLoading(false)
+      setSent(true)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6" onClick={onClose}>
+      <div
+        className="w-full max-w-sm rounded-3xl bg-white/[0.08] border border-white/10 backdrop-blur-sm p-6 space-y-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-white font-bold text-lg">Mot de passe oublié</h2>
+          <button onClick={onClose} className="text-white/50 active:text-white/80">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {sent ? (
+          <div className="text-center space-y-3 py-2">
+            <div className="text-3xl">📬</div>
+            <p className="text-white text-sm">Si un compte existe avec cette adresse, tu recevras un email avec un lien de réinitialisation.</p>
+            <button
+              onClick={onClose}
+              className="w-full rounded-2xl bg-primary py-3 font-bold text-white text-sm"
+            >
+              Fermer
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <p className="text-white/60 text-sm">Entre ton adresse email pour recevoir un lien de réinitialisation.</p>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </span>
+              <input
+                type="email"
+                placeholder="Ton adresse email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="w-full rounded-xl border border-white/20 bg-white/10 pl-10 pr-4 py-3 text-white placeholder-white/40 focus:border-primary focus:outline-none focus:bg-white/15 transition-colors text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-2xl bg-primary py-3 font-bold text-white shadow-lg shadow-primary/30 active:bg-primary-dark disabled:opacity-50 transition-all text-sm"
+            >
+              {loading ? '...' : 'Envoyer le lien'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Login() {
   const { token } = useParams()
   const { login, user, setUser } = useAuth()
@@ -14,6 +89,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [inviteNeedsEmail, setInviteNeedsEmail] = useState(false)
+  const [showForgot, setShowForgot] = useState(false)
   const inviteMode = !!token
 
   useEffect(() => {
@@ -152,8 +228,20 @@ export default function Login() {
                 ? '...'
                 : inviteMode ? 'Créer mon compte' : 'Se connecter'}
             </button>
+
+            {!inviteMode && (
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="w-full text-center text-xs text-white/50 active:text-white/80 pt-1"
+              >
+                Mot de passe oublié ?
+              </button>
+            )}
           </form>
         </div>
+
+        {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}
 
         <p className="text-center text-xs text-white/50 mt-6">
           Accès sur invitation uniquement
