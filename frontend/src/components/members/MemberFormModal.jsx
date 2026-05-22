@@ -144,6 +144,22 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
       const trimmed = Object.fromEntries(
         Object.entries(form).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
       )
+
+      // Géocoder si adresse/ville présente mais pas de coordonnées
+      if (!trimmed.latitude && (trimmed.city || trimmed.address)) {
+        try {
+          const query = [trimmed.address, trimmed.postalCode, trimmed.city, trimmed.country].filter(Boolean).join(', ')
+          const geocoder = new window.google.maps.Geocoder()
+          const result = await new Promise((resolve, reject) =>
+            geocoder.geocode({ address: query }, (results, status) =>
+              status === 'OK' && results[0] ? resolve(results[0]) : reject(status)
+            )
+          )
+          trimmed.latitude = result.geometry.location.lat()
+          trimmed.longitude = result.geometry.location.lng()
+        } catch {}
+      }
+
       await onSubmit({
         ...trimmed,
         birthDate: trimmed.birthDate || null,

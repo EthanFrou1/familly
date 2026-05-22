@@ -134,8 +134,22 @@ export default function OnboardingModal({ user, onDone }) {
     if (postalCode) update.postalCode = postalCode
     if (city) update.city = city
     if (country) update.country = country
-    if (coords.latitude) update.latitude = coords.latitude
-    if (coords.longitude) update.longitude = coords.longitude
+    if (coords.latitude) {
+      update.latitude = coords.latitude
+      update.longitude = coords.longitude
+    } else if (city || address) {
+      try {
+        const query = [address, postalCode, city, country].filter(Boolean).join(', ')
+        const geocoder = new window.google.maps.Geocoder()
+        const result = await new Promise((resolve, reject) =>
+          geocoder.geocode({ address: query }, (results, status) =>
+            status === 'OK' && results[0] ? resolve(results[0]) : reject(status)
+          )
+        )
+        update.latitude = result.geometry.location.lat()
+        update.longitude = result.geometry.location.lng()
+      } catch {}
+    }
     if (Object.keys(update).length) {
       setLoading(true)
       try { await membersApi.update(user.memberId, { ...update, familyId: member?.familyId }) } catch {}
