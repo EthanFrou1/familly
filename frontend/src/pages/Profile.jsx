@@ -241,9 +241,9 @@ export default function Profile() {
 
   async function handleCopyInviteMessage() {
     const greeting = familyGroupName
-      ? `Bonjour ! Vous êtes invité(e) à rejoindre la Famille ${familyGroupName}.\n\n`
-      : `Bonjour ! Vous êtes invité(e) à rejoindre notre espace famille.\n\n`
-    const msg = `${greeting}Créez votre compte en cliquant sur ce lien :\n${inviteLink}`
+      ? `Bonjour ${member.firstName} ! Tu es invité(e) à rejoindre la Famille ${familyGroupName}.\n\n`
+      : `Bonjour ${member.firstName} ! Tu es invité(e) à rejoindre notre espace famille.\n\n`
+    const msg = `${greeting}Crée ton compte en cliquant sur ce lien :\n${inviteLink}`
     await navigator.clipboard.writeText(msg)
     setCopiedMsg(true)
     setTimeout(() => setCopiedMsg(false), 2000)
