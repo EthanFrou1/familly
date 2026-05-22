@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './store/AuthContext'
 import { MembersProvider } from './store/MembersContext'
 import { useAuth } from './hooks/useAuth'
 import BottomNav from './components/layout/BottomNav'
+import OnboardingModal from './components/shared/OnboardingModal'
 import Home from './pages/Home'
 import Tree from './pages/Tree'
 import Map from './pages/Map'
@@ -18,6 +20,13 @@ import ResetPassword from './pages/ResetPassword'
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  useEffect(() => {
+    if (user && localStorage.getItem(`onboarding_${user.id}`) === '1') {
+      setShowOnboarding(true)
+    }
+  }, [user])
 
   if (loading) {
     return (
@@ -49,6 +58,15 @@ function ProtectedLayout() {
         </main>
         <BottomNav />
       </div>
+      {showOnboarding && (
+        <OnboardingModal
+          user={user}
+          onDone={() => {
+            localStorage.removeItem(`onboarding_${user.id}`)
+            setShowOnboarding(false)
+          }}
+        />
+      )}
     </MembersProvider>
   )
 }
