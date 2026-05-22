@@ -341,10 +341,6 @@ export default function Home() {
           <RecentPhotosSection photos={recentPhotos} onNavigate={navigate} />
         )}
 
-        {/* Fil d'activité */}
-        {activityLogs.filter(l => l.type === 'member_created').length > 0 && (
-          <ActivityFeed logs={activityLogs.filter(l => l.type === 'member_created')} onNavigate={navigate} />
-        )}
 
         {/* Derniers membres ajoutés */}
         {recent.length > 0 && (
