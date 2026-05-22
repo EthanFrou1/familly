@@ -169,9 +169,11 @@ export default function Privacy() {
           </p>
         </Section>
 
-        <p className="text-center text-xs text-gray-300 pt-2">
-          MyBigFamily · Accès sur invitation uniquement
-        </p>
+        <div className="flex items-center justify-center gap-4 pt-2">
+          <a href="/legal" className="text-xs text-gray-400 underline">Mentions légales</a>
+          <span className="text-xs text-gray-300">·</span>
+          <span className="text-xs text-gray-300">MyBigFamily</span>
+        </div>
       </div>
     </div>
   )

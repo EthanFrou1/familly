@@ -16,6 +16,7 @@ public class PhotoCleanupService(IServiceScopeFactory scopeFactory, ILogger<Phot
             await Task.Delay(delay, stoppingToken);
 
             await CleanupExpiredPhotosAsync(stoppingToken);
+            await CleanupOldActivityLogsAsync(stoppingToken);
         }
     }
 
@@ -45,5 +46,23 @@ public class PhotoCleanupService(IServiceScopeFactory scopeFactory, ILogger<Phot
         }
 
         await db.SaveChangesAsync(ct);
+    }
+
+    private async Task CleanupOldActivityLogsAsync(CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var cutoff = DateTime.UtcNow.AddMonths(-12);
+        var old = await db.ActivityLogs
+            .Where(l => l.CreatedAt < cutoff)
+            .ToListAsync(ct);
+
+        if (old.Count == 0) return;
+
+        db.ActivityLogs.RemoveRange(old);
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation("Suppression de {Count} logs d'activité de plus de 12 mois", old.Count);
     }
 }
