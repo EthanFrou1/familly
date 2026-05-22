@@ -18,6 +18,7 @@ import NotFound from './pages/NotFound'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import Privacy from './pages/Privacy'
+import Legal from './pages/Legal'
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="/invite/:token" element={<Login />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/legal" element={<Legal />} />
           <Route path="/*" element={<ProtectedLayout />} />
         </Routes>
       </AuthProvider>
