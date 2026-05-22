@@ -125,6 +125,7 @@ export default function Login() {
       const { data } = await authApi.acceptInvitation(token, password, inviteNeedsEmail ? email : undefined)
       setToken(data.token)
       setUser(data.user)
+      localStorage.setItem(`onboarding_${data.user.id}`, '1')
       navigate('/', { replace: true })
     } catch {
       setError('Lien invalide ou expiré.')
