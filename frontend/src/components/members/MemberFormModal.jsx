@@ -314,8 +314,6 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
 
           </div>
 
-          </div>
-
           <div className="shrink-0 px-5 pt-3 pb-8 space-y-3 border-t border-gray-100 bg-white">
             {feedback && (
               <div className={`rounded-xl px-4 py-3 text-sm font-medium text-center ${
