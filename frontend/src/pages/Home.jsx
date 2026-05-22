@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
-import { familiesApi, settingsApi, relationsApi, activityLogsApi } from '../services/api'
+import { familiesApi, settingsApi, relationsApi, activityLogsApi, photosApi } from '../services/api'
 import Avatar from '../components/shared/Avatar'
 import BirthdayPopup from '../components/home/BirthdayPopup'
 import CalendarExportSheet from '../components/members/CalendarExportSheet'
@@ -95,7 +95,7 @@ function computeFunStats(members, relations) {
   return stats
 }
 
-function getUpcomingBirthdays(members, days = 60) {
+function getUpcomingBirthdays(members, days = 7) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -127,6 +127,7 @@ export default function Home() {
   const [savingName, setSavingName] = useState(false)
   const [relations, setRelations] = useState([])
   const [activityLogs, setActivityLogs] = useState([])
+  const [recentPhotos, setRecentPhotos] = useState([])
   const [showExportSheet, setShowExportSheet] = useState(false)
   const { supported: pushSupported, subscribed, permission, subscribe } = usePushNotifications()
   const [pushBannerDismissed, setPushBannerDismissed] = useState(
@@ -155,6 +156,7 @@ export default function Home() {
 
   useEffect(() => {
     activityLogsApi.getAll(10).then(({ data }) => setActivityLogs(data)).catch(() => {})
+    photosApi.getAll().then(({ data }) => setRecentPhotos(data.slice(0, 6))).catch(() => {})
   }, [members])
 
   async function handleSaveName(e) {
@@ -334,9 +336,14 @@ export default function Home() {
           </Section>
         )}
 
+        {/* Photos récentes */}
+        {recentPhotos.length > 0 && (
+          <RecentPhotosSection photos={recentPhotos} onNavigate={navigate} />
+        )}
+
         {/* Fil d'activité */}
-        {activityLogs.length > 0 && (
-          <ActivityFeed logs={activityLogs} onNavigate={navigate} />
+        {activityLogs.filter(l => l.type === 'member_created').length > 0 && (
+          <ActivityFeed logs={activityLogs.filter(l => l.type === 'member_created')} onNavigate={navigate} />
         )}
 
         {/* Derniers membres ajoutés */}
@@ -430,16 +437,31 @@ const ACTIVITY_CONFIG = {
     text: (log) => `${log.targetMemberName} a rejoint la famille`,
     sub: (log) => log.actorName ? `Ajouté par ${log.actorName}` : null,
   },
-  relation_created: {
-    emoji: '🔗',
-    color: 'bg-amber-100',
-    text: (log) => {
-      const labels = { ParentChild: 'parent/enfant', Spouse: 'conjoint(e)s', Sibling: 'frère/sœur', HalfSibling: 'demi-frère/sœur' }
-      const type = labels[log.metadata] ?? log.metadata ?? 'lien familial'
-      return `Lien ${type} entre ${log.targetMemberName} et ${log.relatedMemberName}`
-    },
-    sub: (log) => log.actorName ? `Par ${log.actorName}` : null,
-  },
+}
+
+function RecentPhotosSection({ photos, onNavigate }) {
+  return (
+    <Section title="Photos récentes" action={
+      <button onClick={() => onNavigate('/photos')} className="text-xs font-medium text-primary active:opacity-60">
+        Voir tout
+      </button>
+    }>
+      <div className="grid grid-cols-3 gap-1.5">
+        {photos.map(photo => (
+          <button
+            key={photo.id}
+            onClick={() => onNavigate('/photos')}
+            className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 active:opacity-80"
+          >
+            <img src={photo.cloudinaryUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
+              <p className="text-[10px] text-white font-medium truncate">{photo.uploaderName?.split(' ')[0]}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </Section>
+  )
 }
 
 function ActivityFeed({ logs, onNavigate }) {
