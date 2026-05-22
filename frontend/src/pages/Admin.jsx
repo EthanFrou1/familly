@@ -291,7 +291,7 @@ function StatChip({ label, value, color }) {
 
 function MemberCard({ member: m, onNavigate, onInvite, onCopyLink, onManage }) {
   const st = STATUS_CONFIG[m.accountStatus] ?? STATUS_CONFIG.none
-  const canInvite = !!m.email && (m.accountStatus === 'none' || m.accountStatus === 'pending')
+  const canInvite = m.accountStatus === 'none' || m.accountStatus === 'pending'
   const canCopyLink = m.accountStatus === 'pending' && !!m.invitationToken
 
   return (
@@ -331,10 +331,10 @@ function MemberCard({ member: m, onNavigate, onInvite, onCopyLink, onManage }) {
         <ActionBtn icon={<EyeIcon />} label="Profil" onClick={onNavigate} />
         {canInvite && (
           <ActionBtn
-            icon={m.accountStatus === 'pending' ? <RefreshIcon /> : <MailIcon />}
-            label={m.accountStatus === 'pending' ? 'Renvoyer' : 'Inviter'}
+            icon={m.accountStatus === 'pending' ? <RefreshIcon /> : m.email ? <MailIcon /> : <LinkIcon />}
+            label={m.accountStatus === 'pending' ? (m.email ? 'Renvoyer' : 'Renouveler') : m.email ? 'Inviter' : 'Créer lien'}
             onClick={onInvite}
-            color={m.accountStatus === 'pending' ? 'text-amber-600 bg-amber-50' : 'text-blue-600 bg-blue-50'}
+            color={m.accountStatus === 'pending' ? 'text-amber-600 bg-amber-50' : m.email ? 'text-blue-600 bg-blue-50' : 'text-violet-600 bg-violet-50'}
           />
         )}
         {canCopyLink && (
@@ -364,28 +364,70 @@ function InviteModal({ member, onClose, onInvited }) {
   const [role, setRole] = useState('Member')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [generatedToken, setGeneratedToken] = useState(null)
+  const [copied, setCopied] = useState(false)
 
   const isResend = member.accountStatus === 'pending'
+  const hasEmail = !!member.email
+
+  const inviteLink = generatedToken ? `${window.location.origin}/invite/${generatedToken}` : ''
+  const inviteMessage = generatedToken
+    ? `Bonjour ${member.firstName} !\n\nTu es invité(e) à rejoindre notre espace famille sur MyBigFamily.\n\nCrée ton compte en cliquant sur ce lien :\n${inviteLink}\n\nCe lien est à usage unique.`
+    : ''
 
   async function handleSubmit() {
-    if (!member.email) return
     setLoading(true)
     setError(null)
     try {
       const { data } = await adminApi.generateInvitation(
-        member.email,
+        member.email || null,
         role,
         member.id,
         window.location.origin,
         member.firstName
       )
-      onInvited(data.token)
+      if (!hasEmail) {
+        setGeneratedToken(data.token)
+      } else {
+        onInvited(data.token)
+      }
     } catch (e) {
       setError(e.response?.data?.message ?? "Erreur lors de l'envoi.")
     } finally {
       setLoading(false)
     }
   }
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(inviteMessage)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      setError('Impossible de copier. Sélectionne le texte manuellement.')
+    }
+  }
+
+  const RoleSelector = () => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">Rôle du compte</label>
+      <div className="flex gap-2">
+        {[
+          { value: 'Member', label: 'Membre', desc: 'Peut modifier son profil' },
+          { value: 'ReadOnly', label: 'Lecture seule', desc: 'Consultation uniquement' },
+        ].map(r => (
+          <button
+            key={r.value}
+            onClick={() => setRole(r.value)}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-left border transition-colors ${role === r.value ? 'bg-primary/10 border-primary text-primary' : 'bg-white text-gray-700 border-gray-200'}`}
+          >
+            <div className="text-sm font-medium">{r.label}</div>
+            <div className="text-xs opacity-60 mt-0.5">{r.desc}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
@@ -397,49 +439,60 @@ function InviteModal({ member, onClose, onInvited }) {
           <Avatar member={member} size={40} />
           <div>
             <h3 className="text-base font-bold text-gray-900">
-              {isResend ? "Renvoyer l'invitation" : 'Inviter'} {member.firstName}
+              {isResend ? "Renouveler l'invitation" : 'Inviter'} {member.firstName}
             </h3>
             {member.email && <p className="text-xs text-gray-400">{member.email}</p>}
           </div>
         </div>
 
-        {!member.email && (
-          <p className="text-sm text-amber-600 bg-amber-50 rounded-xl px-4 py-3">
-            Ce membre n'a pas d'adresse email. Ajoutez-en une depuis sa fiche profil.
-          </p>
+        {/* Cas sans email : message généré à copier */}
+        {!hasEmail && generatedToken ? (
+          <>
+            <p className="text-xs text-gray-500">Copiez ce message et envoyez-le manuellement à {member.firstName}.</p>
+            <pre className="whitespace-pre-wrap text-xs bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-700 font-sans select-all">
+              {inviteMessage}
+            </pre>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <button
+              onClick={handleCopy}
+              className={`w-full py-3 rounded-2xl font-semibold text-sm active:scale-[0.98] transition-all ${copied ? 'bg-green-500 text-white' : 'bg-primary text-white'}`}
+            >
+              {copied ? 'Copié !' : 'Copier le message'}
+            </button>
+            <button onClick={() => { onInvited(generatedToken); onClose() }} className="w-full py-2 text-sm text-gray-400">Fermer</button>
+          </>
+        ) : !hasEmail ? (
+          /* Cas sans email : génération */
+          <>
+            <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-4 py-3">
+              Ce membre n'a pas d'adresse email. Un lien d'invitation sera généré — tu pourras le copier et l'envoyer manuellement.
+            </p>
+            <RoleSelector />
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full py-3 rounded-2xl bg-primary text-white font-semibold text-sm disabled:opacity-60 active:scale-[0.98] transition-transform"
+            >
+              {loading ? 'Génération…' : isResend ? 'Renouveler le lien' : 'Générer le lien'}
+            </button>
+            <button onClick={onClose} className="w-full py-2 text-sm text-gray-400">Annuler</button>
+          </>
+        ) : (
+          /* Cas avec email : envoi classique */
+          <>
+            <RoleSelector />
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full py-3 rounded-2xl bg-primary text-white font-semibold text-sm disabled:opacity-60 active:scale-[0.98] transition-transform"
+            >
+              {loading ? 'Envoi en cours…' : isResend ? "Renvoyer l'invitation" : "Envoyer l'invitation"}
+            </button>
+            <button onClick={onClose} className="w-full py-2 text-sm text-gray-400">Annuler</button>
+          </>
         )}
-
-        {member.email && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Rôle du compte</label>
-            <div className="flex gap-2">
-              {[
-                { value: 'Member', label: 'Membre', desc: 'Peut modifier son profil' },
-                { value: 'ReadOnly', label: 'Lecture seule', desc: 'Consultation uniquement' },
-              ].map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => setRole(r.value)}
-                  className={`flex-1 py-2.5 px-3 rounded-xl text-left border transition-colors ${role === r.value ? 'bg-primary/10 border-primary text-primary' : 'bg-white text-gray-700 border-gray-200'}`}
-                >
-                  <div className="text-sm font-medium">{r.label}</div>
-                  <div className="text-xs opacity-60 mt-0.5">{r.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {error && <p className="text-sm text-red-500">{error}</p>}
-
-        <button
-          onClick={handleSubmit}
-          disabled={loading || !member.email}
-          className="w-full py-3 rounded-2xl bg-primary text-white font-semibold text-sm disabled:opacity-60 active:scale-[0.98] transition-transform"
-        >
-          {loading ? 'Envoi en cours…' : isResend ? "Renvoyer l'invitation" : "Envoyer l'invitation"}
-        </button>
-        <button onClick={onClose} className="w-full py-2 text-sm text-gray-400">Annuler</button>
       </div>
     </div>,
     document.body

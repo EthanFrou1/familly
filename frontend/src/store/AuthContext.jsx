@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
     if (!getToken()) { setLoading(false); return }
     authApi.me()
       .then(({ data }) => setUser(data))
-      .catch(() => { clearToken(); setUser(null) })
+      .catch((err) => { if (err.response?.status === 401) clearToken(); setUser(null) })
       .finally(() => setLoading(false))
   }, [])
 

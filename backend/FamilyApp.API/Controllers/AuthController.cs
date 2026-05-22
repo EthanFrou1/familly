@@ -45,10 +45,17 @@ public class AuthController(AuthService authService, EmailService emailService) 
         return user is null ? NotFound() : Ok(user);
     }
 
+    [HttpGet("invite/{token}/info")]
+    public async Task<IActionResult> GetInviteInfo(string token)
+    {
+        var info = await authService.GetInviteInfoAsync(token);
+        return info is null ? NotFound() : Ok(info);
+    }
+
     [HttpPost("accept-invitation")]
     public async Task<IActionResult> AcceptInvitation([FromBody] AcceptInvitationRequest req)
     {
-        var result = await authService.AcceptInvitationAsync(req.Token, req.Password);
+        var result = await authService.AcceptInvitationAsync(req.Token, req.Password, req.Email);
         if (result is null) return BadRequest(new { message = "Lien invalide ou expiré." });
 
         Response.Cookies.Append("access_token", result.AccessToken, new CookieOptions

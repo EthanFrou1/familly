@@ -33,7 +33,8 @@ export const authApi = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),
-  acceptInvitation: (token, password) => api.post('/auth/accept-invitation', { token, password }),
+  acceptInvitation: (token, password, email) => api.post('/auth/accept-invitation', { token, password, email }),
+  inviteInfo: (token) => api.get(`/auth/invite/${token}/info`),
 }
 
 export const membersApi = {
