@@ -736,13 +736,14 @@ export default function Profile() {
 
             {inviteState === 'done' && (
               <div className="space-y-2">
-                {/* Email envoyé automatiquement */}
-                <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
-                  <svg className="h-4 w-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <p className="text-xs font-semibold text-emerald-700">Email envoyé à {member.email}</p>
-                </div>
+                {member.email && (
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
+                    <svg className="h-4 w-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <p className="text-xs font-semibold text-emerald-700">Email envoyé à {member.email}</p>
+                  </div>
+                )}
 
                 {/* Partage WhatsApp */}
                 {(member.whatsappNumber || member.phone) && (() => {
@@ -767,7 +768,7 @@ export default function Profile() {
                 {/* Copier message + lien seul */}
                 <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-3 space-y-2">
                   <p className="text-xs font-semibold text-gray-600">Message à copier</p>
-                  <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-line">
+                  <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-line break-all">
                     {familyGroupName
                       ? `Bonjour ${member.firstName} ! Tu es invité(e) à rejoindre la Famille ${familyGroupName}.\n\nCrée ton compte ici :\n${inviteLink}`
                       : `Bonjour ${member.firstName} ! Tu es invité(e) à rejoindre notre espace famille.\n\nCrée ton compte ici :\n${inviteLink}`}
