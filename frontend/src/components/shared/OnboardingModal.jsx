@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { membersApi } from '../../services/api'
 
-const inputCls = "w-full rounded-xl bg-white/10 border border-white/15 px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/40"
-const errorCls = "text-xs text-red-400 mt-1"
+const inputCls = "w-full rounded-2xl bg-white/[0.08] border border-white/10 px-4 py-3.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-primary/60 focus:bg-white/[0.12] transition-all"
+const errorCls = "text-xs text-red-300 mt-1.5"
 
 function validatePhone(phone) {
   if (!phone) return null
@@ -23,7 +23,6 @@ function validateBirthDate(date) {
 
 function PlacesInput({ value, onChange, onSelect }) {
   const inputRef = useRef(null)
-
   useEffect(() => {
     if (!window.google?.maps?.places || !inputRef.current) return
     const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
@@ -53,23 +52,16 @@ function PlacesInput({ value, onChange, onSelect }) {
     })
     return () => window.google.maps.event.clearInstanceListeners(autocomplete)
   }, [])
-
   return (
-    <input
-      ref={inputRef}
-      defaultValue={value}
-      onChange={e => onChange(e.target.value)}
-      className={inputCls}
-      placeholder="23 rue de la Paix, Paris..."
-    />
+    <input ref={inputRef} defaultValue={value} onChange={e => onChange(e.target.value)}
+      className={inputCls} placeholder="23 rue de la Paix, Paris..." />
   )
 }
 
-const TITLES = ['Ta photo de profil', 'Tes infos', 'Ta localisation']
-const DESCS = [
-  'Ajoute une photo pour que la famille te reconnaisse.',
-  'Renseigne ta date de naissance et ton téléphone.',
-  'Indique où tu habites pour apparaître sur la carte famille.',
+const STEP_META = [
+  { label: 'Photo',  title: 'Ta photo de profil',  desc: 'Ajoute une photo pour que la famille te reconnaisse.' },
+  { label: 'Infos',  title: 'Tes informations',     desc: 'Quelques détails pour que la famille te retrouve facilement.' },
+  { label: 'Lieu',   title: 'Où tu habites',        desc: 'Apparais sur la carte de la famille.' },
 ]
 
 export default function OnboardingModal({ user, onDone }) {
@@ -153,141 +145,182 @@ export default function OnboardingModal({ user, onDone }) {
   }
 
   function handlePlaceSelect({ address, postalCode, city, country, latitude, longitude }) {
-    setAddress(address)
-    setPostalCode(postalCode)
-    setCity(city)
-    setCountry(country)
-    setCoords({ latitude, longitude })
+    setAddress(address); setPostalCode(postalCode); setCity(city)
+    setCountry(country); setCoords({ latitude, longitude })
   }
 
   const onNext = [handleNext0, handleNext1, handleFinish]
-  const nextLabel = step < 2 ? 'Suivant' : 'Terminer'
-  const skipLabel = step < 2 ? 'Passer cette étape' : "Passer pour l'instant"
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex flex-col bg-dark">
-      <div className="flex-1 flex flex-col px-6 pb-8 overflow-y-auto" style={{ paddingTop: '3rem' }}>
+    <div
+      className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #1c0c04 0%, #2a1208 60%, #160902 100%)' }}
+    >
+      {/* Ambient orbs */}
+      <div className="pointer-events-none absolute -top-20 -right-16 h-80 w-80 rounded-full bg-primary/20 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/2 -left-24 h-64 w-64 rounded-full bg-amber-900/25 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-20 right-0 h-56 w-56 rounded-full bg-orange-950/30 blur-3xl" />
 
-        {/* Header */}
-        <div className="flex items-start gap-3 mb-8">
+      {/* Top bar */}
+      <div className="relative flex items-center justify-between px-5 pt-14 pb-0 shrink-0">
+        <div className="w-10">
           {step > 0 && (
             <button
               onClick={() => { setErrors({}); setStep(s => s - 1) }}
-              className="mt-1 h-8 w-8 flex items-center justify-center rounded-full bg-white/10 text-white shrink-0"
+              className="h-9 w-9 flex items-center justify-center rounded-full bg-white/10 text-white active:bg-white/20 transition-colors"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
           )}
-          <div>
-            <p className="text-white/50 text-sm mb-1">Bienvenue, {user.firstName} !</p>
-            <h2 className="text-2xl font-bold text-white">{TITLES[step]}</h2>
-            <p className="text-white/60 text-sm mt-2 leading-relaxed">{DESCS[step]}</p>
-          </div>
         </div>
 
-        {/* Contenu */}
-        <div className="flex-1">
-          {step === 0 && (
-            <div className="flex flex-col items-center gap-4">
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="h-28 w-28 rounded-full flex items-center justify-center overflow-hidden border-2 border-dashed border-white/30 bg-white/5"
-              >
-                {photoPreview
-                  ? <img src={photoPreview} alt="" className="h-full w-full object-cover" />
-                  : <svg className="h-8 w-8 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-                    </svg>
-                }
-              </button>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={selectPhoto} />
-              <button onClick={() => fileRef.current?.click()} className="text-sm text-white/60 underline underline-offset-2">
-                {photoFile || photoPreview ? 'Changer la photo' : 'Choisir une photo'}
-              </button>
+        {/* Step pills */}
+        <div className="flex items-center gap-1.5">
+          {STEP_META.map((s, i) => (
+            <div key={i} className={`flex items-center gap-1 rounded-full text-xs font-semibold transition-all duration-300 ${
+              i === step
+                ? 'bg-primary text-white px-3 py-1'
+                : i < step
+                  ? 'bg-primary/30 text-white/50 w-6 h-6 justify-center'
+                  : 'bg-white/10 text-white/25 w-6 h-6 justify-center'
+            }`}>
+              {i < step ? '✓' : i === step ? `${i + 1}  ${s.label}` : i + 1}
             </div>
-          )}
+          ))}
+        </div>
 
+        <div className="w-10" />
+      </div>
+
+      {/* Hero illustration per step */}
+      <div className="relative flex items-center justify-center shrink-0 py-8">
+        {step === 0 && (
+          <div className="relative flex flex-col items-center gap-3">
+            <div className="absolute h-44 w-44 rounded-full bg-primary/20 blur-2xl" />
+            <button
+              onClick={() => fileRef.current?.click()}
+              className={`relative h-36 w-36 rounded-full flex items-center justify-center overflow-hidden transition-all duration-300 ${
+                photoPreview
+                  ? 'ring-4 ring-primary ring-offset-4 ring-offset-transparent'
+                  : 'border-2 border-dashed border-white/20 bg-white/5'
+              }`}
+            >
+              {photoPreview ? (
+                <img src={photoPreview} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-white/25">
+                  <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                  </svg>
+                </div>
+              )}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={selectPhoto} />
+            <p className="text-xs text-white/40">{photoPreview ? 'Appuie pour changer' : 'Appuie pour ajouter'}</p>
+          </div>
+        )}
+
+        {step === 1 && (
+          <div className="flex gap-3">
+            {[
+              { emoji: '🎂', label: 'Anniversaire', glow: 'bg-amber-500/15' },
+              { emoji: '📱', label: 'Téléphone', glow: 'bg-sky-500/10' },
+            ].map(card => (
+              <div key={card.label} className="relative">
+                <div className={`absolute inset-0 rounded-2xl ${card.glow} blur-xl`} />
+                <div className="relative h-20 w-28 rounded-2xl bg-white/[0.06] border border-white/10 flex flex-col items-center justify-center gap-1.5">
+                  <span className="text-3xl">{card.emoji}</span>
+                  <span className="text-[10px] text-white/40 font-medium uppercase tracking-wide">{card.label}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="relative flex items-center justify-center">
+            <div className="absolute h-36 w-36 rounded-full bg-emerald-700/15 blur-2xl" />
+            <div className="relative h-24 w-24 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center">
+              <span className="text-5xl">🏠</span>
+            </div>
+            <div className="absolute h-24 w-24 rounded-full border border-white/[0.07] animate-ping" style={{ animationDuration: '2.5s' }} />
+            <div className="absolute h-32 w-32 rounded-full border border-white/[0.04]" />
+          </div>
+        )}
+      </div>
+
+      {/* Text + form */}
+      <div className="flex-1 flex flex-col px-6 overflow-y-auto">
+        <div className="mb-5">
+          <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-1">
+            Bienvenue, {user.firstName} !
+          </p>
+          <h2 className="text-2xl font-black text-white leading-tight">{STEP_META[step].title}</h2>
+          <p className="text-white/45 text-sm mt-1.5 leading-relaxed">{STEP_META[step].desc}</p>
+        </div>
+
+        <div className="flex-1">
           {step === 1 && (
             <div className="flex flex-col gap-4">
               <div>
-                <label className="block text-xs text-white/50 mb-1.5">Date de naissance</label>
-                <input
-                  type="date"
-                  value={birthDate}
+                <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Date de naissance</label>
+                <input type="date" value={birthDate}
                   onChange={e => { setBirthDate(e.target.value); setErrors(v => ({ ...v, birthDate: null })) }}
-                  className={`${inputCls} [color-scheme:dark]`}
-                />
+                  className={`${inputCls} [color-scheme:dark]`} />
                 {errors.birthDate && <p className={errorCls}>{errors.birthDate}</p>}
               </div>
               <div>
-                <label className="block text-xs text-white/50 mb-1.5">Téléphone</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={e => {
-                    setPhone(e.target.value.replace(/[^0-9\s+\-().]/g, ''))
-                    setErrors(v => ({ ...v, phone: null }))
-                  }}
-                  placeholder="06 12 34 56 78"
-                  inputMode="tel"
-                  className={inputCls}
-                />
+                <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Téléphone</label>
+                <input type="tel" value={phone} inputMode="tel"
+                  onChange={e => { setPhone(e.target.value.replace(/[^0-9\s+\-().]/g, '')); setErrors(v => ({ ...v, phone: null })) }}
+                  placeholder="06 12 34 56 78" className={inputCls} />
                 {errors.phone && <p className={errorCls}>{errors.phone}</p>}
               </div>
             </div>
           )}
 
           {step === 2 && (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               <div>
-                <label className="block text-xs text-white/50 mb-1.5">Adresse</label>
+                <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Adresse</label>
                 <PlacesInput value={address} onChange={setAddress} onSelect={handlePlaceSelect} />
               </div>
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-xs text-white/50 mb-1.5">Code postal</label>
-                  <input type="text" value={postalCode} onChange={e => setPostalCode(e.target.value)}
-                    placeholder="75001" className={inputCls} />
+                  <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Code postal</label>
+                  <input type="text" value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="75001" className={inputCls} />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs text-white/50 mb-1.5">Ville</label>
-                  <input type="text" value={city} onChange={e => setCity(e.target.value)}
-                    placeholder="Paris" className={inputCls} />
+                  <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Ville</label>
+                  <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="Paris" className={inputCls} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-white/50 mb-1.5">Pays</label>
-                <input type="text" value={country} onChange={e => setCountry(e.target.value)}
-                  placeholder="France" className={inputCls} />
+                <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Pays</label>
+                <input type="text" value={country} onChange={e => setCountry(e.target.value)} placeholder="France" className={inputCls} />
               </div>
             </div>
           )}
         </div>
 
-        {/* Progress dots */}
-        <div className="flex justify-center gap-2 my-8">
-          {TITLES.map((_, i) => (
-            <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === step ? 'w-6 bg-primary' : i < step ? 'w-1.5 bg-primary/40' : 'w-1.5 bg-white/20'}`} />
-          ))}
-        </div>
-
-        {/* Actions */}
-        <div className="space-y-3">
+        {/* CTA */}
+        <div className="py-6 space-y-2">
           <button
             onClick={onNext[step]}
             disabled={loading}
-            className="w-full py-3.5 rounded-2xl bg-primary text-white font-semibold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+            className="w-full py-4 rounded-2xl font-bold text-sm text-white disabled:opacity-50 active:scale-[0.98] transition-transform shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #b07848 0%, #7a4f2e 100%)', boxShadow: '0 4px 20px rgba(168,112,72,0.35)' }}
           >
-            {loading ? 'Enregistrement…' : nextLabel}
+            {loading ? 'Enregistrement…' : step < 2 ? 'Continuer →' : 'Terminer 🎉'}
           </button>
           <button
             onClick={step < 2 ? () => setStep(s => s + 1) : onDone}
-            className="w-full py-2 text-sm text-white/35 text-center"
+            className="w-full py-2 text-sm text-white/20 text-center"
           >
-            {skipLabel}
+            {step < 2 ? 'Passer cette étape' : "Passer pour l'instant"}
           </button>
         </div>
       </div>
