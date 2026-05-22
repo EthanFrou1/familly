@@ -190,10 +190,11 @@ export default function Home() {
   const recent = [...members].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 8)
 
   const todayBirthdays = birthdays.filter(m => m.daysUntil === 0)
+  const isOnboarding = user && localStorage.getItem(`onboarding_${user.id}`) === '1'
 
   return (
     <div className="overflow-y-auto h-full bg-gray-50 pb-6 animate-fade-in">
-      {todayBirthdays.length > 0 && (
+      {todayBirthdays.length > 0 && !isOnboarding && (
         <BirthdayPopup members={birthdays} onNavigate={navigate} />
       )}
 
