@@ -93,6 +93,28 @@ public class AuthController(AuthService authService, EmailService emailService) 
         return Ok(new { token });
     }
 
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest req)
+    {
+        var result = await authService.GeneratePasswordResetTokenAsync(req.Email);
+        if (result is not null)
+        {
+            var appUrl = Request.Headers["Origin"].FirstOrDefault()?.TrimEnd('/') ?? "https://mybigfamily.fr";
+            var resetLink = $"{appUrl}/reset-password/{result.Value.token}";
+            _ = emailService.SendPasswordResetAsync(req.Email, result.Value.firstName, resetLink);
+        }
+        // Always return OK to avoid user enumeration
+        return Ok(new { message = "Si un compte existe avec cet email, un lien de réinitialisation a été envoyé." });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
+    {
+        var ok = await authService.ResetPasswordAsync(req.Token, req.NewPassword);
+        if (!ok) return BadRequest(new { message = "Lien invalide ou expiré." });
+        return Ok(new { message = "Mot de passe réinitialisé avec succès." });
+    }
+
     [HttpPost("invitations")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GenerateInvitation([FromBody] GenerateInvitationRequest req)

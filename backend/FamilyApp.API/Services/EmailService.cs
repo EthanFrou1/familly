@@ -4,6 +4,89 @@ namespace FamilyApp.API.Services;
 
 public class EmailService(IHttpClientFactory http, IConfiguration config, ILogger<EmailService> logger)
 {
+    public async Task SendPasswordResetAsync(string toEmail, string firstName, string resetLink)
+    {
+        var apiKey    = config["Brevo:ApiKey"];
+        var fromEmail = config["Brevo:FromAddress"] ?? "bonjour@mybigfamily.fr";
+        var fromName  = config["Brevo:FromName"] ?? "MyBigFamily";
+
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            logger.LogWarning("Brevo API key not set — reset email skipped for {Email}", toEmail);
+            return;
+        }
+
+        var html = $"""
+            <!DOCTYPE html>
+            <html lang="fr">
+            <head><meta charset="UTF-8"/></head>
+            <body style="font-family:system-ui,sans-serif;background:#FAF7F2;margin:0;padding:0">
+              <div style="max-width:480px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+                <div style="background:#947762;padding:32px 24px;text-align:center">
+                  <h1 style="color:#fff;margin:0;font-size:24px;font-weight:900">MyBigFamily</h1>
+                  <p style="color:rgba(255,255,255,0.75);margin:8px 0 0;font-size:14px">Réinitialisation du mot de passe</p>
+                </div>
+                <div style="padding:32px 24px">
+                  <p style="color:#333;font-size:16px;margin:0 0 8px">Bonjour {firstName} 👋</p>
+                  <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 24px">
+                    Tu as demandé à réinitialiser ton mot de passe MyBigFamily. Ce lien est valable <strong>1 heure</strong>.
+                  </p>
+                  <a href="{resetLink}"
+                     style="display:block;text-align:center;background:#A87048;color:#fff;font-weight:700;font-size:15px;padding:14px 24px;border-radius:12px;text-decoration:none;margin-bottom:24px">
+                    Réinitialiser mon mot de passe →
+                  </a>
+                  <p style="color:#aaa;font-size:12px;margin:0">
+                    Si tu n'as pas demandé cette réinitialisation, ignore cet email. Ton mot de passe ne sera pas modifié.
+                  </p>
+                </div>
+                <div style="padding:16px 24px;border-top:1px solid #f0f0f0;text-align:center">
+                  <p style="color:#bbb;font-size:11px;margin:0">MyBigFamily · Accès sur invitation uniquement</p>
+                </div>
+              </div>
+            </body>
+            </html>
+            """;
+
+        var textContent = $"""
+            Bonjour {firstName},
+
+            Tu as demandé à réinitialiser ton mot de passe MyBigFamily. Ce lien est valable 1 heure.
+
+            Réinitialise ton mot de passe en cliquant sur ce lien :
+            {resetLink}
+
+            Si tu n'as pas demandé cette réinitialisation, ignore cet email.
+
+            — L'équipe MyBigFamily
+            """;
+
+        var payload = new
+        {
+            sender      = new { name = fromName, email = fromEmail },
+            to          = new[] { new { email = toEmail, name = firstName } },
+            replyTo     = new { email = fromEmail, name = fromName },
+            subject     = "Réinitialisation de ton mot de passe MyBigFamily",
+            htmlContent = html,
+            textContent,
+        };
+
+        try
+        {
+            var client = http.CreateClient();
+            client.DefaultRequestHeaders.Add("api-key", apiKey);
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            var response = await client.PostAsJsonAsync("https://api.brevo.com/v3/smtp/email", payload);
+            if (response.IsSuccessStatusCode)
+                logger.LogInformation("Password reset email sent to {Email}", toEmail);
+            else
+                logger.LogError("Brevo error {Status} for reset email {Email}", (int)response.StatusCode, toEmail);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Exception sending reset email to {Email}", toEmail);
+        }
+    }
+
     public async Task SendInvitationAsync(
         string toEmail,
         string firstName,

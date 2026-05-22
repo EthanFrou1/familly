@@ -30,7 +30,11 @@ public class AuthService(AppDbContext db, IConfiguration config)
         user.InvitationUsedAt = DateTime.UtcNow;
         user.InvitationToken = null;
         if (email is not null && user.Email.EndsWith("@noreply.placeholder"))
+        {
             user.Email = email;
+            if (user.Member is not null)
+                user.Member.Email = email;
+        }
         await db.SaveChangesAsync();
 
         var jwt = GenerateJwt(user);
@@ -88,6 +92,32 @@ public class AuthService(AppDbContext db, IConfiguration config)
             .OrderBy(u => u.Member.FirstName).ThenBy(u => u.Member.LastName)
             .Select(u => new ActiveUserDto(u.Id, u.MemberId, u.Member.FirstName, u.Member.LastName))
             .ToListAsync();
+    }
+
+    public async Task<(string token, string firstName)?> GeneratePasswordResetTokenAsync(string email)
+    {
+        var user = await db.Users.Include(u => u.Member)
+            .FirstOrDefaultAsync(u => u.Email == email && !u.Email.EndsWith("@noreply.placeholder"));
+        if (user is null) return null;
+
+        user.ResetPasswordToken = Guid.NewGuid().ToString("N");
+        user.ResetPasswordTokenExpiry = DateTime.UtcNow.AddHours(1);
+        await db.SaveChangesAsync();
+        return (user.ResetPasswordToken, user.Member.FirstName);
+    }
+
+    public async Task<bool> ResetPasswordAsync(string token, string newPassword)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u =>
+            u.ResetPasswordToken == token &&
+            u.ResetPasswordTokenExpiry > DateTime.UtcNow);
+        if (user is null) return false;
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.ResetPasswordToken = null;
+        user.ResetPasswordTokenExpiry = null;
+        await db.SaveChangesAsync();
+        return true;
     }
 
     public async Task<string?> GetMemberInvitationTokenAsync(Guid memberId)

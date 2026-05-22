@@ -14,6 +14,7 @@ import Admin from './pages/Admin'
 import Duplicates from './pages/Duplicates'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
@@ -59,6 +60,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/invite/:token" element={<Login />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/*" element={<ProtectedLayout />} />
         </Routes>
       </AuthProvider>
