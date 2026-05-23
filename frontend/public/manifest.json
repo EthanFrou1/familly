@@ -4,8 +4,8 @@
   "description": "Votre histoire familiale, au même endroit.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F0F7FD",
-  "theme_color": "#5E93BD",
+  "background_color": "#E6F6FF",
+  "theme_color": "#23ADFF",
   "orientation": "portrait",
   "icons": [
     {
