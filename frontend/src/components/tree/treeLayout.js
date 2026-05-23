@@ -109,7 +109,13 @@ export function buildTreeLayout(members, relations, colorMap) {
   g.setGraph({ rankdir: 'TB', nodesep: H_SEP, ranksep: V_SEP, marginx: 60, marginy: 60 })
   g.setDefaultEdgeLabel(() => ({}))
 
-  members.forEach(m => g.setNode(m.id, { width: NODE_W, height: NODE_H }))
+  const sortedByAge = [...members].sort((a, b) => {
+    if (!a.birthDate && !b.birthDate) return 0
+    if (!a.birthDate) return 1
+    if (!b.birthDate) return -1
+    return new Date(a.birthDate) - new Date(b.birthDate)
+  })
+  sortedByAge.forEach(m => g.setNode(m.id, { width: NODE_W, height: NODE_H }))
   pcRelations.forEach(r => g.setEdge(r.memberAId, r.memberBId))
   inferredEdges.forEach(({ parentId, childId }) => {
     if (!g.hasEdge(parentId, childId)) g.setEdge(parentId, childId)

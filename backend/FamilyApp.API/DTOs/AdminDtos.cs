@@ -16,5 +16,8 @@ public record AdminMemberOverviewDto(
     string AccountStatus,
     string? InvitationToken,
     Guid? UserId,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string? UserRole
 );
+
+public record ChangeUserRoleRequest(string Role);

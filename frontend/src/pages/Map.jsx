@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import FamilyMap from '../components/map/FamilyMap'
 import { useMembers } from '../store/MembersContext'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Map() {
   const { members, loading } = useMembers()
+  const { user } = useAuth()
   const [search, setSearch] = useState('')
 
   const filtered = search
@@ -29,7 +31,7 @@ export default function Map() {
           className="w-full rounded-xl bg-white px-4 py-3 shadow-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>
-      <FamilyMap members={filtered} />
+      <FamilyMap members={filtered} currentMemberId={user?.memberId} />
     </div>
   )
 }

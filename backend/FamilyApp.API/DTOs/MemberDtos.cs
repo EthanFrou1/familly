@@ -26,7 +26,8 @@ public record MemberDto(
     Guid? FamilyId,
     string? FamilyName,
     Guid? DelegateManagerId,
-    string? DelegateManagerName
+    string? DelegateManagerName,
+    string? Gender
 );
 
 public record CreateMemberRequest(
@@ -49,7 +50,8 @@ public record CreateMemberRequest(
     string? FacebookUrl = null,
     string? InstagramUsername = null,
     string? WhatsappNumber = null,
-    Guid? FamilyId = null
+    Guid? FamilyId = null,
+    string? Gender = null
 );
 
 public record SetDelegateManagerRequest(Guid? UserId);
@@ -74,5 +76,6 @@ public record UpdateMemberRequest(
     string? FacebookUrl,
     string? InstagramUsername,
     string? WhatsappNumber,
-    Guid? FamilyId = null
+    Guid? FamilyId = null,
+    string? Gender = null
 );

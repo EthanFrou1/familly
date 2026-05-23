@@ -61,7 +61,7 @@ function makeInfoContent(members) {
     </div>`).join('')
 }
 
-export default function FamilyMap({ members }) {
+export default function FamilyMap({ members, currentMemberId }) {
   const mapRef = useRef(null)
   const instanceRef = useRef(null)
   const navigate = useNavigate()
@@ -87,10 +87,14 @@ export default function FamilyMap({ members }) {
 
       const located = members.filter(m => m.latitude && m.longitude)
 
-      // Auto-center on members or default to France
+      // Center on current user's location first, then fallback to bounding box or France
       let center = { lat: 46.5, lng: 2.5 }
       let zoom = 5
-      if (located.length === 1) {
+      const currentMember = currentMemberId ? located.find(m => m.id === currentMemberId) : null
+      if (currentMember) {
+        center = { lat: currentMember.latitude, lng: currentMember.longitude }
+        zoom = 12
+      } else if (located.length === 1) {
         center = { lat: located[0].latitude, lng: located[0].longitude }
         zoom = 12
       } else if (located.length > 1) {

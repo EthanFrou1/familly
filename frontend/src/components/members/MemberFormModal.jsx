@@ -51,7 +51,7 @@ const EMPTY = {
   phone: '', bio: '', occupation: '', sport: '', address: '', postalCode: '', city: '', country: '',
   latitude: null, longitude: null,
   isAlive: true, facebookUrl: '', instagramUsername: '', whatsappNumber: '',
-  familyId: ''
+  familyId: '', gender: ''
 }
 
 function toFormValues(initial) {
@@ -76,6 +76,7 @@ function toFormValues(initial) {
     instagramUsername: initial.instagramUsername ?? '',
     whatsappNumber: initial.whatsappNumber ?? '',
     familyId: initial.familyId ?? '',
+    gender: initial.gender ?? '',
   }
 }
 
@@ -211,6 +212,29 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
                   required className={inputCls} placeholder="Dupont" autoComplete="family-name" />
               </Field>
             </div>
+
+            {/* Genre */}
+            <Field label="Genre">
+              <div className="flex gap-2">
+                {[
+                  { value: 'M', label: 'Homme' },
+                  { value: 'F', label: 'Femme' },
+                ].map(g => (
+                  <button
+                    key={g.value}
+                    type="button"
+                    onClick={() => set('gender', form.gender === g.value ? '' : g.value)}
+                    className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium border transition-colors ${
+                      form.gender === g.value
+                        ? g.value === 'M' ? 'bg-blue-50 border-blue-400 text-blue-700' : 'bg-pink-50 border-pink-400 text-pink-700'
+                        : 'bg-white text-gray-600 border-gray-200'
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </Field>
 
             {/* Famille */}
             <Field label="Famille">

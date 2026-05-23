@@ -127,8 +127,8 @@ export default function Profile() {
 
   async function handleDelete() {
     await membersApi.delete(memberId)
-    refreshMembers()
-    navigate(-1)
+    await refreshMembers()
+    navigate('/members', { replace: true })
   }
 
   async function handleDeleteAccount() {
@@ -324,7 +324,7 @@ export default function Profile() {
     <div className="overflow-y-auto h-full bg-gray-50 pb-8 animate-fade-in">
 
       {/* Header */}
-      <div className={`${isDeceased ? 'bg-[#1c1c1c]' : 'bg-dark'} flex flex-col items-center gap-3 overflow-hidden relative`}>
+      <div className={`${isDeceased ? (member.gender === 'F' ? 'bg-pink-950' : 'bg-blue-950') : 'bg-dark'} flex flex-col items-center gap-3 overflow-hidden relative`}>
         {/* Bande couleur famille */}
         <div
           className="w-full h-2 shrink-0"
