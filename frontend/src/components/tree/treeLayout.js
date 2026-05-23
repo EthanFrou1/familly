@@ -123,6 +123,41 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   dagre.layout(g)
 
+  // ── Reorder siblings by birthDate: oldest left, youngest right ────────────
+  // Dagre ignores node insertion order, so we post-process x positions.
+  const memberMap = Object.fromEntries(members.map(m => [m.id, m]))
+  const parentToChildIds = new Map()
+  ;[
+    ...pcRelations.map(r => ({ parentId: r.memberAId, childId: r.memberBId })),
+    ...inferredEdges,
+  ].forEach(({ parentId, childId }) => {
+    if (!parentToChildIds.has(parentId)) parentToChildIds.set(parentId, new Set())
+    parentToChildIds.get(parentId).add(childId)
+  })
+
+  const repositioned = new Set()
+  parentToChildIds.forEach(childIdSet => {
+    const childIds = [...childIdSet].filter(id => g.node(id) && !repositioned.has(id))
+    if (childIds.length < 2) return
+
+    const sorted = [...childIds].sort((a, b) => {
+      const ma = memberMap[a], mb = memberMap[b]
+      if (!ma?.birthDate && !mb?.birthDate) return 0
+      if (!ma?.birthDate) return 1
+      if (!mb?.birthDate) return -1
+      return new Date(ma.birthDate) - new Date(mb.birthDate)
+    })
+
+    // Current x centres sorted ascending (left → right slot)
+    const slots = childIds.map(id => g.node(id).x).sort((a, b) => a - b)
+
+    sorted.forEach((id, i) => {
+      g.node(id).x = slots[i]
+      repositioned.add(id)
+    })
+  })
+  // ──────────────────────────────────────────────────────────────────────────
+
   // Extract positions (dagre center → top-left)
   const positions = {}
   g.nodes().forEach(id => {
