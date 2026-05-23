@@ -75,7 +75,7 @@ export default function BottomNav() {
           {/* Menu dark */}
           <div
             className="relative mx-4 rounded-2xl overflow-hidden"
-            style={{ background: '#1A3D2B', marginBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
+            style={{ background: 'var(--c-dark-bg)', marginBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
             onClick={e => e.stopPropagation()}
           >
             {isAdmin && adminOnlyActions.map(({ label, icon: Icon }, i) => (

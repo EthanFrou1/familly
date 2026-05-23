@@ -4,10 +4,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#52B788',
-        'primary-dark': '#339A6E',
-        dark: '#2D6A4F',
-        surface: '#F0FAF4',
+        primary:        'rgb(var(--color-primary)      / <alpha-value>)',
+        'primary-dark': 'rgb(var(--color-primary-dark) / <alpha-value>)',
+        dark:           'rgb(var(--color-dark)         / <alpha-value>)',
+        surface:        'rgb(var(--color-surface)      / <alpha-value>)',
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Roboto', 'Helvetica Neue', 'sans-serif'],

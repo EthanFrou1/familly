@@ -181,7 +181,7 @@ export default function Families() {
               onClick={() => setSort(key)}
               className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
               style={sort === key
-                ? { background: '#52B788', color: '#fff' }
+                ? { background: 'var(--c-primary)', color: '#fff' }
                 : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }
               }
             >
