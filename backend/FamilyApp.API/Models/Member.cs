@@ -20,6 +20,7 @@ public class Member
     public double? Longitude { get; set; }
     public string? ProfilePictureUrl { get; set; }
     public bool IsAlive { get; set; } = true;
+    public string? Gender { get; set; } // "M" or "F"
     public string? FacebookUrl { get; set; }
     public string? InstagramUsername { get; set; }
     public string? WhatsappNumber { get; set; }

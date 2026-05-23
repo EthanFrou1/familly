@@ -227,6 +227,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
             Latitude = req.Latitude,
             Longitude = req.Longitude,
             IsAlive = req.IsAlive,
+            Gender = req.Gender,
             FacebookUrl = req.FacebookUrl,
             InstagramUsername = req.InstagramUsername,
             WhatsappNumber = req.WhatsappNumber,
@@ -286,6 +287,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         if (req.Latitude.HasValue) member.Latitude = req.Latitude;
         if (req.Longitude.HasValue) member.Longitude = req.Longitude;
         if (req.IsAlive.HasValue) member.IsAlive = req.IsAlive.Value;
+        if (req.Gender is not null) member.Gender = req.Gender == "" ? null : req.Gender;
         if (req.FacebookUrl is not null) member.FacebookUrl = req.FacebookUrl == "" ? null : req.FacebookUrl;
         if (req.InstagramUsername is not null) member.InstagramUsername = req.InstagramUsername == "" ? null : req.InstagramUsername;
         if (req.WhatsappNumber is not null) member.WhatsappNumber = req.WhatsappNumber == "" ? null : req.WhatsappNumber;
@@ -369,7 +371,8 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         m.DelegateManagerId,
         m.DelegateManager?.Member != null
             ? $"{m.DelegateManager.Member.FirstName} {m.DelegateManager.Member.LastName}"
-            : null
+            : null,
+        m.Gender
     );
 
     private static DateTime? ToUtc(DateTime? dt) =>
@@ -384,6 +387,7 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
         m.DelegateManagerId,
         m.DelegateManager != null && m.DelegateManager.Member != null
             ? m.DelegateManager.Member.FirstName + " " + m.DelegateManager.Member.LastName
-            : null
+            : null,
+        m.Gender
     );
 }

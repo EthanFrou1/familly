@@ -88,6 +88,18 @@ export default function Admin() {
     setOverview(prev => prev.map(m => m.id === id ? { ...m, ...patch } : m))
   }
 
+  async function handleToggleAdmin(member) {
+    if (!member.userId) return
+    const newRole = member.userRole === 'Admin' ? 'Member' : 'Admin'
+    try {
+      await adminApi.changeUserRole(member.userId, newRole)
+      updateMember(member.id, { userRole: newRole })
+      showToast(newRole === 'Admin' ? `${member.firstName} est maintenant admin.` : `${member.firstName} n'est plus admin.`)
+    } catch (e) {
+      showToast(e.response?.data?.message ?? 'Erreur lors du changement de rôle.', 'error')
+    }
+  }
+
   async function handleCopyLink(member) {
     const link = `${window.location.origin}/invite/${member.invitationToken}`
     const message = `Bonjour ${member.firstName} !\n\nTu es invité(e) à rejoindre notre espace famille sur MyBigFamily.\n\nCrée ton compte en cliquant sur ce lien :\n${link}\n\nCe lien est à usage unique.`
@@ -216,6 +228,8 @@ export default function Admin() {
                 onInvite={() => setInviteTarget(m)}
                 onCopyLink={() => handleCopyLink(m)}
                 onManage={() => { setManagerTarget(m); loadActiveUsers() }}
+                onToggleAdmin={() => handleToggleAdmin(m)}
+                currentUserId={user?.id}
               />
             ))}
 
@@ -290,10 +304,13 @@ function StatChip({ label, value, color }) {
 }
 
 
-function MemberCard({ member: m, onNavigate, onInvite, onCopyLink, onManage }) {
+function MemberCard({ member: m, onNavigate, onInvite, onCopyLink, onManage, onToggleAdmin, currentUserId }) {
   const st = STATUS_CONFIG[m.accountStatus] ?? STATUS_CONFIG.none
   const canInvite = m.accountStatus === 'none' || m.accountStatus === 'pending'
   const canCopyLink = m.accountStatus === 'pending' && !!m.invitationToken
+  const isActiveUser = m.accountStatus === 'active' && !!m.userId
+  const isSelf = m.userId && String(m.userId) === String(currentUserId)
+  const isAdmin = m.userRole === 'Admin'
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
@@ -306,6 +323,9 @@ function MemberCard({ member: m, onNavigate, onInvite, onCopyLink, onManage }) {
             <button onClick={onNavigate} className="font-semibold text-gray-900 text-sm hover:underline text-left">
               {m.firstName} {m.lastName}
             </button>
+            {isAdmin && (
+              <span className="text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 font-medium">Admin</span>
+            )}
             {!m.isAlive && (
               <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-2 py-0.5">Décédé(e)</span>
             )}
@@ -341,7 +361,15 @@ function MemberCard({ member: m, onNavigate, onInvite, onCopyLink, onManage }) {
         {canCopyLink && (
           <ActionBtn icon={<LinkIcon />} label="Lien" onClick={onCopyLink} color="text-violet-600 bg-violet-50" />
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1.5">
+          {isActiveUser && !isSelf && (
+            <ActionBtn
+              icon={<ShieldIcon />}
+              label={isAdmin ? 'Retirer admin' : 'Rendre admin'}
+              onClick={onToggleAdmin}
+              color={isAdmin ? 'text-amber-600 bg-amber-50' : 'text-gray-600 bg-gray-100'}
+            />
+          )}
           <ActionBtn icon={<PersonIcon />} label="Gestionnaire" onClick={onManage} color="text-gray-600 bg-gray-100" />
         </div>
       </div>
@@ -627,4 +655,7 @@ function LinkIcon() {
 }
 function PersonIcon() {
   return <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+}
+function ShieldIcon() {
+  return <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
 }

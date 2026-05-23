@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Charte graphique — modifier uniquement ce bloc pour rethemer l'app ─── */
+:root {
+  /* Valeurs RGB séparées par des espaces (format Tailwind avec opacité) */
+  --color-primary:      82 183 136;
+  --color-primary-dark: 51  154 110;
+  --color-dark:         45  106  79;
+  --color-surface:     240  250 244;
+
+  /* Hex pour les styles inline React et les templates HTML (ex: Google Maps) */
+  --c-primary:      #52B788;
+  --c-primary-dark: #339A6E;
+  --c-dark:         #2D6A4F;
+  --c-dark-bg:      #1A3D2B;
+  --c-surface:      #F0FAF4;
+}
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 @layer base {
   html {
     @apply h-full;

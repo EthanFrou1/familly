@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import imageCompression from 'browser-image-compression'
-import { albumsApi, externalMediaApi, photosApi } from '../services/api'
+import { albumsApi, photosApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
-import AddVideoModal from '../components/photos/AddVideoModal'
-import VideoCard from '../components/photos/VideoCard'
 import PhotoViewer from '../components/photos/PhotoViewer'
 import CreateAlbumModal from '../components/photos/CreateAlbumModal'
 import GalleryPickerModal from '../components/photos/GalleryPickerModal'
@@ -27,8 +25,6 @@ function persistDownloadedIds(albumId, newIds) {
 
 const PHOTO_TABS = ['galerie', 'album']
 const TAB_LABELS = { galerie: 'Galerie', album: 'Albums' }
-const MEDIA_FILTERS = ['tous', 'photos', 'videos']
-const FILTER_LABELS = { tous: 'Tous', photos: 'Photos', videos: 'Vidéos' }
 const AUTHOR_FILTERS = ['moi', 'autres']
 const AUTHOR_LABELS = { moi: 'Mes photos', autres: 'Les autres' }
 
@@ -57,13 +53,10 @@ export default function Photos() {
 
 function GalerieTab() {
   const { user } = useAuth()
-  const [mediaFilter, setMediaFilter] = useState('tous')
   const [authorFilter, setAuthorFilter] = useState('tous')
   const [photos, setPhotos] = useState([])
-  const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  const [showAddVideo, setShowAddVideo] = useState(false)
   const [viewerIndex, setViewerIndex] = useState(null)
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -74,10 +67,7 @@ function GalerieTab() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([
-      photosApi.getAll().then(({ data }) => setPhotos(data)),
-      externalMediaApi.getAll().then(({ data }) => setVideos(data)),
-    ]).finally(() => setLoading(false))
+    photosApi.getAll().then(({ data }) => setPhotos(data)).finally(() => setLoading(false))
   }, [])
 
   async function handleUpload(e) {
@@ -164,27 +154,17 @@ function GalerieTab() {
     }
   }
 
-  const showPhotos = mediaFilter === 'tous' || mediaFilter === 'photos'
-  const showVideos = mediaFilter === 'tous' || mediaFilter === 'videos'
-
   const filteredPhotos = photos.filter(p => {
     if (authorFilter === 'moi') return p.uploaderId === user?.memberId
     if (authorFilter === 'autres') return p.uploaderId !== user?.memberId
     return true
   })
 
-  const filteredVideos = authorFilter === 'tous' ? videos
-    : authorFilter === 'moi' ? videos.filter(v => v.uploaderId === user?.memberId)
-    : videos.filter(v => v.uploaderId !== user?.memberId)
-
-  const hasContent = uploading || (showPhotos && filteredPhotos.length > 0) || (showVideos && filteredVideos.length > 0)
+  const hasContent = uploading || filteredPhotos.length > 0
 
   return (
     <>
       <div className="flex items-center gap-2 px-3 py-2 bg-white border-b border-gray-100 shrink-0">
-        <Select value={mediaFilter} onChange={e => setMediaFilter(e.target.value)} className="flex-1">
-          {MEDIA_FILTERS.map(f => <option key={f} value={f}>{FILTER_LABELS[f]}</option>)}
-        </Select>
         <Select value={authorFilter} onChange={e => setAuthorFilter(e.target.value)} className="flex-1">
           <option value="tous">Tous</option>
           {AUTHOR_FILTERS.map(f => <option key={f} value={f}>{AUTHOR_LABELS[f]}</option>)}
@@ -213,12 +193,6 @@ function GalerieTab() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </button>
-          <button onClick={() => setShowAddVideo(true)} title="Ajouter une vidéo"
-            className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -230,28 +204,17 @@ function GalerieTab() {
         ) : !hasContent ? (
           <EmptyState />
         ) : (
-          <div className="p-3 flex flex-col gap-4">
-            {showVideos && filteredVideos.length > 0 && (
-              <div className="flex flex-col gap-2">
-                {filteredVideos.map(video => (
-                  <VideoCard key={video.id} video={video} onDelete={id => setVideos(prev => prev.filter(v => v.id !== id))} />
-                ))}
-              </div>
-            )}
-            {(showPhotos && filteredPhotos.length > 0) || uploading ? (
-              <div className="grid grid-cols-3 gap-0.5">
-                {uploading && <UploadPlaceholder />}
-                {showPhotos && filteredPhotos.map((photo, i) => (
-                  <PhotoThumb
-                    key={photo.id}
-                    photo={photo}
-                    onClick={selectionMode ? () => togglePhotoSelect(photo.id) : () => setViewerIndex(i)}
-                    selectionMode={selectionMode}
-                    isSelected={selectedIds.has(photo.id)}
-                  />
-                ))}
-              </div>
-            ) : null}
+          <div className="grid grid-cols-3 gap-0.5 p-0.5">
+            {uploading && <UploadPlaceholder />}
+            {filteredPhotos.map((photo, i) => (
+              <PhotoThumb
+                key={photo.id}
+                photo={photo}
+                onClick={selectionMode ? () => togglePhotoSelect(photo.id) : () => setViewerIndex(i)}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(photo.id)}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -299,8 +262,6 @@ function GalerieTab() {
           />
         )
       })()}
-
-      <AddVideoModal open={showAddVideo} onClose={() => setShowAddVideo(false)} onAdded={video => setVideos(prev => [video, ...prev])} />
 
       <ConfirmModal
         open={showDeleteConfirm}
@@ -873,7 +834,7 @@ function EmptyState() {
       <svg className="h-10 w-10 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 18h16.5M3.75 21h16.5" />
       </svg>
-      <p className="text-sm">Aucun média pour l'instant</p>
+      <p className="text-sm">Aucune photo pour l&apos;instant</p>
     </div>
   )
 }

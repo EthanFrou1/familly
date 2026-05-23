@@ -189,7 +189,7 @@ function Chip({ label, active, onClick, color }) {
       style={active && color
         ? { background: color.border, color: '#fff' }
         : active
-          ? { background: '#A87048', color: '#fff' }
+          ? { background: 'var(--c-primary)', color: '#fff' }
           : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }
       }
     >

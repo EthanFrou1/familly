@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FamilyApp.API.Data;
 using FamilyApp.API.DTOs;
+using FamilyApp.API.Models;
 using FamilyApp.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -42,11 +43,30 @@ public class AdminController(AppDbContext db, DuplicateDetectionService duplicat
                     ? m.User.InvitationToken
                     : null,
                 m.User != null ? m.User.Id : (Guid?)null,
-                m.CreatedAt
+                m.CreatedAt,
+                m.User != null ? m.User.Role.ToString() : null
             ))
             .ToListAsync();
 
         return Ok(members);
+    }
+
+    [HttpPatch("users/{userId:guid}/role")]
+    public async Task<IActionResult> ChangeUserRole(Guid userId, [FromBody] ChangeUserRoleRequest req)
+    {
+        if (!Enum.TryParse<UserRole>(req.Role, out var newRole))
+            return BadRequest(new { message = "Rôle invalide. Valeurs acceptées : Admin, Member, ReadOnly." });
+
+        var user = await db.Users.FindAsync(userId);
+        if (user is null) return NotFound();
+
+        var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        if (user.Id == callerId)
+            return BadRequest(new { message = "Vous ne pouvez pas modifier votre propre rôle." });
+
+        user.Role = newRole;
+        await db.SaveChangesAsync();
+        return Ok(new { userId = user.Id, role = user.Role.ToString() });
     }
 
     [HttpGet("duplicates")]

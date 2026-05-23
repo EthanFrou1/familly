@@ -36,7 +36,7 @@ export default function BottomNav() {
 
   const allActions = [
     {
-      label: 'Photos & Vidéos',
+      label: 'Photos',
       icon: PhotoIcon,
       onClick: () => { setFabOpen(false); navigate('/photos') }
     },
@@ -75,7 +75,7 @@ export default function BottomNav() {
           {/* Menu dark */}
           <div
             className="relative mx-4 rounded-2xl overflow-hidden"
-            style={{ background: '#2A1208', marginBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
+            style={{ background: 'var(--c-dark-bg)', marginBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
             onClick={e => e.stopPropagation()}
           >
             {isAdmin && adminOnlyActions.map(({ label, icon: Icon }, i) => (

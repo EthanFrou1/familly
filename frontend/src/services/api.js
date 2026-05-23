@@ -106,6 +106,7 @@ export const adminApi = {
   getMemberAccountStatus: (memberId) => api.get(`/auth/member/${memberId}/account-status`),
   getMemberInvitationToken: (memberId) => api.get(`/auth/member/${memberId}/invitation-token`),
   getActiveUsers: () => api.get('/auth/active-users'),
+  changeUserRole: (userId, role) => api.patch(`/admin/users/${userId}/role`, { role }),
 }
 
 export const familiesApi = {
