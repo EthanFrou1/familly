@@ -7,8 +7,6 @@ import CreateAlbumModal from '../components/photos/CreateAlbumModal'
 import GalleryPickerModal from '../components/photos/GalleryPickerModal'
 import PhotoDeleteModal from '../components/photos/PhotoDeleteModal'
 import ConfirmModal from '../components/shared/ConfirmModal'
-import Select from '../components/shared/Select'
-
 const BATCH_SIZE = 30
 
 function getDownloadedIds(albumId) {
@@ -25,8 +23,8 @@ function persistDownloadedIds(albumId, newIds) {
 
 const PHOTO_TABS = ['galerie', 'album']
 const TAB_LABELS = { galerie: 'Galerie', album: 'Albums' }
-const AUTHOR_FILTERS = ['moi', 'autres']
-const AUTHOR_LABELS = { moi: 'Mes photos', autres: 'Les autres' }
+const AUTHOR_FILTERS = ['tous', 'moi', 'autres']
+const AUTHOR_LABELS = { tous: 'Tous', moi: 'Mes photos', autres: 'Les autres' }
 
 export default function Photos() {
   const [tab, setTab] = useState('galerie')
@@ -165,10 +163,19 @@ function GalerieTab() {
   return (
     <>
       <div className="flex items-center gap-2 px-3 py-2 bg-white border-b border-gray-100 shrink-0">
-        <Select value={authorFilter} onChange={e => setAuthorFilter(e.target.value)} className="flex-1">
-          <option value="tous">Tous</option>
-          {AUTHOR_FILTERS.map(f => <option key={f} value={f}>{AUTHOR_LABELS[f]}</option>)}
-        </Select>
+        <div className="flex gap-1.5 flex-1">
+          {AUTHOR_FILTERS.map(f => (
+            <button
+              key={f}
+              onClick={() => setAuthorFilter(f)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                authorFilter === f ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 active:bg-gray-200'
+              }`}
+            >
+              {AUTHOR_LABELS[f]}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={toggleSelectionMode}
