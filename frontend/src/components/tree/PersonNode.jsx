@@ -63,8 +63,8 @@ function PersonNode({ data }) {
             </p>
           )}
         </div>
-        {member.gender === 'M' && <span className="text-blue-400 shrink-0 text-sm font-black">♂</span>}
-        {member.gender === 'F' && <span className="text-pink-400 shrink-0 text-sm font-black">♀</span>}
+        {member.gender === 'M' && <span className="text-blue-400 shrink-0 text-sm font-black self-start mt-0.5">♂</span>}
+        {member.gender === 'F' && <span className="text-pink-400 shrink-0 text-sm font-black self-start mt-0.5">♀</span>}
       </div>
 
       <Handle id="bottom"       type="source" position={Position.Bottom} style={H} />
