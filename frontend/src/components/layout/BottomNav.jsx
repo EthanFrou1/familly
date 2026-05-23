@@ -36,7 +36,7 @@ export default function BottomNav() {
 
   const allActions = [
     {
-      label: 'Photos & Vidéos',
+      label: 'Photos',
       icon: PhotoIcon,
       onClick: () => { setFabOpen(false); navigate('/photos') }
     },
