@@ -123,8 +123,10 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   dagre.layout(g)
 
-  // ── Reorder siblings by birthDate: oldest left, youngest right ────────────
+  // ── Reorder siblings: families grouped together, then oldest→left within each family ──
   // Dagre ignores node insertion order, so we post-process x positions.
+  // Rule: keep siblings of the same family adjacent (using dagre's family avg-x as anchor),
+  // then sort by birthDate within each family group.
   const memberMap = Object.fromEntries(members.map(m => [m.id, m]))
   const parentToChildIds = new Map()
   ;[
@@ -140,15 +142,33 @@ export function buildTreeLayout(members, relations, colorMap) {
     const childIds = [...childIdSet].filter(id => g.node(id) && !repositioned.has(id))
     if (childIds.length < 2) return
 
+    // Compute each family's average x in this sibling group.
+    // Pièce rapportée (no familyId) get a unique key so they act as a solo group.
+    const famXSum = new Map(), famXCount = new Map()
+    childIds.forEach(id => {
+      const key = memberMap[id]?.familyId ?? `__solo_${id}`
+      famXSum.set(key, (famXSum.get(key) ?? 0) + g.node(id).x)
+      famXCount.set(key, (famXCount.get(key) ?? 0) + 1)
+    })
+    const famAvgX = key => (famXSum.get(key) ?? 0) / (famXCount.get(key) ?? 1)
+
     const sorted = [...childIds].sort((a, b) => {
       const ma = memberMap[a], mb = memberMap[b]
+      const keyA = ma?.familyId ?? `__solo_${a}`
+      const keyB = mb?.familyId ?? `__solo_${b}`
+
+      // Primary: keep families grouped by their current x position in dagre
+      const dFam = famAvgX(keyA) - famAvgX(keyB)
+      if (Math.abs(dFam) > 1) return dFam
+
+      // Secondary: within the same family, oldest first
       if (!ma?.birthDate && !mb?.birthDate) return 0
       if (!ma?.birthDate) return 1
       if (!mb?.birthDate) return -1
       return new Date(ma.birthDate) - new Date(mb.birthDate)
     })
 
-    // Current x centres sorted ascending (left → right slot)
+    // Current x centres sorted ascending → these are the slots to fill
     const slots = childIds.map(id => g.node(id).x).sort((a, b) => a - b)
 
     sorted.forEach((id, i) => {
