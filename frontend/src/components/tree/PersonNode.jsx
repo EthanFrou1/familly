@@ -17,7 +17,7 @@ function PersonNode({ data }) {
   return (
     <div
       style={{
-        borderColor: color ? color.border : '#E5E7EB',
+        borderColor: color ? color.border : (member.familyId == null ? '#D97706' : '#E5E7EB'),
         width: 160,
       }}
       className={`rounded-xl border-2 shadow-sm cursor-pointer active:scale-95 transition-transform select-none overflow-hidden bg-white ${
@@ -32,10 +32,10 @@ function PersonNode({ data }) {
 
       {/* Header with family name */}
       <div
-        style={{ background: color ? color.border : '#9CA3AF' }}
+        style={{ background: color ? color.border : (member.familyId == null ? '#D97706' : '#9CA3AF') }}
         className="px-2.5 py-1 flex items-center justify-between"
       >
-        <span className="text-[10px] font-bold text-white truncate">
+        <span className="text-[10px] font-bold text-white truncate italic">
           {member.familyName ?? 'Pièce rapportée'}
         </span>
         <div className="flex items-center gap-1 shrink-0 ml-1">
