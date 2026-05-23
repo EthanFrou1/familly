@@ -1016,7 +1016,7 @@ export default function Profile() {
       <ConfirmModal
         open={showDeleteAccountConfirm}
         title="Supprimer mon compte ?"
-        message="Votre compte sera supprimé et vos données de contact effacées. Votre profil restera dans l'arbre familial. Cette action est irréversible."
+        message="Votre compte et votre profil seront définitivement supprimés — vous disparaîtrez de l'arbre familial et de la liste des membres. Cette action est irréversible."
         confirmLabel="Supprimer mon compte"
         onConfirm={handleDeleteAccount}
         onCancel={() => setShowDeleteAccountConfirm(false)}

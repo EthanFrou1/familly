@@ -139,41 +139,55 @@ public class AuthService(AppDbContext db, IConfiguration config)
 
         var memberId = user.MemberId;
 
-        // Anonymize activity logs where this member is target or related
-        var logsAsTarget = await db.ActivityLogs.Where(l => l.TargetMemberId == memberId).ToListAsync();
-        foreach (var log in logsAsTarget)
-        {
-            log.TargetMemberName = "Membre supprimé";
-            log.TargetMemberPictureUrl = null;
-        }
-
-        var logsAsRelated = await db.ActivityLogs.Where(l => l.RelatedMemberId == memberId).ToListAsync();
-        foreach (var log in logsAsRelated)
-            log.RelatedMemberName = "Membre supprimé";
-
-        // Remove personal contact data from member profile (keep name/birthdate for family tree)
-        var member = user.Member;
-        member.Email = null;
-        member.Phone = null;
-        member.Bio = null;
-        member.Address = null;
-        member.PostalCode = null;
-        member.City = null;
-        member.Country = null;
-        member.Latitude = null;
-        member.Longitude = null;
-        member.FacebookUrl = null;
-        member.InstagramUsername = null;
-        member.WhatsappNumber = null;
+        // Nullify activity log references (no FK constraint — just clean the stored IDs)
+        await db.ActivityLogs.Where(l => l.TargetMemberId == memberId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(l => l.TargetMemberId, (Guid?)null)
+                .SetProperty(l => l.TargetMemberName, "Compte supprimé")
+                .SetProperty(l => l.TargetMemberPictureUrl, (string?)null));
+        await db.ActivityLogs.Where(l => l.RelatedMemberId == memberId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(l => l.RelatedMemberId, (Guid?)null)
+                .SetProperty(l => l.RelatedMemberName, "Compte supprimé"));
 
         // Delete push subscriptions
-        var pushSubs = db.PushSubscriptions.Where(p => p.UserId == userId);
-        db.PushSubscriptions.RemoveRange(pushSubs);
+        await db.PushSubscriptions.Where(p => p.UserId == userId).ExecuteDeleteAsync();
 
-        // Delete user account
-        db.Users.Remove(user);
+        // Delete all family relations (both sides — Restrict FK requires explicit delete)
+        await db.Relations
+            .Where(r => r.MemberAId == memberId || r.MemberBId == memberId)
+            .ExecuteDeleteAsync();
 
-        await db.SaveChangesAsync();
+        // Delete external media uploaded by this member
+        await db.ExternalMedias.Where(em => em.UploaderId == memberId).ExecuteDeleteAsync();
+
+        // Delete photos uploaded by this member
+        await db.Photos.Where(p => p.UploaderId == memberId).ExecuteDeleteAsync();
+
+        // Reassign albums/events to an existing member to preserve shared content
+        var fallbackId = await db.Members
+            .Where(m => m.Id != memberId)
+            .OrderBy(m => m.CreatedAt)
+            .Select(m => (Guid?)m.Id)
+            .FirstOrDefaultAsync();
+
+        if (fallbackId.HasValue)
+        {
+            await db.Albums.Where(a => a.CreatorId == memberId)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.CreatorId, fallbackId.Value));
+            await db.Events.Where(e => e.CreatedById == memberId)
+                .ExecuteUpdateAsync(s => s.SetProperty(e => e.CreatedById, fallbackId.Value));
+        }
+        else
+        {
+            await db.Albums.Where(a => a.CreatorId == memberId).ExecuteDeleteAsync();
+            await db.Events.Where(e => e.CreatedById == memberId).ExecuteDeleteAsync();
+        }
+
+        // Delete user first (User.MemberId FK → Members), then member (DuplicateCandidates cascade)
+        await db.Users.Where(u => u.Id == userId).ExecuteDeleteAsync();
+        await db.Members.Where(m => m.Id == memberId).ExecuteDeleteAsync();
+
         return true;
     }
 
