@@ -54,8 +54,10 @@ function PersonNode({ data }) {
       <div className="flex items-center gap-2 px-2.5 py-2">
         <Avatar src={member.profilePictureUrl} name={fullName} size="xs" />
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold text-gray-900 leading-tight truncate">
+          <p className="text-[11px] font-bold text-gray-900 leading-tight truncate flex items-center gap-0.5">
             {member.firstName} {member.lastName}
+            {member.gender === 'M' && <span className="text-blue-400 shrink-0">♂</span>}
+            {member.gender === 'F' && <span className="text-pink-400 shrink-0">♀</span>}
           </p>
           {yearOnly && (
             <p className="text-[10px] text-gray-400 leading-tight">
