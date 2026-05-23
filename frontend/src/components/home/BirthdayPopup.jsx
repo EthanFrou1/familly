@@ -37,7 +37,7 @@ export default function BirthdayPopup({ members, onNavigate }) {
         particleCount: 80,
         spread: 70,
         origin,
-        colors: ['#5E93BD', '#4678A0', '#93C5FD', '#BFDBFE', '#3F7392'],
+        colors: ['#23ADFF', '#0A78BE', '#7DD3FC', '#BAE6FD', '#055A96'],
         zIndex: 9999,
       })
 
