@@ -28,6 +28,21 @@ export default function Legal() {
           <Row label="Contact" value="bonjour@mybigfamily.fr" isEmail />
         </Section>
 
+        <Section title="Développement">
+          <div className="rounded-xl bg-gray-50 px-3 py-2.5 space-y-0.5">
+            <p className="text-sm font-semibold text-gray-800">etnof</p>
+            <p className="text-xs text-gray-500">Conception & développement de l'application</p>
+            <a
+              href="https://website-etnof-web.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary underline"
+            >
+              website-etnof-web.vercel.app
+            </a>
+          </div>
+        </Section>
+
         <Section title="Hébergement">
           <div className="space-y-2">
             {[

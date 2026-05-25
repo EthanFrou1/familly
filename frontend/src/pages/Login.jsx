@@ -247,6 +247,18 @@ export default function Login() {
         <p className="text-center text-xs text-white/50 mt-6">
           Accès sur invitation uniquement
         </p>
+
+        <p className="text-center text-xs text-white/25 mt-3">
+          Réalisé par{' '}
+          <a
+            href="https://website-etnof-web.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white/40 hover:text-white/60 underline transition-colors"
+          >
+            etnof-web
+          </a>
+        </p>
       </div>
     </div>
   )
