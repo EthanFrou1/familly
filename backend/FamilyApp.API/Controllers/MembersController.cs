@@ -349,6 +349,23 @@ public class MembersController(AppDbContext db, CloudinaryService cloudinary, Ac
     {
         var member = await db.Members.FindAsync(id);
         if (member is null) return NotFound();
+
+        // Les FK avec Restrict bloquent la suppression directe — on supprime les dépendances d'abord
+        var relations = await db.Relations.Where(r => r.MemberAId == id || r.MemberBId == id).ToListAsync();
+        db.Relations.RemoveRange(relations);
+
+        var photos = await db.Photos.Where(p => p.UploaderId == id).ToListAsync();
+        db.Photos.RemoveRange(photos);
+
+        var externalMedia = await db.ExternalMedias.Where(em => em.UploaderId == id).ToListAsync();
+        db.ExternalMedias.RemoveRange(externalMedia);
+
+        var albums = await db.Albums.Where(a => a.CreatorId == id).ToListAsync();
+        db.Albums.RemoveRange(albums);
+
+        var events = await db.Events.Where(e => e.CreatedById == id).ToListAsync();
+        db.Events.RemoveRange(events);
+
         db.Members.Remove(member);
         await db.SaveChangesAsync();
         return NoContent();

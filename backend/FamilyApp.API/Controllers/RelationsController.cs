@@ -19,6 +19,7 @@ public class RelationsController(AppDbContext db, ActivityLogService activityLog
         { RelationType.Spouse,      ("Conjoint(e)", "Conjoint(e)") },
         { RelationType.Sibling,     ("Frère / Sœur", "Frère / Sœur") },
         { RelationType.HalfSibling, ("Demi-frère / Demi-sœur", "Demi-frère / Demi-sœur") },
+        { RelationType.Separated,   ("Séparé(e) / Divorcé(e)", "Séparé(e) / Divorcé(e)") },
     };
 
     [HttpGet]

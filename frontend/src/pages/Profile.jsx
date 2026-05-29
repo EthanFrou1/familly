@@ -42,6 +42,7 @@ export default function Profile() {
   const [linkModal, setLinkModal] = useState(null) // 'instagram' | 'facebook' | 'whatsapp' | null
   const [families, setFamilies] = useState([])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [testPushState, setTestPushState] = useState('idle') // idle | loading | ok | error
   const [pushSubscribers, setPushSubscribers] = useState([])
   const [testUserIds, setTestUserIds] = useState(new Set())
@@ -126,9 +127,16 @@ export default function Profile() {
   }
 
   async function handleDelete() {
-    await membersApi.delete(memberId)
-    await refreshMembers()
-    navigate('/members', { replace: true })
+    setDeleteLoading(true)
+    try {
+      await membersApi.delete(memberId)
+      await refreshMembers()
+      navigate('/members', { replace: true })
+    } catch {
+      setDeleteLoading(false)
+      setShowDeleteConfirm(false)
+      alert('Impossible de supprimer ce membre.')
+    }
   }
 
   async function handleDeleteAccount() {
@@ -1011,6 +1019,7 @@ export default function Profile() {
         confirmLabel="Supprimer"
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}
+        loading={deleteLoading}
       />
 
       <ConfirmModal
@@ -1179,7 +1188,7 @@ function computeRelationSuggestions(memberId, allRelations) {
   return suggestions
 }
 
-const REL_LABELS = { Sibling: 'Frère / Sœur', ParentChild: 'Enfant de', ParentChild_parent: 'Parent de', Spouse: 'Conjoint(e)' }
+const REL_LABELS = { Sibling: 'Frère / Sœur', ParentChild: 'Enfant de', ParentChild_parent: 'Parent de', Spouse: 'Conjoint(e)', Separated: 'Séparé(e) / Divorcé(e)' }
 
 function SuggestionRow({ suggestion, onAccept }) {
   const [loading, setLoading] = useState(false)
@@ -1320,6 +1329,7 @@ const REL_TYPE_LABELS = {
   Spouse:      'Conjoint(e)',
   Sibling:     'Frère / Sœur',
   HalfSibling: 'Demi-frère/sœur',
+  Separated:   'Séparé(e) / Divorcé(e)',
 }
 
 function ActivityLogTable({ data, loading, page, onPageChange, memberId }) {
