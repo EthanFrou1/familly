@@ -476,7 +476,12 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
               disabled={loading || !isDirty || feedback?.type === 'success'}
               className="w-full rounded-xl bg-primary py-3.5 font-semibold text-white min-h-touch active:bg-primary-dark disabled:opacity-50 transition-colors"
             >
-              {loading ? '...' : isEdit ? 'Enregistrer' : 'Ajouter le membre'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  En cours…
+                </span>
+              ) : isEdit ? 'Enregistrer' : 'Ajouter le membre'}
             </button>
           </div>
         </form>

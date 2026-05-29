@@ -125,7 +125,12 @@ export default function ResetPassword() {
                 disabled={loading}
                 className="w-full rounded-2xl bg-primary py-3.5 font-bold text-white shadow-lg shadow-primary/30 active:bg-primary-dark disabled:opacity-50 transition-all text-sm mt-1"
               >
-                {loading ? '...' : 'Enregistrer le mot de passe'}
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    En cours…
+                  </span>
+                ) : 'Enregistrer le mot de passe'}
               </button>
             </form>
           )}

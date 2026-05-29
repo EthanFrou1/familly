@@ -550,7 +550,12 @@ function EventFormModal({ event, onClose, onSave }) {
             disabled={saving || !title.trim()}
             className="w-full rounded-xl bg-primary py-3.5 font-semibold text-white disabled:opacity-50 active:bg-primary-dark"
           >
-            {saving ? 'Enregistrement…' : event ? 'Enregistrer' : 'Ajouter le mariage'}
+            {saving ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                En cours…
+              </span>
+            ) : event ? 'Enregistrer' : 'Ajouter le mariage'}
           </button>
         </div>
       </div>

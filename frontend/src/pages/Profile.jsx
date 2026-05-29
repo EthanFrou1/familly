@@ -317,12 +317,16 @@ export default function Profile() {
   const isDelegateManager = !isAdmin && !isOwnProfile && member?.delegateManagerId && user?.id === member.delegateManagerId
   const canEdit = isAdmin || isOwnProfile || isDelegateManager
 
-  const spouseRelation = !member.familyId
-    ? relations.find(r => r.type === 'Spouse')
+  const spouseRelation = relations.find(r => r.type === 'Spouse')
+  const separatedRelation = !spouseRelation ? relations.find(r => r.type === 'Separated') : null
+  const marriedLabel = spouseRelation
+    ? `${member.gender === 'F' ? 'Mariée à' : member.gender === 'M' ? 'Marié à' : 'Marié(e) à'} ${spouseRelation.relatedMemberName.split(' ')[0]}`
     : null
-  const pieceRapporteeLabel = spouseRelation
-    ? `Pièce rapportée de ${spouseRelation.relatedMemberName.split(' ')[0]}`
-    : !member.familyId ? 'Pièce rapportée' : null
+  const separatedLabel = separatedRelation
+    ? `${member.gender === 'F' ? 'Séparée de' : member.gender === 'M' ? 'Séparé de' : 'Séparé(e) de'} ${separatedRelation.relatedMemberName.split(' ')[0]}`
+    : null
+
+  const pieceRapporteeLabel = !member.familyId && !spouseRelation ? 'Pièce rapportée' : null
   const isDeceased = !member.isAlive
   const ageAtDeath = (isDeceased && member.birthDate && member.deathDate)
     ? Math.floor((new Date(member.deathDate) - new Date(member.birthDate)) / (365.25 * 24 * 3600 * 1000))
@@ -417,6 +421,16 @@ export default function Profile() {
                 {pieceRapporteeLabel}
               </span>
             ) : null}
+            {marriedLabel && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-pink-500/20 text-white border border-pink-400/30">
+                💍 {marriedLabel}
+              </span>
+            )}
+            {separatedLabel && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/70 border border-white/20">
+                {separatedLabel}
+              </span>
+            )}
             {relationshipLabel && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-white border border-primary/30">
                 <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

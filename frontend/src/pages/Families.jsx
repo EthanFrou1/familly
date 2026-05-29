@@ -287,7 +287,12 @@ export default function Families() {
                 disabled={!newName.trim() || creating}
                 className="w-full rounded-xl bg-primary py-3.5 font-semibold text-white disabled:opacity-50"
               >
-                {creating ? '...' : 'Créer la famille'}
+                {creating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    En cours…
+                  </span>
+                ) : 'Créer la famille'}
               </button>
             </form>
           </div>

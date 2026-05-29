@@ -304,7 +304,12 @@ export default function SocialLinkModal({ network, currentValue, memberCountry, 
             disabled={isEmpty || !hasChanged || loading}
             className="w-full rounded-2xl bg-primary py-3.5 font-semibold text-white disabled:opacity-40 active:bg-primary/90 transition-colors"
           >
-            {loading ? '...' : 'Enregistrer'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                En cours…
+              </span>
+            ) : 'Enregistrer'}
           </button>
           <div className="flex gap-2">
             <button onClick={onClose} className="flex-1 rounded-2xl border border-gray-200 py-3 text-sm font-medium text-gray-600 active:bg-gray-50">

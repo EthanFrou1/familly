@@ -70,7 +70,12 @@ function ForgotPasswordModal({ onClose }) {
               disabled={loading}
               className="w-full rounded-2xl bg-primary py-3 font-bold text-white shadow-lg shadow-primary/30 active:bg-primary-dark disabled:opacity-50 transition-all text-sm"
             >
-              {loading ? '...' : 'Envoyer le lien'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  En cours…
+                </span>
+              ) : 'Envoyer le lien'}
             </button>
           </form>
         )}
