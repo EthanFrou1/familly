@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { familiesApi } from '../services/api'
+import { matchesSearch } from '../utils/normalize'
 import { FAMILY_PALETTE } from '../components/tree/treeLayout'
 import Avatar from '../components/shared/Avatar'
 import CalendarExportSheet from '../components/members/CalendarExportSheet'
@@ -26,9 +27,8 @@ export default function Members() {
     if (familyFilter === '__none__') result = result.filter(m => !m.familyId)
     else if (familyFilter) result = result.filter(m => m.familyId === familyFilter)
     if (search.trim()) {
-      const q = search.toLowerCase()
       result = result.filter(m =>
-        `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
+        matchesSearch(`${m.firstName} ${m.lastName}`, search)
       )
     }
     return [...result].sort((a, b) =>

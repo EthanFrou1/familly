@@ -242,6 +242,7 @@ export default function Timeline() {
       {showAdd && (
         <EventFormModal
           event={editEvent}
+          existingEvents={events}
           onClose={() => { setShowAdd(false); setEditEvent(null) }}
           onSave={handleSave}
         />
@@ -332,7 +333,7 @@ function TimelineCard({ event, isAdmin, currentUserId, onEdit, onDelete, onViewM
   )
 }
 
-function EventFormModal({ event, onClose, onSave }) {
+function EventFormModal({ event, existingEvents = [], onClose, onSave }) {
   const [title, setTitle]         = useState(event?.title ?? '')
   const [year, setYear]           = useState(event?.year ?? '')
   const [exactDate, setExactDate] = useState(
@@ -382,7 +383,16 @@ function EventFormModal({ event, onClose, onSave }) {
         }
       })
       .filter(Boolean)
-  }, [members, relations])
+      .filter(couple => {
+        // Exclure les couples qui ont déjà un mariage (sauf celui en cours d'édition)
+        return !existingEvents.some(e =>
+          e.type === 'Marriage' &&
+          e.id !== event?.id &&
+          e.linkedMembers?.some(m => m.id === couple.memberAId) &&
+          e.linkedMembers?.some(m => m.id === couple.memberBId)
+        )
+      })
+  }, [members, relations, existingEvents, event?.id])
 
   function handleCoupleChange(e) {
     const key = e.target.value

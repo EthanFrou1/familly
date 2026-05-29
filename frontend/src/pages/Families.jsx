@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
 import { useMembers } from '../store/MembersContext'
 import { useAuth } from '../hooks/useAuth'
+import { matchesSearch } from '../utils/normalize'
 import { familiesApi, membersApi } from '../services/api'
 import Avatar from '../components/shared/Avatar'
 import ConfirmModal from '../components/shared/ConfirmModal'
@@ -103,13 +104,13 @@ export default function Families() {
   }
 
   const { familiesWithMembers, unassigned } = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = search.trim()
     const all = membersByFamily['__none__'] ?? []
 
     let list = families
       .map(f => ({ ...f, members: membersByFamily[f.id] ?? [] }))
-      .filter(f => !q || f.name.toLowerCase().includes(q) ||
-        f.members.some(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)))
+      .filter(f => !q || matchesSearch(f.name, q) ||
+        f.members.some(m => matchesSearch(`${m.firstName} ${m.lastName}`, q)))
 
     if (sort === 'biggest')  list = [...list].sort((a, b) => b.members.length - a.members.length)
     else if (sort === 'smallest') list = [...list].sort((a, b) => a.members.length - b.members.length)
@@ -131,9 +132,7 @@ export default function Families() {
 
     return {
       familiesWithMembers: list,
-      unassigned: !q ? all : all.filter(m =>
-        `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
-      ),
+      unassigned: !q ? all : all.filter(m => matchesSearch(`${m.firstName} ${m.lastName}`, q)),
     }
   }, [families, membersByFamily, search, sort])
 
@@ -536,7 +535,7 @@ function AddMembersModal({ familyId, familyName, unassigned, onAdd, onClose }) {
   const [adding, setAdding] = useState(null)
 
   const filtered = unassigned.filter(m =>
-    `${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase())
+    matchesSearch(`${m.firstName} ${m.lastName}`, search)
   )
 
   async function handleAdd(memberId) {
