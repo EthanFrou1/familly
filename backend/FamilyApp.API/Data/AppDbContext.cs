@@ -17,6 +17,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<DuplicateCandidate> DuplicateCandidates => Set<DuplicateCandidate>();
     public DbSet<ExternalMedia> ExternalMedias => Set<ExternalMedia>();
     public DbSet<Album> Albums => Set<Album>();
+    public DbSet<TimelineEvent> TimelineEvents => Set<TimelineEvent>();
+    public DbSet<TimelineEventMember> TimelineEventMembers => Set<TimelineEventMember>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -100,6 +102,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(em => em.Uploader).WithMany().HasForeignKey(em => em.UploaderId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(em => em.Event).WithMany().HasForeignKey(em => em.EventId).IsRequired(false);
             e.HasOne(em => em.LinkedMember).WithMany().HasForeignKey(em => em.LinkedMemberId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<TimelineEvent>(e =>
+        {
+            e.HasKey(te => te.Id);
+            e.Property(te => te.Title).HasMaxLength(200).IsRequired();
+            e.Property(te => te.Type).HasConversion<string>();
+            e.HasOne(te => te.CreatedBy).WithMany().HasForeignKey(te => te.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(te => te.Family).WithMany().HasForeignKey(te => te.FamilyId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<TimelineEventMember>(e =>
+        {
+            e.HasKey(tem => new { tem.TimelineEventId, tem.MemberId });
+            e.HasOne(tem => tem.TimelineEvent).WithMany(te => te.LinkedMembers).HasForeignKey(tem => tem.TimelineEventId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(tem => tem.Member).WithMany().HasForeignKey(tem => tem.MemberId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

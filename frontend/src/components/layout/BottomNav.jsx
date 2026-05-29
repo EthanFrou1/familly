@@ -38,6 +38,11 @@ export default function BottomNav() {
 
   const allActions = [
     {
+      label: 'Histoire familiale',
+      icon: TimelineIcon,
+      onClick: () => { setFabOpen(false); navigate('/timeline') }
+    },
+    {
       label: 'Photos',
       icon: PhotoIcon,
       onClick: () => { setFabOpen(false); navigate('/photos') }
@@ -234,6 +239,15 @@ function ShieldIcon() {
 }
 function LogoutIcon() {
   return <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="h-full w-full"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+}
+function TimelineIcon() {
+  return (
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="h-full w-full">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h2M19 12h2M12 3v2M12 19v2" />
+    </svg>
+  )
 }
 function PaletteIcon({ className }) {
   return (

@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import imageCompression from 'browser-image-compression'
 import { useMembers } from '../store/MembersContext'
 import { useAuth } from '../hooks/useAuth'
 import { familiesApi, membersApi } from '../services/api'
@@ -20,8 +21,9 @@ export default function Families() {
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
-  const [addingTo, setAddingTo] = useState(null) // familyId being managed
-  const [confirmDelete, setConfirmDelete] = useState(null) // { type: 'family'|'member', familyId, memberId, label }
+  const [addingTo, setAddingTo] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [uploadingPhotoFor, setUploadingPhotoFor] = useState(null) // familyId
 
 
   useEffect(() => {
@@ -61,6 +63,22 @@ export default function Families() {
     await familiesApi.delete(id)
     setFamilies(prev => prev.filter(f => f.id !== id))
     setConfirmDelete(null)
+  }
+
+  async function handleUploadGroupPhoto(familyId, file) {
+    setUploadingPhotoFor(familyId)
+    try {
+      const compressed = await imageCompression(file, { maxSizeMB: 1.5, maxWidthOrHeight: 1600 })
+      const { data } = await familiesApi.uploadGroupPhoto(familyId, compressed)
+      setFamilies(prev => prev.map(f => f.id === familyId ? { ...f, groupPhotoUrl: data.groupPhotoUrl } : f))
+    } finally {
+      setUploadingPhotoFor(null)
+    }
+  }
+
+  async function handleDeleteGroupPhoto(familyId) {
+    await familiesApi.deleteGroupPhoto(familyId)
+    setFamilies(prev => prev.map(f => f.id === familyId ? { ...f, groupPhotoUrl: null } : f))
   }
 
   async function handleAddMemberToFamily(memberId, familyId) {
@@ -208,10 +226,14 @@ export default function Families() {
             key={family.id}
             family={family}
             isAdmin={isAdmin}
+            uploadingPhoto={uploadingPhotoFor === family.id}
             onDelete={() => setConfirmDelete({ type: 'family', familyId: family.id, label: family.name })}
             onViewMember={id => navigate(`/profile/${id}`)}
+            onViewTree={id => navigate('/tree', { state: { filterFamilyId: id } })}
             onRemoveMember={(memberId, memberName) => setConfirmDelete({ type: 'member', memberId, familyId: family.id, label: memberName })}
             onAddMembers={() => setAddingTo(family.id)}
+            onUploadGroupPhoto={handleUploadGroupPhoto}
+            onDeleteGroupPhoto={handleDeleteGroupPhoto}
           />
         ))}
 
@@ -302,8 +324,9 @@ export default function Families() {
   )
 }
 
-function FamilyCard({ family, isAdmin, onDelete, onViewMember, onRemoveMember, onAddMembers }) {
+function FamilyCard({ family, isAdmin, uploadingPhoto, onDelete, onViewMember, onViewTree, onRemoveMember, onAddMembers, onUploadGroupPhoto, onDeleteGroupPhoto }) {
   const [expanded, setExpanded] = useState(false)
+  const photoRef = useRef(null)
   const hasMembers = family.members.length > 0
 
   const sortedMembers = useMemo(() =>
@@ -316,15 +339,43 @@ function FamilyCard({ family, isAdmin, onDelete, onViewMember, onRemoveMember, o
 
   return (
     <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+
+      {/* Photo de groupe */}
+      {family.groupPhotoUrl && (
+        <div className="relative">
+          <img src={family.groupPhotoUrl} alt={`Photo ${family.name}`} className="w-full h-44 object-cover" />
+          {isAdmin && (
+            <button
+              onClick={() => onDeleteGroupPhoto(family.id)}
+              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center active:bg-black/70"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Header carte */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between">
         <button onClick={() => setExpanded(e => !e)} className="flex items-center gap-3 flex-1 text-left active:opacity-70">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <span className="text-primary font-bold text-sm">{family.name.slice(0, 2).toUpperCase()}</span>
-          </div>
+          {!family.groupPhotoUrl && (
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <span className="text-primary font-bold text-sm">{family.name.slice(0, 2).toUpperCase()}</span>
+            </div>
+          )}
           <div>
             <h2 className="text-base font-bold text-gray-900">{family.name}</h2>
-            <p className="text-xs text-gray-400">{family.members.length} membre{family.members.length !== 1 ? 's' : ''}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xs text-gray-400">{family.members.length} membre{family.members.length !== 1 ? 's' : ''}</span>
+              {family.averageAge != null && (
+                <>
+                  <span className="text-gray-200">·</span>
+                  <span className="text-xs text-gray-400">Moy. {Math.round(family.averageAge)} ans</span>
+                </>
+              )}
+            </div>
           </div>
           <svg
             className={`h-4 w-4 text-gray-400 ml-auto transition-transform ${expanded ? 'rotate-180' : ''}`}
@@ -337,7 +388,7 @@ function FamilyCard({ family, isAdmin, onDelete, onViewMember, onRemoveMember, o
 
       {/* Aperçu avatars (collapsed) */}
       {!expanded && hasMembers && (
-        <div className="px-4 pb-4 flex items-center gap-2">
+        <div className="px-4 pb-3 flex items-center justify-between gap-2">
           <div className="flex -space-x-2">
             {sortedMembers.slice(0, 6).map(m => (
               <div key={m.id} className="ring-2 ring-white rounded-full">
@@ -350,12 +401,66 @@ function FamilyCard({ family, isAdmin, onDelete, onViewMember, onRemoveMember, o
               </div>
             )}
           </div>
+          {/* Bouton arbre de cette famille */}
+          <button
+            onClick={() => onViewTree(family.id)}
+            className="flex items-center gap-1.5 rounded-xl border border-gray-100 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600 active:bg-gray-100 shrink-0"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <circle cx="12" cy="3.5" r="1.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v3M6 8h12M6 8v3M18 8v3" />
+              <circle cx="6" cy="13" r="1.5" />
+              <circle cx="18" cy="13" r="1.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 14.5v3M18 14.5v3M4 20h4M16 20h4" />
+            </svg>
+            Arbre
+          </button>
         </div>
       )}
 
       {/* Liste membres (expanded) */}
       {expanded && (
         <div className="border-t border-gray-50">
+          {/* Bouton arbre + photo de groupe (admin) */}
+          <div className={`flex gap-2 px-4 pt-3 ${isAdmin ? 'pb-2' : 'pb-3'}`}>
+            <button
+              onClick={() => onViewTree(family.id)}
+              className="flex items-center gap-1.5 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-600 active:bg-gray-100"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <circle cx="12" cy="3.5" r="1.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v3M6 8h12M6 8v3M18 8v3" />
+                <circle cx="6" cy="13" r="1.5" />
+                <circle cx="18" cy="13" r="1.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 14.5v3M18 14.5v3M4 20h4M16 20h4" />
+              </svg>
+              Voir l'arbre
+            </button>
+            {isAdmin && (
+              <button
+                onClick={() => photoRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="flex items-center gap-1.5 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-600 active:bg-gray-100 disabled:opacity-50"
+              >
+                {uploadingPhoto ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
+                ) : (
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                )}
+                {family.groupPhotoUrl ? 'Changer la photo' : 'Photo de groupe'}
+              </button>
+            )}
+            <input
+              ref={photoRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => { const f = e.target.files[0]; if (f) onUploadGroupPhoto(family.id, f); e.target.value = '' }}
+            />
+          </div>
+
           {family.members.length === 0 ? (
             <p className="text-sm text-gray-400 px-4 py-4 text-center">Aucun membre dans cette famille.</p>
           ) : (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { ReactFlowProvider } from '@xyflow/react'
 import { useFamily } from '../hooks/useFamily'
 import { useAuth } from '../hooks/useAuth'
@@ -13,11 +13,14 @@ export default function Tree() {
   const { members, relations, loading, reloadRelations } = useFamily()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const isAdmin = user?.role === 'Admin'
 
+  const initialFamilyId = location.state?.filterFamilyId ?? ''
+
   const [families, setFamilies] = useState([])
-  const [viewMode, setViewMode] = useState('all')   // 'all' | 'branch' | 'family'
-  const [familyId, setFamilyId] = useState('')
+  const [viewMode, setViewMode] = useState(initialFamilyId ? 'family' : 'all')
+  const [familyId, setFamilyId] = useState(initialFamilyId)
   const [showLegend, setShowLegend] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
 import { membersApi, relationsApi, adminApi, settingsApi, familiesApi, pushApi, activityLogsApi, authApi } from '../services/api'
+import { getRelationshipLabel } from '../utils/relationshipUtils'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { FAMILY_PALETTE } from '../components/tree/treeLayout'
@@ -20,7 +21,7 @@ export default function Profile() {
   const memberId = id ?? user?.memberId
   const fileRef = useRef(null)
 
-  const { refresh: refreshMembers } = useMembers()
+  const { refresh: refreshMembers, members: allMembers } = useMembers()
   const isAdmin = user?.role === 'Admin'
   const isOwnProfile = !id || id === user?.memberId
 
@@ -89,14 +90,20 @@ export default function Profile() {
   }, [])
 
   useEffect(() => {
-    if (!isAdmin || !memberId) return
+    if (!memberId) return
     relationsApi.getAll().then(({ data }) => setAllRelations(data)).catch(() => {})
-  }, [isAdmin, memberId])
+  }, [memberId])
 
   const suggestions = useMemo(
     () => isAdmin && memberId ? computeRelationSuggestions(memberId, allRelations) : [],
     [isAdmin, memberId, allRelations]
   )
+
+  const relationshipLabel = useMemo(() => {
+    if (!id || id === user?.memberId) return null
+    if (!user?.memberId || !allRelations.length || !allMembers.length) return null
+    return getRelationshipLabel(allRelations, allMembers, user.memberId, id)
+  }, [id, user?.memberId, allRelations, allMembers])
 
   function handleAddToContacts() {
     const lines = ['BEGIN:VCARD', 'VERSION:3.0']
@@ -409,6 +416,14 @@ export default function Profile() {
               {pieceRapporteeLabel}
             </span>
           ) : null}
+          {relationshipLabel && (
+            <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-white border border-primary/30">
+              <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {relationshipLabel}
+            </span>
+          )}
         </div>
 
         {/* Actions rapides — masquées pour les membres décédés */}
