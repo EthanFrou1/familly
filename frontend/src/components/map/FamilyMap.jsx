@@ -49,15 +49,15 @@ function makeSvgMarker(count) {
 
 function makeInfoContent(members) {
   const primary = getPrimaryColor()
-  return members.map((m, i) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;${i < members.length - 1 ? 'border-bottom:1px solid #f0f0f0;' : ''}min-width:200px">
+  const rows = members.map((m, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i < members.length - 1 ? 'border-bottom:1px solid #f0f0f0;' : ''}min-width:220px">
       <div style="width:36px;height:36px;border-radius:50%;overflow:hidden;background:#e8e7f7;display:flex;align-items:center;justify-content:center;flex-shrink:0">
         ${m.profilePictureUrl
           ? `<img src="${m.profilePictureUrl}" style="width:100%;height:100%;object-fit:cover" />`
           : `<span style="font-size:13px;font-weight:700;color:${primary}">${m.firstName[0]}${m.lastName[0]}</span>`}
       </div>
-      <div style="flex:1">
-        <p style="font-size:13px;font-weight:600;color:#111;margin:0">${m.firstName} ${m.lastName}</p>
+      <div style="flex:1;min-width:0">
+        <p style="font-size:13px;font-weight:600;color:#111;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.firstName} ${m.lastName}</p>
         <p style="font-size:11px;color:#888;margin:2px 0 4px">${m.city ?? ''}</p>
         <a href="/profile/${m.id}" onclick="window._gmNav('${m.id}');return false"
           style="font-size:11px;color:${primary};font-weight:600;text-decoration:none">Voir le profil →</a>
@@ -65,6 +65,11 @@ function makeInfoContent(members) {
       ${i === 0 ? `<button onclick="window._gmClose();return false"
         style="background:none;border:none;cursor:pointer;font-size:26px;color:#aaa;line-height:1;padding:0 4px;flex-shrink:0;align-self:flex-start">&times;</button>` : ''}
     </div>`).join('')
+
+  const needsScroll = members.length > 3
+  return needsScroll
+    ? `<div style="max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-right:2px">${rows}</div>`
+    : rows
 }
 
 export default function FamilyMap({ members, currentMemberId }) {
@@ -140,6 +145,7 @@ export default function FamilyMap({ members, currentMemberId }) {
           icon: makeSvgMarker(count),
         })
         marker.__memberCount = count
+        marker.__members = group.members
 
         const iw = new window.google.maps.InfoWindow({
           content: `<div style="font-family:system-ui,sans-serif;padding:4px 0">${makeInfoContent(group.members)}</div>`,
@@ -176,6 +182,20 @@ export default function FamilyMap({ members, currentMemberId }) {
               zIndex: Number(window.google.maps.Marker.MAX_ZINDEX) + total,
             })
           },
+        },
+        onClusterClick(_, cluster) {
+          const allMembers = cluster.markers.flatMap(m => m.__members || [])
+          const iw = new window.google.maps.InfoWindow({
+            content: `<div style="font-family:system-ui,sans-serif;padding:4px 0">${makeInfoContent(allMembers)}</div>`,
+            position: cluster.position,
+            pixelOffset: new window.google.maps.Size(0, -10),
+          })
+          window.google.maps.event.addListener(iw, 'domready', () => {
+            document.querySelectorAll('.gm-style-iw-chr').forEach(el => { el.style.display = 'none' })
+          })
+          if (window._gmOpenWindow) window._gmOpenWindow.close()
+          iw.open(map)
+          window._gmOpenWindow = iw
         },
       })
 
