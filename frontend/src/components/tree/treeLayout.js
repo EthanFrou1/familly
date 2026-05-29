@@ -190,7 +190,7 @@ export function buildTreeLayout(members, relations, colorMap) {
   const dagreEdgeNodes = new Set()
   g.edges().forEach(e => { dagreEdgeNodes.add(e.v); dagreEdgeNodes.add(e.w) })
 
-  spRelations.forEach(r => {
+  ;[...spRelations, ...sepRelations].forEach(r => {
     const aIsolated = !dagreEdgeNodes.has(r.memberAId)
     const bIsolated = !dagreEdgeNodes.has(r.memberBId)
 
@@ -225,6 +225,7 @@ export function buildTreeLayout(members, relations, colorMap) {
     positions[idB] = { ...posB, y: refY }
   }
   spRelations.forEach(r => alignY(r.memberAId, r.memberBId))
+  sepRelations.forEach(r => alignY(r.memberAId, r.memberBId))
   sibRelations.forEach(r => alignY(r.memberAId, r.memberBId))
   hsbRelations.forEach(r => alignY(r.memberAId, r.memberBId))
 
