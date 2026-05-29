@@ -73,6 +73,7 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   const pcRelations  = relations.filter(r => r.type === 'ParentChild'  && valid(r))
   const spRelations  = relations.filter(r => r.type === 'Spouse'        && valid(r))
+  const sepRelations = relations.filter(r => r.type === 'Separated'     && valid(r))
   const sibRelations = relations.filter(r => r.type === 'Sibling'       && valid(r))
   const hsbRelations = relations.filter(r => r.type === 'HalfSibling'   && valid(r))
 
@@ -272,6 +273,14 @@ export function buildTreeLayout(members, relations, colorMap) {
     style: { stroke: '#F472B6', strokeWidth: 2 },
     label: '♥',
     labelStyle: { fill: '#F472B6', fontSize: 11, fontWeight: 700 },
+    labelBgStyle: { fill: 'transparent' },
+  })))
+
+  // Separated (horizontal, orange dashed)
+  sepRelations.forEach(r => rfEdges.push(horizEdge(`sep-${r.id}`, r.memberAId, r.memberBId, {
+    style: { stroke: '#FB923C', strokeWidth: 1.5, strokeDasharray: '6 4' },
+    label: '÷',
+    labelStyle: { fill: '#FB923C', fontSize: 13, fontWeight: 700 },
     labelBgStyle: { fill: 'transparent' },
   })))
 

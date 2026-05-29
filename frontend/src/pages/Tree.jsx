@@ -169,6 +169,10 @@ export default function Tree() {
               <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="2 4" /></svg>
               <span className="text-xs text-gray-600">Demi-frère/sœur</span>
             </div>
+            <div className="flex items-center gap-3">
+              <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#FB923C" strokeWidth="1.5" strokeDasharray="6 4" /></svg>
+              <span className="text-xs text-gray-600">Séparé(e) / Divorcé(e)</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
