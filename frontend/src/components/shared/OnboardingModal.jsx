@@ -422,38 +422,51 @@ export default function OnboardingModal({ user, onDone }) {
                 </button>
               </div>
 
-              {/* iPhone : vignette vidéo */}
+              {/* iPhone : vignette vidéo + étapes */}
               {phoneType === 'apple' && (
-                <button
-                  type="button"
-                  onClick={() => setShowVideo(true)}
-                  className="w-full flex items-center gap-4 rounded-2xl bg-white/[0.06] border border-white/[0.10] px-4 py-3 active:opacity-70 transition-opacity"
-                >
-                  <div className="relative rounded-xl overflow-hidden shrink-0" style={{ width: 52, height: 88 }}>
-                    <img
-                      src="https://img.youtube.com/vi/UxCvNcRYVUU/hqdefault.jpg"
-                      alt="Tutoriel"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <div className="h-7 w-7 rounded-full bg-white/90 flex items-center justify-center">
-                        <svg className="h-3.5 w-3.5 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowVideo(true)}
+                    className="w-full flex items-center gap-4 rounded-2xl bg-white/[0.06] border border-white/[0.10] px-4 py-3 active:opacity-70 transition-opacity"
+                  >
+                    <div className="relative rounded-xl overflow-hidden shrink-0" style={{ width: 52, height: 88 }}>
+                      <img
+                        src="https://img.youtube.com/vi/UxCvNcRYVUU/hqdefault.jpg"
+                        alt="Tutoriel"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <div className="h-7 w-7 rounded-full bg-white/90 flex items-center justify-center">
+                          <svg className="h-3.5 w-3.5 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-sm font-semibold text-white">Voir le tutoriel vidéo</p>
+                      <p className="text-xs text-white/40 mt-0.5">Guide pas à pas pour iPhone • Safari</p>
+                    </div>
+                    <svg className="h-4 w-4 text-white/30 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  <div className="space-y-2">
+                    {PWA_STEPS.apple.map((s, i) => (
+                      <div key={i} className="flex items-start gap-3 rounded-2xl bg-white/[0.05] border border-white/[0.07] px-4 py-3">
+                        <span className="text-xl shrink-0 mt-0.5">{s.icon}</span>
+                        <div className="flex-1">
+                          <span className="text-[10px] font-bold text-primary/70 uppercase tracking-wide">Étape {i + 1}</span>
+                          <p className="text-sm text-white/75 leading-snug">{s.text}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-semibold text-white">Voir le tutoriel vidéo</p>
-                    <p className="text-xs text-white/40 mt-0.5">Guide pas à pas pour iPhone • Safari</p>
-                  </div>
-                  <svg className="h-4 w-4 text-white/30 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+                </>
               )}
 
-              {/* Android ou non sélectionné : étapes texte */}
+              {/* Android : étapes texte */}
               {phoneType === 'android' && (
                 <div className="space-y-2">
                   {PWA_STEPS.android.map((s, i) => (
