@@ -189,7 +189,10 @@ export default function Home() {
   const funStats = useMemo(() => computeFunStats(members, relations), [members, relations])
 
   const birthdays = getUpcomingBirthdays(members)
-  const recent = [...members].filter(m => m.isAlive).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 8)
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000)
+  const recent = [...members]
+    .filter(m => m.isAlive && new Date(m.createdAt) >= sevenDaysAgo)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
   const todayBirthdays = birthdays.filter(m => m.daysUntil === 0)
   const isOnboarding = user && localStorage.getItem(`onboarding_${user.id}`) === '1'

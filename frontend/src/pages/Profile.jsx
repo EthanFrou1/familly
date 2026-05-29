@@ -131,7 +131,7 @@ export default function Profile() {
     try {
       await membersApi.delete(memberId)
       await refreshMembers()
-      navigate('/members', { replace: true })
+      navigate('/', { replace: true })
     } catch {
       setDeleteLoading(false)
       setShowDeleteConfirm(false)
