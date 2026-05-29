@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { MarkerClusterer } from '@googlemaps/markerclusterer'
 
 const MAP_STYLE = [
   { featureType: 'all', elementType: 'geometry', stylers: [{ color: '#f8f8f8' }] },
@@ -113,8 +114,7 @@ export default function FamilyMap({ members, currentMemberId }) {
       }
 
       if (instanceRef.current) {
-        // Clear existing markers before re-adding
-        instanceRef.current.__markers?.forEach(m => m.setMap(null))
+        instanceRef.current.__clusterer?.clearMarkers()
         instanceRef.current.__infoWindows?.forEach(w => w.close())
         instanceRef.current.setCenter(center)
       } else {
@@ -130,25 +130,22 @@ export default function FamilyMap({ members, currentMemberId }) {
       }
 
       const map = instanceRef.current
-      const markers = []
       const infoWindows = []
-      let openWindow = null
 
       const groups = groupByLocation(located)
-      groups.forEach(group => {
+      const groupMarkers = groups.map(group => {
         const count = group.members.length
         const marker = new window.google.maps.Marker({
           position: { lat: group.lat, lng: group.lng },
-          map,
           icon: makeSvgMarker(count),
         })
+        marker.__memberCount = count
 
         const iw = new window.google.maps.InfoWindow({
           content: `<div style="font-family:system-ui,sans-serif;padding:4px 0">${makeInfoContent(group.members)}</div>`,
           pixelOffset: new window.google.maps.Size(0, -10),
         })
 
-        // Hide the native Google Maps close button container
         window.google.maps.event.addListener(iw, 'domready', () => {
           document.querySelectorAll('.gm-style-iw-chr').forEach(el => { el.style.display = 'none' })
         })
@@ -159,13 +156,30 @@ export default function FamilyMap({ members, currentMemberId }) {
           window._gmOpenWindow = iw
         })
 
-        map.addListener('click', () => { iw.close(); window._gmOpenWindow = null })
-
-        markers.push(marker)
         infoWindows.push(iw)
+        return marker
       })
 
-      map.__markers = markers
+      map.addListener('click', () => {
+        if (window._gmOpenWindow) { window._gmOpenWindow.close(); window._gmOpenWindow = null }
+      })
+
+      const clusterer = new MarkerClusterer({
+        map,
+        markers: groupMarkers,
+        renderer: {
+          render({ position, markers: clusterMarkers }) {
+            const total = clusterMarkers.reduce((s, m) => s + (m.__memberCount || 1), 0)
+            return new window.google.maps.Marker({
+              position,
+              icon: makeSvgMarker(total),
+              zIndex: Number(window.google.maps.Marker.MAX_ZINDEX) + total,
+            })
+          },
+        },
+      })
+
+      map.__clusterer = clusterer
       map.__infoWindows = infoWindows
     }
 
