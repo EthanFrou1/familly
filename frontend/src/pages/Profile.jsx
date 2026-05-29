@@ -397,33 +397,35 @@ export default function Profile() {
               : [age && `${age} ans`, member.city, member.country].filter(Boolean).join(' · ')
             }
           </p>
-          {isDeceased ? (
-            <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/60 border border-white/15">
-              <span>†</span>
-              {member.deathDate
-                ? `Décédé(e) le ${new Date(member.deathDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
-                : 'Décédé(e)'}
-            </span>
-          ) : familyColor && member.familyName ? (
-            <span
-              className="inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-bold"
-              style={{ background: familyColor.bg, color: familyColor.text, border: `1.5px solid ${familyColor.border}` }}
-            >
-              {member.familyName}
-            </span>
-          ) : pieceRapporteeLabel ? (
-            <span className="inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-white/80 border border-white/20">
-              {pieceRapporteeLabel}
-            </span>
-          ) : null}
-          {relationshipLabel && (
-            <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-white border border-primary/30">
-              <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {relationshipLabel}
-            </span>
-          )}
+          <div className="flex flex-wrap justify-center items-center gap-2 mt-2">
+            {isDeceased ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/60 border border-white/15">
+                <span>†</span>
+                {member.deathDate
+                  ? `Décédé(e) le ${new Date(member.deathDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                  : 'Décédé(e)'}
+              </span>
+            ) : familyColor && member.familyName ? (
+              <span
+                className="inline-block px-3 py-0.5 rounded-full text-xs font-bold"
+                style={{ background: familyColor.bg, color: familyColor.text, border: `1.5px solid ${familyColor.border}` }}
+              >
+                {member.familyName}
+              </span>
+            ) : pieceRapporteeLabel ? (
+              <span className="inline-block px-3 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-white/80 border border-white/20">
+                {pieceRapporteeLabel}
+              </span>
+            ) : null}
+            {relationshipLabel && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-white border border-primary/30">
+                <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {relationshipLabel}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Actions rapides — masquées pour les membres décédés */}
