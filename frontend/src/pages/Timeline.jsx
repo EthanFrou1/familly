@@ -8,18 +8,12 @@ import Avatar from '../components/shared/Avatar'
 import Select from '../components/shared/Select'
 import ConfirmModal from '../components/shared/ConfirmModal'
 
-// Types disponibles à la création (manual uniquement)
-const EVENT_TYPES = [
-  { value: 'Marriage', label: 'Mariage',         icon: '💍' },
-  { value: 'Memory',   label: 'Souvenir',         icon: '📸' },
-  { value: 'Other',    label: 'Événement libre',  icon: '📌' },
-]
+// Seul type créable manuellement
+const MANUAL_TYPE = { value: 'Marriage', label: 'Mariage', icon: '💍' }
 
-// Filtres affichés (types manuels seulement, les naissances/décès sont automatiques)
+// Filtres affichés
 const FILTER_TYPES = [
-  { value: 'Marriage', label: 'Mariage',  icon: '💍' },
-  { value: 'Memory',   label: 'Souvenir', icon: '📸' },
-  { value: 'Other',    label: 'Libre',    icon: '📌' },
+  { value: 'Marriage', label: 'Mariage', icon: '💍' },
 ]
 
 const TYPE_COLORS = {
@@ -178,7 +172,7 @@ export default function Timeline() {
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Ajouter
+            💍 Mariage
           </button>
         </div>
 
@@ -227,7 +221,7 @@ export default function Timeline() {
               onClick={() => { setEditEvent(null); setShowAdd(true) }}
               className="mt-4 rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white active:bg-primary-dark"
             >
-              Ajouter un événement
+              💍 Ajouter un mariage
             </button>
           ) : null}
         </div>
@@ -366,7 +360,6 @@ function TimelineCard({ event, isAdmin, currentUserId, onEdit, onDelete, onViewM
 function EventFormModal({ event, onClose, onSave }) {
   const [title, setTitle]         = useState(event?.title ?? '')
   const [description, setDesc]    = useState(event?.description ?? '')
-  const [type, setType]           = useState(event?.type ?? 'Marriage')
   const [year, setYear]           = useState(event?.year ?? '')
   const [exactDate, setExactDate] = useState(
     event?.exactDate ? new Date(event.exactDate).toISOString().split('T')[0] : ''
@@ -400,7 +393,7 @@ function EventFormModal({ event, onClose, onSave }) {
       const payload = {
         title: title.trim(),
         description: description.trim() || null,
-        type,
+        type: 'Marriage',
         year: dateMode === 'year' && year ? parseInt(year) : null,
         exactDate: dateMode === 'date' && exactDate ? new Date(exactDate).toISOString() : null,
         familyId: null,
@@ -428,7 +421,7 @@ function EventFormModal({ event, onClose, onSave }) {
         {/* En-tête */}
         <div className="px-5 pt-5 pb-4 border-b border-gray-100 flex items-center justify-between shrink-0">
           <h2 className="text-lg font-semibold text-gray-900">
-            {event ? 'Modifier l\'événement' : 'Ajouter un événement'}
+            {event ? 'Modifier le mariage' : '💍 Ajouter un mariage'}
           </h2>
           <button onClick={onClose} className="text-gray-400 p-1">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -439,28 +432,6 @@ function EventFormModal({ event, onClose, onSave }) {
 
         {/* Contenu scrollable */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
-
-          {/* Type */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Type</label>
-            <div className="grid grid-cols-3 gap-2">
-              {EVENT_TYPES.map(t => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setType(t.value)}
-                  className={`flex flex-col items-center gap-1 rounded-xl p-3 border text-center transition-colors ${
-                    type === t.value
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-gray-100 bg-gray-50 text-gray-500'
-                  }`}
-                >
-                  <span className="text-2xl">{t.icon}</span>
-                  <span className="text-xs font-medium leading-tight">{t.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Titre */}
           <div>
@@ -596,7 +567,7 @@ function EventFormModal({ event, onClose, onSave }) {
             disabled={saving || !title.trim()}
             className="w-full rounded-xl bg-primary py-3.5 font-semibold text-white disabled:opacity-50 active:bg-primary-dark"
           >
-            {saving ? 'Enregistrement…' : event ? 'Enregistrer' : 'Ajouter l\'événement'}
+            {saving ? 'Enregistrement…' : event ? 'Enregistrer' : 'Ajouter le mariage'}
           </button>
         </div>
       </div>
