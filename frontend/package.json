@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@googlemaps/markerclusterer": "^2.6.2",
     "@xyflow/react": "^12.10.2",
     "axios": "^1.6.7",
     "browser-image-compression": "^2.0.2",
