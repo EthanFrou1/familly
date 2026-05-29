@@ -42,6 +42,7 @@ export default function Profile() {
   const [linkModal, setLinkModal] = useState(null) // 'instagram' | 'facebook' | 'whatsapp' | null
   const [families, setFamilies] = useState([])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [testPushState, setTestPushState] = useState('idle') // idle | loading | ok | error
   const [pushSubscribers, setPushSubscribers] = useState([])
   const [testUserIds, setTestUserIds] = useState(new Set())
@@ -126,13 +127,15 @@ export default function Profile() {
   }
 
   async function handleDelete() {
+    setDeleteLoading(true)
     try {
       await membersApi.delete(memberId)
       await refreshMembers()
       navigate('/members', { replace: true })
     } catch {
+      setDeleteLoading(false)
       setShowDeleteConfirm(false)
-      alert('Impossible de supprimer ce membre. Vérifiez qu\'il n\'est pas lié à des données critiques.')
+      alert('Impossible de supprimer ce membre.')
     }
   }
 
@@ -1016,6 +1019,7 @@ export default function Profile() {
         confirmLabel="Supprimer"
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}
+        loading={deleteLoading}
       />
 
       <ConfirmModal
