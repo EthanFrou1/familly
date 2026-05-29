@@ -23,7 +23,8 @@ export default function Families() {
   const [createError, setCreateError] = useState('')
   const [addingTo, setAddingTo] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const [uploadingPhotoFor, setUploadingPhotoFor] = useState(null) // familyId
+  const [uploadingPhotoFor, setUploadingPhotoFor] = useState(null)
+  const [confirmDeletePhoto, setConfirmDeletePhoto] = useState(null) // { familyId, familyName }
 
 
   useEffect(() => {
@@ -233,7 +234,7 @@ export default function Families() {
             onRemoveMember={(memberId, memberName) => setConfirmDelete({ type: 'member', memberId, familyId: family.id, label: memberName })}
             onAddMembers={() => setAddingTo(family.id)}
             onUploadGroupPhoto={handleUploadGroupPhoto}
-            onDeleteGroupPhoto={handleDeleteGroupPhoto}
+            onDeleteGroupPhoto={(id, name) => setConfirmDeletePhoto({ familyId: id, familyName: name })}
           />
         ))}
 
@@ -320,6 +321,15 @@ export default function Families() {
         }
         onCancel={() => setConfirmDelete(null)}
       />
+
+      <ConfirmModal
+        open={!!confirmDeletePhoto}
+        title="Supprimer la photo de groupe ?"
+        message={`La photo de groupe de "${confirmDeletePhoto?.familyName}" sera supprimée définitivement.`}
+        confirmLabel="Supprimer"
+        onConfirm={() => { handleDeleteGroupPhoto(confirmDeletePhoto.familyId); setConfirmDeletePhoto(null) }}
+        onCancel={() => setConfirmDeletePhoto(null)}
+      />
     </div>
   )
 }
@@ -346,7 +356,7 @@ function FamilyCard({ family, isAdmin, uploadingPhoto, onDelete, onViewMember, o
           <img src={family.groupPhotoUrl} alt={`Photo ${family.name}`} className="w-full h-44 object-cover" />
           {isAdmin && (
             <button
-              onClick={() => onDeleteGroupPhoto(family.id)}
+              onClick={() => onDeleteGroupPhoto(family.id, family.name)}
               className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center active:bg-black/70"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
