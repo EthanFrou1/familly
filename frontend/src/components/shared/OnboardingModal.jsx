@@ -62,7 +62,30 @@ const STEP_META = [
   { label: 'Photo',  title: 'Ta photo de profil',  desc: 'Ajoute une photo pour que la famille te reconnaisse.' },
   { label: 'Infos',  title: 'Tes informations',     desc: 'Quelques détails pour que la famille te retrouve facilement.' },
   { label: 'Lieu',   title: 'Où tu habites',        desc: 'Apparais sur la carte de la famille.' },
+  { label: 'App',    title: "Installe l'appli",     desc: "Ajoute MyBigFamily sur ton écran d'accueil pour l'ouvrir comme une vraie application." },
 ]
+
+const PWA_STEPS = {
+  apple: [
+    { icon: '🧭', text: 'Ouvre ce site dans Safari (pas Chrome ni Firefox)' },
+    { icon: '⬆️', text: 'Appuie sur le bouton Partager en bas de l\'écran' },
+    { icon: '➕', text: 'Fais défiler et appuie sur « Sur l\'écran d\'accueil »' },
+    { icon: '✅', text: 'Appuie sur « Ajouter » en haut à droite' },
+  ],
+  android: [
+    { icon: '🌐', text: 'Ouvre ce site dans Chrome' },
+    { icon: '⋮', text: 'Appuie sur les 3 points en haut à droite' },
+    { icon: '➕', text: 'Appuie sur « Ajouter à l\'écran d\'accueil »' },
+    { icon: '✅', text: 'Confirme en appuyant sur « Ajouter »' },
+  ],
+}
+
+function detectPhoneType() {
+  const ua = navigator.userAgent
+  if (/iPhone|iPad|iPod/.test(ua)) return 'apple'
+  if (/Android/.test(ua)) return 'android'
+  return null
+}
 
 export default function OnboardingModal({ user, onDone }) {
   const [step, setStep] = useState(0)
@@ -78,6 +101,7 @@ export default function OnboardingModal({ user, onDone }) {
   const [coords, setCoords] = useState({ latitude: null, longitude: null })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
+  const [phoneType, setPhoneType] = useState(detectPhoneType)
   const fileRef = useRef()
 
   useEffect(() => {
@@ -128,7 +152,7 @@ export default function OnboardingModal({ user, onDone }) {
     setStep(2)
   }
 
-  async function handleFinish() {
+  async function handleNext2() {
     const update = {}
     if (address) update.address = address
     if (postalCode) update.postalCode = postalCode
@@ -155,7 +179,7 @@ export default function OnboardingModal({ user, onDone }) {
       try { await membersApi.update(user.memberId, { ...update, familyId: member?.familyId }) } catch {}
       setLoading(false)
     }
-    onDone()
+    setStep(3)
   }
 
   function handlePlaceSelect({ address, postalCode, city, country, latitude, longitude }) {
@@ -163,7 +187,7 @@ export default function OnboardingModal({ user, onDone }) {
     setCountry(country); setCoords({ latitude, longitude })
   }
 
-  const onNext = [handleNext0, handleNext1, handleFinish]
+  const onNext = [handleNext0, handleNext1, handleNext2, onDone]
 
   return createPortal(
     <div
@@ -264,6 +288,28 @@ export default function OnboardingModal({ user, onDone }) {
             <div className="absolute h-32 w-32 rounded-full border border-white/[0.04]" />
           </div>
         )}
+
+        {step === 3 && (
+          <div className="flex gap-4 items-center">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-2xl bg-primary/15 blur-xl" />
+              <div className="relative h-20 w-20 rounded-2xl bg-white/[0.06] border border-white/10 flex flex-col items-center justify-center gap-1">
+                <span className="text-3xl">📲</span>
+                <span className="text-[10px] text-white/40 font-medium uppercase tracking-wide">Accueil</span>
+              </div>
+            </div>
+            <svg className="h-5 w-5 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+            <div className="relative">
+              <div className="absolute inset-0 rounded-2xl bg-amber-500/10 blur-xl" />
+              <div className="relative h-20 w-20 rounded-2xl bg-white/[0.06] border border-white/10 flex flex-col items-center justify-center gap-1">
+                <span className="text-3xl">🌳</span>
+                <span className="text-[10px] text-white/40 font-medium uppercase tracking-wide">App</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Text + form */}
@@ -318,6 +364,61 @@ export default function OnboardingModal({ user, onDone }) {
               </div>
             </div>
           )}
+
+          {step === 3 && (
+            <div className="flex flex-col gap-4">
+              {/* Phone type selector */}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPhoneType('apple')}
+                  className={`flex-1 flex flex-col items-center gap-2 rounded-2xl border py-4 transition-all ${
+                    phoneType === 'apple'
+                      ? 'border-primary bg-primary/15 text-white'
+                      : 'border-white/10 bg-white/[0.04] text-white/40'
+                  }`}
+                >
+                  <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                  </svg>
+                  <span className="text-sm font-semibold">iPhone</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhoneType('android')}
+                  className={`flex-1 flex flex-col items-center gap-2 rounded-2xl border py-4 transition-all ${
+                    phoneType === 'android'
+                      ? 'border-primary bg-primary/15 text-white'
+                      : 'border-white/10 bg-white/[0.04] text-white/40'
+                  }`}
+                >
+                  <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.2439 13.8533 7.8508 12 7.8508s-3.5902.3931-5.1367 1.0989L4.841 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3435-4.1021-2.6892-7.5743-6.1185-9.4396"/>
+                  </svg>
+                  <span className="text-sm font-semibold">Android</span>
+                </button>
+              </div>
+
+              {/* Steps */}
+              {phoneType && (
+                <div className="space-y-2">
+                  {PWA_STEPS[phoneType].map((s, i) => (
+                    <div key={i} className="flex items-start gap-3 rounded-2xl bg-white/[0.05] border border-white/[0.07] px-4 py-3">
+                      <span className="text-xl shrink-0 mt-0.5">{s.icon}</span>
+                      <div className="flex-1">
+                        <span className="text-[10px] font-bold text-primary/70 uppercase tracking-wide">Étape {i + 1}</span>
+                        <p className="text-sm text-white/75 leading-snug">{s.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!phoneType && (
+                <p className="text-sm text-white/30 text-center py-4">Choisis ton type de téléphone ci-dessus</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* CTA */}
@@ -328,13 +429,13 @@ export default function OnboardingModal({ user, onDone }) {
             className="w-full py-4 rounded-2xl font-bold text-sm text-white disabled:opacity-50 active:scale-[0.98] transition-transform shadow-lg"
             style={{ background: 'linear-gradient(135deg, #b07848 0%, #7a4f2e 100%)', boxShadow: '0 4px 20px rgba(168,112,72,0.35)' }}
           >
-            {loading ? 'Enregistrement…' : step < 2 ? 'Continuer →' : 'Terminer 🎉'}
+            {loading ? 'Enregistrement…' : step < 3 ? 'Continuer →' : "C'est parti ! 🎉"}
           </button>
           <button
-            onClick={step < 2 ? () => setStep(s => s + 1) : onDone}
+            onClick={step < 3 ? () => setStep(s => s + 1) : onDone}
             className="w-full py-2 text-sm text-white/20 text-center"
           >
-            {step < 2 ? 'Passer cette étape' : "Passer pour l'instant"}
+            {step < 3 ? 'Passer cette étape' : "Passer pour l'instant"}
           </button>
         </div>
       </div>
