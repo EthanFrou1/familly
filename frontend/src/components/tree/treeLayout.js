@@ -280,8 +280,8 @@ export function buildTreeLayout(members, relations, colorMap) {
   // Separated (horizontal, orange dashed)
   sepRelations.forEach(r => rfEdges.push(horizEdge(`sep-${r.id}`, r.memberAId, r.memberBId, {
     style: { stroke: '#FB923C', strokeWidth: 1.5, strokeDasharray: '6 4' },
-    label: '÷',
-    labelStyle: { fill: '#FB923C', fontSize: 13, fontWeight: 700 },
+    label: '💔',
+    labelStyle: { fontSize: 13 },
     labelBgStyle: { fill: 'transparent' },
   })))
 

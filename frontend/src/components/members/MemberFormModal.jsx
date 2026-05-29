@@ -332,11 +332,6 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
                 className={inputCls} placeholder="Football, Tennis, Cuisine, Photographie..." />
             </Field>
 
-            <Field label="Bio">
-              <textarea name="bio" value={form.bio} onChange={e => set('bio', e.target.value)}
-                rows={3} className={inputCls + ' resize-none'} placeholder="Quelques mots..." />
-            </Field>
-
             {/* Réseaux sociaux — uniquement en mode édition de profil */}
             {isEdit && (
               <div className="space-y-3 rounded-xl bg-gray-50 p-4">
