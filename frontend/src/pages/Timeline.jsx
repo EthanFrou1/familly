@@ -176,31 +176,21 @@ export default function Timeline() {
           </button>
         </div>
 
-        {/* Filtres type */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-2">
-          <Chip active={filterType === 'all'} onClick={() => setFilterType('all')}>Tout</Chip>
-          {FILTER_TYPES.map(t => (
-            <Chip key={t.value} active={filterType === t.value} onClick={() => setFilterType(t.value)}>
-              {t.icon} {t.label}
-            </Chip>
-          ))}
-        </div>
-
-        {/* Tri + filtre année */}
-        <div className="flex items-center gap-2 mt-2">
-          <Chip active={sortOrder === 'desc'} onClick={() => setSortOrder('desc')}>↓ Récent</Chip>
-          <Chip active={sortOrder === 'asc'}  onClick={() => setSortOrder('asc')}>↑ Ancien</Chip>
-          <div className="flex-1 min-w-0">
-            <Select
-              value={filterYear}
-              onChange={e => setFilterYear(e.target.value)}
-              placeholder="Toutes les années"
-            >
-              {availableYears.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </Select>
-          </div>
+        {/* Filtres sur une ligne */}
+        <div className="flex gap-2 mt-1">
+          <Select value={filterType} onChange={e => setFilterType(e.target.value)} placeholder="">
+            <option value="all">Tout</option>
+            <option value="Marriage">💍 Mariage</option>
+          </Select>
+          <Select value={sortOrder} onChange={e => setSortOrder(e.target.value)} placeholder="">
+            <option value="desc">↓ Récent</option>
+            <option value="asc">↑ Ancien</option>
+          </Select>
+          <Select value={filterYear} onChange={e => setFilterYear(e.target.value)} placeholder="Année">
+            {availableYears.map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </Select>
         </div>
       </div>
 
@@ -266,21 +256,6 @@ export default function Timeline() {
         onCancel={() => setConfirmDelete(null)}
       />
     </div>
-  )
-}
-
-function Chip({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
-      style={active
-        ? { background: 'var(--c-primary)', color: '#fff' }
-        : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }
-      }
-    >
-      {children}
-    </button>
   )
 }
 
