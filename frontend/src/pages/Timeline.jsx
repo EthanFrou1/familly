@@ -1,46 +1,49 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
-import { timelineApi, familiesApi, membersApi } from '../services/api'
+import { timelineApi, membersApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import Avatar from '../components/shared/Avatar'
+import Select from '../components/shared/Select'
 import ConfirmModal from '../components/shared/ConfirmModal'
 
-// Tous les types disponibles dans le formulaire d'ajout
+// Types disponibles à la création (manual uniquement)
 const EVENT_TYPES = [
-  { value: 'Birth',          label: 'Naissance',          icon: '👶' },
-  { value: 'Marriage',       label: 'Mariage',             icon: '💍' },
-  { value: 'Death',          label: 'Décès',               icon: '🕯️' },
-  { value: 'Move',           label: 'Déménagement',        icon: '🏠' },
-  { value: 'FamilyCreation', label: 'Création de famille', icon: '👨‍👩‍👧‍👦' },
-  { value: 'Memory',         label: 'Souvenir',            icon: '📸' },
-  { value: 'Other',          label: 'Événement libre',     icon: '📌' },
+  { value: 'Marriage', label: 'Mariage',         icon: '💍' },
+  { value: 'Memory',   label: 'Souvenir',         icon: '📸' },
+  { value: 'Other',    label: 'Événement libre',  icon: '📌' },
 ]
 
-// Filtres affichés (sans Déménagement ni Création de famille)
+// Filtres affichés (types manuels seulement, les naissances/décès sont automatiques)
 const FILTER_TYPES = [
-  { value: 'Birth',    label: 'Naissance', icon: '👶' },
-  { value: 'Marriage', label: 'Mariage',   icon: '💍' },
-  { value: 'Death',    label: 'Décès',     icon: '🕯️' },
-  { value: 'Memory',   label: 'Souvenir',  icon: '📸' },
-  { value: 'Other',    label: 'Libre',     icon: '📌' },
+  { value: 'Marriage', label: 'Mariage',  icon: '💍' },
+  { value: 'Memory',   label: 'Souvenir', icon: '📸' },
+  { value: 'Other',    label: 'Libre',    icon: '📌' },
 ]
 
 const TYPE_COLORS = {
-  Birth:          { bg: 'bg-green-50',  border: 'border-green-200',  dot: 'bg-green-400',  text: 'text-green-700'  },
-  Marriage:       { bg: 'bg-pink-50',   border: 'border-pink-200',   dot: 'bg-pink-400',   text: 'text-pink-700'   },
-  Death:          { bg: 'bg-gray-50',   border: 'border-gray-200',   dot: 'bg-gray-400',   text: 'text-gray-600'   },
-  Move:           { bg: 'bg-blue-50',   border: 'border-blue-200',   dot: 'bg-blue-400',   text: 'text-blue-700'   },
-  FamilyCreation: { bg: 'bg-violet-50', border: 'border-violet-200', dot: 'bg-violet-400', text: 'text-violet-700' },
-  Memory:         { bg: 'bg-amber-50',  border: 'border-amber-200',  dot: 'bg-amber-400',  text: 'text-amber-700'  },
-  Other:          { bg: 'bg-gray-50',   border: 'border-gray-200',   dot: 'bg-primary/40', text: 'text-gray-600'   },
+  Birth:          { bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700'  },
+  Marriage:       { bg: 'bg-pink-50',   border: 'border-pink-200',   text: 'text-pink-700'   },
+  Death:          { bg: 'bg-gray-50',   border: 'border-gray-200',   text: 'text-gray-600'   },
+  Move:           { bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700'   },
+  FamilyCreation: { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700' },
+  Memory:         { bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700'  },
+  Other:          { bg: 'bg-gray-50',   border: 'border-gray-200',   text: 'text-gray-600'   },
+}
+
+const ALL_TYPE_LABELS = {
+  Birth: '👶 Naissance', Marriage: '💍 Mariage', Death: '🕯️ Décès',
+  Move: '🏠 Déménagement', FamilyCreation: '👨‍👩‍👧‍👦 Famille', Memory: '📸 Souvenir', Other: '📌 Événement',
+}
+
+function getEventDate(event) {
+  return event.exactDate ? new Date(event.exactDate) : (event.year ? new Date(event.year, 0, 1) : null)
 }
 
 function formatDate(event) {
   if (event.exactDate) {
-    const d = new Date(event.exactDate)
-    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    return new Date(event.exactDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   }
   if (event.year) return String(event.year)
   return 'Date inconnue'
@@ -58,6 +61,8 @@ export default function Timeline() {
   const [editEvent, setEditEvent] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [filterType, setFilterType] = useState('all')
+  const [sortOrder, setSortOrder] = useState('desc') // 'desc' = plus récent, 'asc' = plus ancien
+  const [filterYear, setFilterYear] = useState('')
 
   useEffect(() => {
     timelineApi.getAll()
@@ -65,7 +70,7 @@ export default function Timeline() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Événements automatiques générés depuis les membres (naissances + décès)
+  // Événements auto depuis les membres (naissances + décès)
   const autoEvents = useMemo(() => {
     const list = []
     for (const m of members) {
@@ -73,52 +78,56 @@ export default function Timeline() {
         list.push({
           _auto: true,
           id: `auto-birth-${m.id}`,
-          type: 'Birth',
-          typeLabel: 'Naissance',
-          typeIcon: '👶',
+          type: 'Birth', typeLabel: 'Naissance', typeIcon: '👶',
           title: `Naissance de ${m.firstName} ${m.lastName}`,
-          description: null,
-          exactDate: m.birthDate,
-          year: null,
-          photoUrl: m.profilePictureUrl ?? null,
-          familyId: m.familyId ?? null,
-          familyName: null,
+          description: null, exactDate: m.birthDate, year: null,
+          photoUrl: null, familyId: m.familyId ?? null, familyName: null,
           linkedMembers: [{ id: m.id, name: `${m.firstName} ${m.lastName}`, profilePictureUrl: m.profilePictureUrl }],
-          createdById: null,
-          createdByName: '',
+          createdById: null, createdByName: '',
         })
       }
       if (!m.isAlive && m.deathDate) {
         list.push({
           _auto: true,
           id: `auto-death-${m.id}`,
-          type: 'Death',
-          typeLabel: 'Décès',
-          typeIcon: '🕯️',
+          type: 'Death', typeLabel: 'Décès', typeIcon: '🕯️',
           title: `Décès de ${m.firstName} ${m.lastName}`,
-          description: null,
-          exactDate: m.deathDate,
-          year: null,
-          photoUrl: null,
-          familyId: m.familyId ?? null,
-          familyName: null,
+          description: null, exactDate: m.deathDate, year: null,
+          photoUrl: null, familyId: m.familyId ?? null, familyName: null,
           linkedMembers: [{ id: m.id, name: `${m.firstName} ${m.lastName}`, profilePictureUrl: m.profilePictureUrl }],
-          createdById: null,
-          createdByName: '',
+          createdById: null, createdByName: '',
         })
       }
     }
     return list
   }, [members])
 
-  // Fusion et tri de tous les événements
   const allEvents = useMemo(() => {
     return [...events, ...autoEvents].sort((a, b) => {
-      const da = a.exactDate ? new Date(a.exactDate) : new Date(a.year ?? 0, 0, 1)
-      const db = b.exactDate ? new Date(b.exactDate) : new Date(b.year ?? 0, 0, 1)
-      return db - da
+      const da = getEventDate(a)?.getTime() ?? 0
+      const db = getEventDate(b)?.getTime() ?? 0
+      return sortOrder === 'desc' ? db - da : da - db
     })
-  }, [events, autoEvents])
+  }, [events, autoEvents, sortOrder])
+
+  // Années disponibles pour le filtre
+  const availableYears = useMemo(() => {
+    const years = new Set()
+    for (const e of allEvents) {
+      const d = getEventDate(e)
+      if (d) years.add(d.getFullYear())
+    }
+    return [...years].sort((a, b) => b - a)
+  }, [allEvents])
+
+  const filtered = useMemo(() => {
+    let list = filterType === 'all' ? allEvents : allEvents.filter(e => e.type === filterType)
+    if (filterYear) list = list.filter(e => {
+      const d = getEventDate(e)
+      return d?.getFullYear() === parseInt(filterYear)
+    })
+    return list
+  }, [allEvents, filterType, filterYear])
 
   async function handleSave(data, photoFile) {
     if (editEvent) {
@@ -146,10 +155,6 @@ export default function Timeline() {
     setConfirmDelete(null)
   }
 
-  const filtered = filterType === 'all'
-    ? allEvents
-    : allEvents.filter(e => e.type === filterType)
-
   if (loading) return (
     <div className="flex h-full items-center justify-center">
       <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -168,7 +173,7 @@ export default function Timeline() {
           </div>
           <button
             onClick={() => { setEditEvent(null); setShowAdd(true) }}
-            className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-white active:bg-primary-dark"
+            className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-white active:bg-primary-dark shrink-0"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -177,31 +182,31 @@ export default function Timeline() {
           </button>
         </div>
 
-        {/* Filtre par type */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-          <button
-            onClick={() => setFilterType('all')}
-            className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
-            style={filterType === 'all'
-              ? { background: 'var(--c-primary)', color: '#fff' }
-              : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }
-            }
-          >
-            Tout
-          </button>
+        {/* Filtres type */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-2">
+          <Chip active={filterType === 'all'} onClick={() => setFilterType('all')}>Tout</Chip>
           {FILTER_TYPES.map(t => (
-            <button
-              key={t.value}
-              onClick={() => setFilterType(t.value)}
-              className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
-              style={filterType === t.value
-                ? { background: 'var(--c-primary)', color: '#fff' }
-                : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }
-              }
-            >
+            <Chip key={t.value} active={filterType === t.value} onClick={() => setFilterType(t.value)}>
               {t.icon} {t.label}
-            </button>
+            </Chip>
           ))}
+        </div>
+
+        {/* Tri + filtre année */}
+        <div className="flex items-center gap-2 mt-2">
+          <Chip active={sortOrder === 'desc'} onClick={() => setSortOrder('desc')}>↓ Récent</Chip>
+          <Chip active={sortOrder === 'asc'}  onClick={() => setSortOrder('asc')}>↑ Ancien</Chip>
+          <div className="flex-1 min-w-0">
+            <Select
+              value={filterYear}
+              onChange={e => setFilterYear(e.target.value)}
+              placeholder="Toutes les années"
+            >
+              {availableYears.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -210,19 +215,21 @@ export default function Timeline() {
         <div className="mx-4 mt-8 rounded-2xl bg-white shadow-sm p-8 text-center">
           <div className="text-4xl mb-3">📖</div>
           <p className="text-gray-700 font-semibold">
-            {filterType !== 'all' ? 'Aucun événement de ce type' : 'L\'histoire familiale commence ici'}
+            {filterType !== 'all' || filterYear ? 'Aucun événement trouvé' : 'L\'histoire familiale commence ici'}
           </p>
           <p className="text-gray-400 text-sm mt-1">
-            {filterType !== 'all'
-              ? 'Essayez un autre filtre ou ajoutez un événement.'
+            {filterType !== 'all' || filterYear
+              ? 'Essayez d\'autres filtres.'
               : 'Ajoutez le premier événement marquant de votre famille.'}
           </p>
-          <button
-            onClick={() => { setEditEvent(null); setShowAdd(true) }}
-            className="mt-4 rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white active:bg-primary-dark"
-          >
-            Ajouter un événement
-          </button>
+          {!filterType || filterType === 'all' ? (
+            <button
+              onClick={() => { setEditEvent(null); setShowAdd(true) }}
+              className="mt-4 rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white active:bg-primary-dark"
+            >
+              Ajouter un événement
+            </button>
+          ) : null}
         </div>
       )}
 
@@ -230,16 +237,12 @@ export default function Timeline() {
       {filtered.length > 0 && (
         <div className="px-4 mt-6">
           <div className="relative">
-            {/* Ligne verticale */}
             <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gray-200" />
-
             <div className="space-y-0">
-              {filtered.map((event, idx) => (
+              {filtered.map(event => (
                 <TimelineCard
                   key={event.id}
                   event={event}
-                  isFirst={idx === 0}
-                  isLast={idx === filtered.length - 1}
                   isAdmin={isAdmin}
                   currentUserId={user?.memberId}
                   onEdit={() => { setEditEvent(event); setShowAdd(true) }}
@@ -252,7 +255,6 @@ export default function Timeline() {
         </div>
       )}
 
-      {/* Modal ajout/édition */}
       {showAdd && (
         <EventFormModal
           event={editEvent}
@@ -273,46 +275,46 @@ export default function Timeline() {
   )
 }
 
+function Chip({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
+      style={active
+        ? { background: 'var(--c-primary)', color: '#fff' }
+        : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }
+      }
+    >
+      {children}
+    </button>
+  )
+}
+
 function TimelineCard({ event, isAdmin, currentUserId, onEdit, onDelete, onViewMember }) {
   const [expanded, setExpanded] = useState(false)
   const colors = TYPE_COLORS[event.type] ?? TYPE_COLORS.Other
-  const typeInfo = EVENT_TYPES.find(t => t.value === event.type)
   const canEdit = !event._auto && (isAdmin || event.createdById === currentUserId)
-  // Pour les auto-events naissance/décès, on n'affiche pas la photo de profil comme photo principale
-  const showPhoto = event.photoUrl && !(event._auto && (event.type === 'Birth' || event.type === 'Death'))
+  const typeLabel = event.typeLabel ?? ALL_TYPE_LABELS[event.type] ?? event.type
+  const typeIcon = event.typeIcon ?? ''
 
   return (
     <div className="flex gap-4 pb-6">
-      {/* Point sur la timeline */}
       <div className="flex flex-col items-center shrink-0" style={{ width: 40 }}>
         <div className={`h-10 w-10 rounded-full ${colors.bg} border-2 ${colors.border} flex items-center justify-center text-lg z-10 relative`}>
-          {typeInfo?.icon}
+          {typeIcon}
         </div>
       </div>
 
-      {/* Carte */}
       <div className={`flex-1 rounded-2xl ${colors.bg} border ${colors.border} overflow-hidden`}>
-        {/* Photo */}
-        {showPhoto && (
-          <img
-            src={event.photoUrl}
-            alt={event.title}
-            className="w-full h-40 object-cover"
-          />
+        {event.photoUrl && (
+          <img src={event.photoUrl} alt={event.title} className="w-full h-40 object-cover" />
         )}
 
         <div className="p-4">
-          {/* Date + type + badge auto */}
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className={`text-xs font-semibold ${colors.text}`}>{event.typeLabel ?? typeInfo?.label}</span>
+            <span className={`text-xs font-semibold ${colors.text}`}>{typeLabel}</span>
             <span className="text-gray-300">·</span>
             <span className="text-xs text-gray-500">{formatDate(event)}</span>
-            {event.familyName && (
-              <>
-                <span className="text-gray-300">·</span>
-                <span className="text-xs text-gray-500">{event.familyName}</span>
-              </>
-            )}
             {event._auto && (
               <span className="text-xs text-gray-400 bg-white/70 rounded-full px-2 py-0.5 border border-gray-200">
                 Depuis le profil
@@ -320,25 +322,19 @@ function TimelineCard({ event, isAdmin, currentUserId, onEdit, onDelete, onViewM
             )}
           </div>
 
-          {/* Titre */}
           <h3 className="font-semibold text-gray-900 text-sm leading-snug">{event.title}</h3>
 
-          {/* Description */}
           {event.description && (
             <p className={`text-xs text-gray-500 mt-1.5 leading-relaxed ${!expanded && 'line-clamp-2'}`}>
               {event.description}
             </p>
           )}
           {event.description && event.description.length > 120 && (
-            <button
-              onClick={() => setExpanded(e => !e)}
-              className={`text-xs font-medium mt-0.5 ${colors.text}`}
-            >
+            <button onClick={() => setExpanded(e => !e)} className={`text-xs font-medium mt-0.5 ${colors.text}`}>
               {expanded ? 'Voir moins' : 'Voir plus'}
             </button>
           )}
 
-          {/* Membres liés */}
           {event.linkedMembers?.length > 0 && (
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               {event.linkedMembers.map(m => (
@@ -354,22 +350,11 @@ function TimelineCard({ event, isAdmin, currentUserId, onEdit, onDelete, onViewM
             </div>
           )}
 
-          {/* Actions (uniquement sur les événements manuels) */}
           {canEdit && (
             <div className="flex gap-2 mt-3 pt-3 border-t border-white/60">
-              <button
-                onClick={onEdit}
-                className="text-xs font-medium text-gray-500 active:text-gray-700"
-              >
-                Modifier
-              </button>
+              <button onClick={onEdit} className="text-xs font-medium text-gray-500 active:text-gray-700">Modifier</button>
               <span className="text-gray-300">·</span>
-              <button
-                onClick={onDelete}
-                className="text-xs font-medium text-red-400 active:text-red-600"
-              >
-                Supprimer
-              </button>
+              <button onClick={onDelete} className="text-xs font-medium text-red-400 active:text-red-600">Supprimer</button>
             </div>
           )}
         </div>
@@ -381,24 +366,21 @@ function TimelineCard({ event, isAdmin, currentUserId, onEdit, onDelete, onViewM
 function EventFormModal({ event, onClose, onSave }) {
   const [title, setTitle]         = useState(event?.title ?? '')
   const [description, setDesc]    = useState(event?.description ?? '')
-  const [type, setType]           = useState(event?.type ?? 'Memory')
+  const [type, setType]           = useState(event?.type ?? 'Marriage')
   const [year, setYear]           = useState(event?.year ?? '')
   const [exactDate, setExactDate] = useState(
     event?.exactDate ? new Date(event.exactDate).toISOString().split('T')[0] : ''
   )
   const [dateMode, setDateMode]   = useState(event?.exactDate ? 'date' : 'year')
-  const [familyId, setFamilyId]   = useState(event?.familyId ?? '')
   const [linkedIds, setLinkedIds] = useState(event?.linkedMembers?.map(m => m.id) ?? [])
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(event?.photoUrl ?? null)
   const [saving, setSaving]       = useState(false)
-  const [families, setFamilies]   = useState([])
   const [members, setMembers]     = useState([])
   const [memberSearch, setMemberSearch] = useState('')
   const fileRef = useRef(null)
 
   useEffect(() => {
-    familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
     membersApi.getAll().then(({ data }) => setMembers(data)).catch(() => {})
   }, [])
 
@@ -412,7 +394,7 @@ function EventFormModal({ event, onClose, onSave }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!title.trim() || !type) return
+    if (!title.trim()) return
     setSaving(true)
     try {
       const payload = {
@@ -421,7 +403,7 @@ function EventFormModal({ event, onClose, onSave }) {
         type,
         year: dateMode === 'year' && year ? parseInt(year) : null,
         exactDate: dateMode === 'date' && exactDate ? new Date(exactDate).toISOString() : null,
-        familyId: familyId || null,
+        familyId: null,
         linkedMemberIds: linkedIds,
       }
       await onSave(payload, photoFile)
@@ -435,15 +417,13 @@ function EventFormModal({ event, onClose, onSave }) {
   )
 
   function toggleMember(id) {
-    setLinkedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
+    setLinkedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl animate-slide-up max-h-[90vh] flex flex-col">
+      <div className="relative bg-white rounded-t-3xl animate-slide-up max-h-[92vh] flex flex-col">
 
         {/* En-tête */}
         <div className="px-5 pt-5 pb-4 border-b border-gray-100 flex items-center justify-between shrink-0">
@@ -457,24 +437,25 @@ function EventFormModal({ event, onClose, onSave }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+        {/* Contenu scrollable */}
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
 
-          {/* Type d'événement */}
+          {/* Type */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Type</label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {EVENT_TYPES.map(t => (
                 <button
                   key={t.value}
                   type="button"
                   onClick={() => setType(t.value)}
-                  className={`flex flex-col items-center gap-1 rounded-xl p-2.5 border text-center transition-colors ${
+                  className={`flex flex-col items-center gap-1 rounded-xl p-3 border text-center transition-colors ${
                     type === t.value
                       ? 'border-primary bg-primary/5 text-primary'
                       : 'border-gray-100 bg-gray-50 text-gray-500'
                   }`}
                 >
-                  <span className="text-xl">{t.icon}</span>
+                  <span className="text-2xl">{t.icon}</span>
                   <span className="text-xs font-medium leading-tight">{t.label}</span>
                 </button>
               ))}
@@ -509,24 +490,18 @@ function EventFormModal({ event, onClose, onSave }) {
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Date</label>
             <div className="flex gap-2 mb-3">
-              <button
-                type="button"
-                onClick={() => setDateMode('year')}
-                className={`flex-1 rounded-xl py-2 text-sm font-medium border transition-colors ${
-                  dateMode === 'year' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 bg-gray-50 text-gray-400'
-                }`}
-              >
-                Année seulement
-              </button>
-              <button
-                type="button"
-                onClick={() => setDateMode('date')}
-                className={`flex-1 rounded-xl py-2 text-sm font-medium border transition-colors ${
-                  dateMode === 'date' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 bg-gray-50 text-gray-400'
-                }`}
-              >
-                Date précise
-              </button>
+              {['year', 'date'].map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setDateMode(mode)}
+                  className={`flex-1 rounded-xl py-2 text-sm font-medium border transition-colors ${
+                    dateMode === mode ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 bg-gray-50 text-gray-400'
+                  }`}
+                >
+                  {mode === 'year' ? 'Année seulement' : 'Date précise'}
+                </button>
+              ))}
             </div>
             {dateMode === 'year' ? (
               <input
@@ -547,23 +522,6 @@ function EventFormModal({ event, onClose, onSave }) {
               />
             )}
           </div>
-
-          {/* Famille liée */}
-          {families.length > 0 && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Famille liée (optionnelle)</label>
-              <select
-                value={familyId}
-                onChange={e => setFamilyId(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-primary focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/10"
-              >
-                <option value="">— Aucune famille —</option>
-                {families.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {/* Personnes liées */}
           <div>
@@ -627,15 +585,20 @@ function EventFormModal({ event, onClose, onSave }) {
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
           </div>
 
-          {/* Bouton submit */}
+          {/* Espace pour le bouton fixe */}
+          <div className="h-2" />
+        </div>
+
+        {/* Bouton fixe en bas */}
+        <div className="shrink-0 px-5 py-4 border-t border-gray-100 bg-white">
           <button
-            type="submit"
+            onClick={handleSubmit}
             disabled={saving || !title.trim()}
             className="w-full rounded-xl bg-primary py-3.5 font-semibold text-white disabled:opacity-50 active:bg-primary-dark"
           >
             {saving ? 'Enregistrement…' : event ? 'Enregistrer' : 'Ajouter l\'événement'}
           </button>
-        </form>
+        </div>
       </div>
     </div>
   )
