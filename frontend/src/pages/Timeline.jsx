@@ -178,15 +178,15 @@ export default function Timeline() {
 
         {/* Filtres sur une ligne */}
         <div className="flex gap-2 mt-1">
-          <Select value={filterType} onChange={e => setFilterType(e.target.value)} placeholder="">
+          <Select value={filterType} onChange={e => setFilterType(e.target.value)} placeholder="" className="min-w-[110px]">
             <option value="all">Tout</option>
             <option value="Marriage">💍 Mariage</option>
           </Select>
-          <Select value={sortOrder} onChange={e => setSortOrder(e.target.value)} placeholder="">
+          <Select value={sortOrder} onChange={e => setSortOrder(e.target.value)} placeholder="" className="min-w-[110px]">
             <option value="desc">↓ Récent</option>
             <option value="asc">↑ Ancien</option>
           </Select>
-          <Select value={filterYear} onChange={e => setFilterYear(e.target.value)} placeholder="Année">
+          <Select value={filterYear} onChange={e => setFilterYear(e.target.value)} placeholder="Année" className="min-w-[90px]">
             {availableYears.map(y => (
               <option key={y} value={y}>{y}</option>
             ))}

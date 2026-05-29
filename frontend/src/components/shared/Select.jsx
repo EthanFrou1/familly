@@ -71,7 +71,7 @@ export default function Select({ value, onChange, children, placeholder = 'Séle
                     : 'text-gray-800 hover:bg-gray-50 active:bg-gray-100'}
               `}
             >
-              <span>{opt.label}</span>
+              <span className="whitespace-nowrap">{opt.label}</span>
               {isSelected && !isPlaceholder && (
                 <svg className="h-4 w-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -102,7 +102,7 @@ export default function Select({ value, onChange, children, placeholder = 'Séle
           ${!value ? 'text-gray-400' : 'text-gray-900'}
         `}
       >
-        <span className="truncate">{displayLabel}</span>
+        <span className="truncate whitespace-nowrap">{displayLabel}</span>
         <svg
           className={`h-4 w-4 shrink-0 ml-2 transition-transform duration-200 ${open ? 'rotate-180 text-primary' : 'text-gray-400'}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
