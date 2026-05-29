@@ -5,7 +5,8 @@ public enum RelationType
     ParentChild,
     Spouse,
     Sibling,
-    HalfSibling
+    HalfSibling,
+    Separated
 }
 
 public class Relation

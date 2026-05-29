@@ -126,9 +126,14 @@ export default function Profile() {
   }
 
   async function handleDelete() {
-    await membersApi.delete(memberId)
-    await refreshMembers()
-    navigate('/members', { replace: true })
+    try {
+      await membersApi.delete(memberId)
+      await refreshMembers()
+      navigate('/members', { replace: true })
+    } catch {
+      setShowDeleteConfirm(false)
+      alert('Impossible de supprimer ce membre. Vérifiez qu\'il n\'est pas lié à des données critiques.')
+    }
   }
 
   async function handleDeleteAccount() {
@@ -1179,7 +1184,7 @@ function computeRelationSuggestions(memberId, allRelations) {
   return suggestions
 }
 
-const REL_LABELS = { Sibling: 'Frère / Sœur', ParentChild: 'Enfant de', ParentChild_parent: 'Parent de', Spouse: 'Conjoint(e)' }
+const REL_LABELS = { Sibling: 'Frère / Sœur', ParentChild: 'Enfant de', ParentChild_parent: 'Parent de', Spouse: 'Conjoint(e)', Separated: 'Séparé(e) / Divorcé(e)' }
 
 function SuggestionRow({ suggestion, onAccept }) {
   const [loading, setLoading] = useState(false)
@@ -1320,6 +1325,7 @@ const REL_TYPE_LABELS = {
   Spouse:      'Conjoint(e)',
   Sibling:     'Frère / Sœur',
   HalfSibling: 'Demi-frère/sœur',
+  Separated:   'Séparé(e) / Divorcé(e)',
 }
 
 function ActivityLogTable({ data, loading, page, onPageChange, memberId }) {

@@ -91,6 +91,8 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState(null) // { type: 'success'|'error', message }
   const [families, setFamilies] = useState([])
+  const [phoneDial, setPhoneDial] = useState('+33')
+  const [phoneLocal, setPhoneLocal] = useState('')
   const [waDial, setWaDial] = useState('+33')
   const [waLocal, setWaLocal] = useState('')
   const formRef = useRef(null)
@@ -118,6 +120,9 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
       const vals = initial ? toFormValues(initial) : EMPTY
       setForm(vals)
       setFeedback(null)
+      const parsedPhone = parsePhone(vals.phone)
+      setPhoneDial(parsedPhone.dialCode ?? COUNTRY_TO_DIAL[vals.country] ?? '+33')
+      setPhoneLocal(parsedPhone.local)
       const parsed = parsePhone(vals.whatsappNumber)
       setWaDial(parsed.dialCode ?? COUNTRY_TO_DIAL[vals.country] ?? '+33')
       setWaLocal(parsed.local)
@@ -289,10 +294,32 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
             </Field>
 
             <Field label="Téléphone">
-              <input name="phone" type="text" inputMode="tel" value={form.phone}
-                autoComplete="tel"
-                onChange={e => set('phone', e.target.value.replace(/[^\d\s+\-().]/g, ''))}
-                className={inputCls} placeholder="+33 6 00 00 00 00" />
+              <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50 overflow-hidden focus-within:border-primary focus-within:bg-white transition-colors">
+                <select
+                  value={phoneDial}
+                  onChange={e => {
+                    setPhoneDial(e.target.value)
+                    set('phone', phoneLocal.trim() ? `${e.target.value}${phoneLocal.replace(/[\s\-().]/g, '')}` : '')
+                  }}
+                  className="px-2 py-2.5 text-sm bg-transparent border-r border-gray-200 text-gray-700 outline-none shrink-0"
+                >
+                  {COUNTRY_CODES.map(({ code, flag }) => (
+                    <option key={code} value={code}>{flag} {code}</option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  value={phoneLocal}
+                  autoComplete="tel-national"
+                  onChange={e => {
+                    const local = e.target.value.replace(/[^\d\s\-().]/g, '')
+                    setPhoneLocal(local)
+                    set('phone', local.trim() ? `${phoneDial}${local.replace(/[\s\-().]/g, '')}` : '')
+                  }}
+                  className="flex-1 px-3 py-2.5 text-sm bg-transparent outline-none min-w-0"
+                  placeholder="6 12 34 56 78"
+                />
+              </div>
             </Field>
 
             <Field label="Métier / Études">
