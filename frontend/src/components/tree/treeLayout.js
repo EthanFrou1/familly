@@ -302,9 +302,9 @@ export function buildTreeLayout(members, relations, colorMap) {
     return [...aParents].some(p => bParents.has(p) && memberIds.has(p))
   }
 
-  // Check if a spouse node sits between idA and idB horizontally
+  // Check if a spouse/separated node sits between idA and idB horizontally
   const spouseIds = new Set()
-  spRelations.forEach(r => {
+  ;[...spRelations, ...sepRelations].forEach(r => {
     spouseIds.add(`${r.memberAId}|${r.memberBId}`)
     spouseIds.add(`${r.memberBId}|${r.memberAId}`)
   })
