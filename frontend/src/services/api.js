@@ -113,6 +113,30 @@ export const familiesApi = {
   getAll: () => api.get('/families'),
   create: (name) => api.post('/families', { name }),
   delete: (id) => api.delete(`/families/${id}`),
+  uploadGroupPhoto: (id, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/families/${id}/group-photo`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  deleteGroupPhoto: (id) => api.delete(`/families/${id}/group-photo`),
+}
+
+export const timelineApi = {
+  getAll: () => api.get('/timeline-events'),
+  getById: (id) => api.get(`/timeline-events/${id}`),
+  create: (data) => api.post('/timeline-events', data),
+  update: (id, data) => api.put(`/timeline-events/${id}`, data),
+  delete: (id) => api.delete(`/timeline-events/${id}`),
+  uploadPhoto: (id, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/timeline-events/${id}/photo`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  deletePhoto: (id) => api.delete(`/timeline-events/${id}/photo`),
 }
 
 export const settingsApi = {
