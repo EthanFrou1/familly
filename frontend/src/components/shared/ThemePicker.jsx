@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { PRESETS, applyTheme, getCurrentThemeColors, darkenHex } from '../../hooks/useTheme'
 
 export default function ThemePicker({ open, onClose }) {
-  const [custom, setCustom] = useState({ primary: '#0A78BE', primaryDark: '#055A96', dark: '#23ADFF', darkBg: '#0A3250', surface: '#E6F6FF' })
-  const [activePreset, setActivePreset] = useState('ocean')
+  const [custom, setCustom] = useState({ primary: '#D9B99B', primaryDark: '#AE947C', dark: '#8B5A7A', darkBg: '#66486A', surface: '#FDF7F3' })
+  const [activePreset, setActivePreset] = useState('famille')
   const [showCustom, setShowCustom] = useState(false)
 
   useEffect(() => {
