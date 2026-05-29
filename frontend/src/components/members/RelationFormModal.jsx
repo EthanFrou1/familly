@@ -153,7 +153,12 @@ export default function RelationFormModal({ open, onClose, onSubmit, currentMemb
             disabled={loading || !relationType || !otherMemberId}
             className="w-full rounded-xl bg-primary py-3.5 font-semibold text-white disabled:opacity-50 active:bg-primary-dark"
           >
-            {loading ? '...' : 'Créer le lien'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                En cours…
+              </span>
+            ) : 'Créer le lien'}
           </button>
         </form>
       </div>
