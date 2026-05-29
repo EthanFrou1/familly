@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { adminApi, familiesApi, membersApi } from '../services/api'
+import { matchesSearch } from '../utils/normalize'
 import Avatar from '../components/shared/Avatar'
 import Select from '../components/shared/Select'
 
@@ -45,10 +46,9 @@ export default function Admin() {
   const filtered = useMemo(() => {
     let r = overview
     if (search.trim()) {
-      const q = search.toLowerCase()
       r = r.filter(m =>
-        `${m.firstName} ${m.lastName}`.toLowerCase().includes(q) ||
-        m.email?.toLowerCase().includes(q)
+        matchesSearch(`${m.firstName} ${m.lastName}`, search) ||
+        matchesSearch(m.email ?? '', search)
       )
     }
     if (statusFilter) r = r.filter(m => m.accountStatus === statusFilter)
@@ -535,10 +535,7 @@ function ManagerModal({ member, activeUsers, onClose, onSaved }) {
 
   const filteredUsers = useMemo(() => {
     if (!search.trim()) return activeUsers
-    const q = search.toLowerCase()
-    return activeUsers.filter(u =>
-      `${u.firstName} ${u.lastName}`.toLowerCase().includes(q)
-    )
+    return activeUsers.filter(u => matchesSearch(`${u.firstName} ${u.lastName}`, search))
   }, [activeUsers, search])
 
   async function handleAssign(userId) {

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import FamilyMap from '../components/map/FamilyMap'
 import { useMembers } from '../store/MembersContext'
 import { useAuth } from '../hooks/useAuth'
+import { matchesSearch } from '../utils/normalize'
 
 export default function Map() {
   const { members, loading } = useMembers()
@@ -9,9 +10,7 @@ export default function Map() {
   const [search, setSearch] = useState('')
 
   const filtered = search
-    ? members.filter(m =>
-        `${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase())
-      )
+    ? members.filter(m => matchesSearch(`${m.firstName} ${m.lastName}`, search))
     : members
 
   if (loading) return (

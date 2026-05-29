@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMembers } from '../../store/MembersContext'
 import Select from '../shared/Select'
+import { matchesSearch } from '../../utils/normalize'
 
 const RELATION_OPTIONS = [
   { value: 'ParentChild_A', label: 'est parent de', apiType: 'ParentChild', memberAIsCurrent: true },
@@ -23,9 +24,7 @@ export default function RelationFormModal({ open, onClose, onSubmit, currentMemb
 
   const otherMembers = members.filter(m => m.id !== currentMember?.id)
   const filteredMembers = search.trim()
-    ? otherMembers.filter(m =>
-        `${m.firstName} ${m.lastName}`.toLowerCase().includes(search.toLowerCase())
-      )
+    ? otherMembers.filter(m => matchesSearch(`${m.firstName} ${m.lastName}`, search))
     : otherMembers
 
   async function handleSubmit(e) {
