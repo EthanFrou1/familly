@@ -4,21 +4,93 @@ import { familiesApi } from '../../services/api'
 import Select from '../shared/Select'
 
 const COUNTRY_CODES = [
-  { code: '+33', flag: '🇫🇷' },
-  { code: '+32', flag: '🇧🇪' },
-  { code: '+41', flag: '🇨🇭' },
-  { code: '+352', flag: '🇱🇺' },
-  { code: '+1', flag: '🇨🇦' },
-  { code: '+44', flag: '🇬🇧' },
-  { code: '+34', flag: '🇪🇸' },
-  { code: '+39', flag: '🇮🇹' },
-  { code: '+49', flag: '🇩🇪' },
-  { code: '+351', flag: '🇵🇹' },
-  { code: '+31', flag: '🇳🇱' },
-  { code: '+212', flag: '🇲🇦' },
-  { code: '+213', flag: '🇩🇿' },
-  { code: '+216', flag: '🇹🇳' },
+  { code: '+33',  flag: '🇫🇷', name: 'France' },
+  { code: '+32',  flag: '🇧🇪', name: 'Belgique' },
+  { code: '+41',  flag: '🇨🇭', name: 'Suisse' },
+  { code: '+352', flag: '🇱🇺', name: 'Luxembourg' },
+  { code: '+1',   flag: '🇨🇦', name: 'Canada / USA' },
+  { code: '+44',  flag: '🇬🇧', name: 'Royaume-Uni' },
+  { code: '+34',  flag: '🇪🇸', name: 'Espagne' },
+  { code: '+39',  flag: '🇮🇹', name: 'Italie' },
+  { code: '+49',  flag: '🇩🇪', name: 'Allemagne' },
+  { code: '+351', flag: '🇵🇹', name: 'Portugal' },
+  { code: '+31',  flag: '🇳🇱', name: 'Pays-Bas' },
+  { code: '+212', flag: '🇲🇦', name: 'Maroc' },
+  { code: '+213', flag: '🇩🇿', name: 'Algérie' },
+  { code: '+216', flag: '🇹🇳', name: 'Tunisie' },
 ]
+
+function DialCodeSelect({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [dropStyle, setDropStyle] = useState({})
+  const ref = useRef(null)
+  const triggerRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  function handleToggle() {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      if (spaceBelow < 260) {
+        setDropStyle({ position: 'fixed', bottom: window.innerHeight - rect.top + 6, left: rect.left, minWidth: 190 })
+      } else {
+        setDropStyle({ position: 'fixed', top: rect.bottom + 6, left: rect.left, minWidth: 190 })
+      }
+    }
+    setOpen(o => !o)
+  }
+
+  const selected = COUNTRY_CODES.find(c => c.code === value)
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={handleToggle}
+        className={`flex items-center gap-1 px-2.5 py-2.5 text-sm border-r border-gray-200 transition-colors shrink-0 ${open ? 'bg-primary/5 text-primary' : 'text-gray-700'}`}
+      >
+        <span>{selected?.flag}</span>
+        <span className="font-medium tabular-nums">{value}</span>
+        <svg className={`h-3 w-3 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && createPortal(
+        <div
+          className="z-[9999] rounded-2xl border border-gray-100 bg-white shadow-xl overflow-hidden"
+          style={dropStyle}
+          onMouseDown={e => e.stopPropagation()}
+        >
+          <div className="max-h-56 overflow-y-auto py-1">
+            {COUNTRY_CODES.map(({ code, flag, name }) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => { onChange(code); setOpen(false) }}
+                className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition-colors ${
+                  code === value ? 'bg-primary/10 text-primary font-semibold' : 'text-gray-800 hover:bg-gray-50 active:bg-gray-100'
+                }`}
+              >
+                <span className="text-base shrink-0">{flag}</span>
+                <span className="flex-1 truncate">{name}</span>
+                <span className={`tabular-nums text-xs shrink-0 ${code === value ? 'text-primary' : 'text-gray-400'}`}>{code}</span>
+              </button>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+}
 
 const COUNTRY_TO_DIAL = {
   France: '+33', Belgique: '+32', Belgium: '+32',
@@ -295,18 +367,13 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
 
             <Field label="Téléphone">
               <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50 overflow-hidden focus-within:border-primary focus-within:bg-white transition-colors">
-                <select
+                <DialCodeSelect
                   value={phoneDial}
-                  onChange={e => {
-                    setPhoneDial(e.target.value)
-                    set('phone', phoneLocal.trim() ? `${e.target.value}${phoneLocal.replace(/[\s\-().]/g, '')}` : '')
+                  onChange={code => {
+                    setPhoneDial(code)
+                    set('phone', phoneLocal.trim() ? `${code}${phoneLocal.replace(/[\s\-().]/g, '')}` : '')
                   }}
-                  className="px-2 py-2.5 text-sm bg-transparent border-r border-gray-200 text-gray-700 outline-none shrink-0"
-                >
-                  {COUNTRY_CODES.map(({ code, flag }) => (
-                    <option key={code} value={code}>{flag} {code}</option>
-                  ))}
-                </select>
+                />
                 <input
                   type="tel"
                   value={phoneLocal}
@@ -349,18 +416,13 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
                 <div className="flex items-center gap-3">
                   <WhatsappIcon className="h-5 w-5 text-[#25D366] shrink-0" />
                   <div className="flex flex-1 items-center rounded-xl border border-gray-200 bg-gray-50 overflow-hidden focus-within:border-primary focus-within:bg-white transition-colors min-w-0">
-                    <select
+                    <DialCodeSelect
                       value={waDial}
-                      onChange={e => {
-                        setWaDial(e.target.value)
-                        set('whatsappNumber', waLocal.trim() ? `${e.target.value}${waLocal.replace(/[\s\-().]/g, '')}` : '')
+                      onChange={code => {
+                        setWaDial(code)
+                        set('whatsappNumber', waLocal.trim() ? `${code}${waLocal.replace(/[\s\-().]/g, '')}` : '')
                       }}
-                      className="px-2 py-2.5 text-sm bg-transparent border-r border-gray-200 text-gray-700 outline-none shrink-0"
-                    >
-                      {COUNTRY_CODES.map(({ code, flag }) => (
-                        <option key={code} value={code}>{flag} {code}</option>
-                      ))}
-                    </select>
+                    />
                     <input
                       type="tel"
                       value={waLocal}
