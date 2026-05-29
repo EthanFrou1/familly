@@ -23,7 +23,6 @@ export default function MemberProfile({ member, relations = [] }) {
         {member.city && <InfoRow label="Ville" value={`${member.city}${member.country ? `, ${member.country}` : ''}`} />}
         {member.phone && <InfoRow label="Téléphone" value={member.phone} />}
         {member.email && <InfoRow label="Email" value={member.email} />}
-        {member.bio && <InfoRow label="Bio" value={member.bio} />}
       </div>
 
       {relations.length > 0 && (

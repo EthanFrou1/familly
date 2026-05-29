@@ -482,13 +482,6 @@ export default function Profile() {
           </div>
         </Card>
 
-        {/* Bio */}
-        {member.bio && (
-          <Card title="À propos">
-            <p className="text-sm text-gray-700 leading-relaxed">{member.bio}</p>
-          </Card>
-        )}
-
         {/* Réseaux sociaux */}
         {!isDeceased && (canEdit || member.facebookUrl || member.instagramUsername || member.whatsappNumber) && (
           <Card title="Réseaux sociaux">

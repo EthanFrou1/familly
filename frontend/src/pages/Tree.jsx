@@ -171,7 +171,7 @@ export default function Tree() {
             </div>
             <div className="flex items-center gap-3">
               <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#FB923C" strokeWidth="1.5" strokeDasharray="6 4" /></svg>
-              <span className="text-xs text-gray-600">Séparé(e) / Divorcé(e)</span>
+              <span className="text-xs text-gray-600">Séparé(e) / Divorcé(e) 💔</span>
             </div>
           </div>
 
