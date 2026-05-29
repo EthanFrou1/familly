@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
-import { timelineApi, membersApi } from '../services/api'
+import { timelineApi, membersApi, relationsApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import Avatar from '../components/shared/Avatar'
@@ -180,11 +180,11 @@ export default function Timeline() {
         <div className="flex gap-2 mt-1">
           <Select value={filterType} onChange={e => setFilterType(e.target.value)} placeholder="" className="min-w-[110px]">
             <option value="all">Tout</option>
-            <option value="Marriage">💍 Mariage</option>
+            <option value="Marriage">Mariage</option>
           </Select>
           <Select value={sortOrder} onChange={e => setSortOrder(e.target.value)} placeholder="" className="min-w-[110px]">
-            <option value="desc">↓ Récent</option>
-            <option value="asc">↑ Ancien</option>
+            <option value="desc">Récent</option>
+            <option value="asc">Ancien</option>
           </Select>
           <Select value={filterYear} onChange={e => setFilterYear(e.target.value)} placeholder="Année" className="min-w-[90px]">
             {availableYears.map(y => (
@@ -334,23 +334,65 @@ function TimelineCard({ event, isAdmin, currentUserId, onEdit, onDelete, onViewM
 
 function EventFormModal({ event, onClose, onSave }) {
   const [title, setTitle]         = useState(event?.title ?? '')
-  const [description, setDesc]    = useState(event?.description ?? '')
   const [year, setYear]           = useState(event?.year ?? '')
   const [exactDate, setExactDate] = useState(
     event?.exactDate ? new Date(event.exactDate).toISOString().split('T')[0] : ''
   )
   const [dateMode, setDateMode]   = useState(event?.exactDate ? 'date' : 'year')
-  const [linkedIds, setLinkedIds] = useState(event?.linkedMembers?.map(m => m.id) ?? [])
+  const [coupleKey, setCoupleKey] = useState('')  // "memberAId|memberBId"
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(event?.photoUrl ?? null)
   const [saving, setSaving]       = useState(false)
   const [members, setMembers]     = useState([])
-  const [memberSearch, setMemberSearch] = useState('')
+  const [relations, setRelations] = useState([])
   const fileRef = useRef(null)
 
   useEffect(() => {
-    membersApi.getAll().then(({ data }) => setMembers(data)).catch(() => {})
+    Promise.all([
+      membersApi.getAll(),
+      relationsApi.getAll(),
+    ]).then(([mRes, rRes]) => {
+      setMembers(mRes.data)
+      setRelations(rRes.data)
+
+      // Pré-sélectionner le couple si on est en mode édition
+      if (event?.linkedMembers?.length >= 2) {
+        const [a, b] = event.linkedMembers
+        setCoupleKey(`${a.id}|${b.id}`)
+      }
+    }).catch(() => {})
   }, [])
+
+  // Couples = relations de type Spouse
+  const couples = useMemo(() => {
+    const memberMap = Object.fromEntries(members.map(m => [m.id, m]))
+    return relations
+      .filter(r => r.type === 'Spouse')
+      .map(r => {
+        const a = memberMap[r.memberAId]
+        const b = memberMap[r.memberBId]
+        if (!a || !b) return null
+        return {
+          key: `${r.memberAId}|${r.memberBId}`,
+          label: `${a.firstName} ${a.lastName} & ${b.firstName} ${b.lastName}`,
+          memberAId: r.memberAId,
+          memberBId: r.memberBId,
+          firstNameA: a.firstName,
+          firstNameB: b.firstName,
+        }
+      })
+      .filter(Boolean)
+  }, [members, relations])
+
+  function handleCoupleChange(e) {
+    const key = e.target.value
+    setCoupleKey(key)
+    // Auto-remplir le titre si vide
+    const couple = couples.find(c => c.key === key)
+    if (couple && !title.trim()) {
+      setTitle(`Mariage de ${couple.firstNameA} & ${couple.firstNameB}`)
+    }
+  }
 
   async function handlePhoto(e) {
     const file = e.target.files[0]
@@ -360,32 +402,25 @@ function EventFormModal({ event, onClose, onSave }) {
     setPhotoPreview(URL.createObjectURL(compressed))
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+  async function handleSubmit() {
     if (!title.trim()) return
     setSaving(true)
     try {
+      const couple = couples.find(c => c.key === coupleKey)
+      const linkedMemberIds = couple ? [couple.memberAId, couple.memberBId] : []
       const payload = {
         title: title.trim(),
-        description: description.trim() || null,
+        description: null,
         type: 'Marriage',
         year: dateMode === 'year' && year ? parseInt(year) : null,
         exactDate: dateMode === 'date' && exactDate ? new Date(exactDate).toISOString() : null,
         familyId: null,
-        linkedMemberIds: linkedIds,
+        linkedMemberIds,
       }
       await onSave(payload, photoFile)
     } finally {
       setSaving(false)
     }
-  }
-
-  const filteredMembers = members.filter(m =>
-    `${m.firstName} ${m.lastName}`.toLowerCase().includes(memberSearch.toLowerCase())
-  )
-
-  function toggleMember(id) {
-    setLinkedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
   return (
@@ -408,6 +443,24 @@ function EventFormModal({ event, onClose, onSave }) {
         {/* Contenu scrollable */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
 
+          {/* Couple */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Couple</label>
+            {couples.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">Aucun couple défini dans l'arbre.</p>
+            ) : (
+              <Select
+                value={coupleKey}
+                onChange={handleCoupleChange}
+                placeholder="— Sélectionner un couple —"
+              >
+                {couples.map(c => (
+                  <option key={c.key} value={c.key}>{c.label}</option>
+                ))}
+              </Select>
+            )}
+          </div>
+
           {/* Titre */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Titre *</label>
@@ -416,19 +469,6 @@ function EventFormModal({ event, onClose, onSave }) {
               onChange={e => setTitle(e.target.value)}
               placeholder="Ex: Mariage de Jean et Marie"
               className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-primary focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/10"
-              required
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Description (optionnelle)</label>
-            <textarea
-              value={description}
-              onChange={e => setDesc(e.target.value)}
-              placeholder="Décrivez cet événement…"
-              rows={3}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-primary focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/10 resize-none"
             />
           </div>
 
@@ -469,37 +509,6 @@ function EventFormModal({ event, onClose, onSave }) {
             )}
           </div>
 
-          {/* Personnes liées */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              Personnes liées ({linkedIds.length})
-            </label>
-            <input
-              value={memberSearch}
-              onChange={e => setMemberSearch(e.target.value)}
-              placeholder="Rechercher un membre…"
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm mb-2 focus:border-primary focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary/10"
-            />
-            <div className="max-h-36 overflow-y-auto rounded-xl border border-gray-100 divide-y divide-gray-50">
-              {filteredMembers.slice(0, 30).map(m => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => toggleMember(m.id)}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 active:bg-gray-50"
-                >
-                  <Avatar src={m.profilePictureUrl} name={`${m.firstName} ${m.lastName}`} size="sm" />
-                  <span className="flex-1 text-left text-sm text-gray-700">{m.firstName} {m.lastName}</span>
-                  {linkedIds.includes(m.id) && (
-                    <svg className="h-4 w-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Photo */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Photo (optionnelle)</label>
@@ -531,7 +540,6 @@ function EventFormModal({ event, onClose, onSave }) {
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
           </div>
 
-          {/* Espace pour le bouton fixe */}
           <div className="h-2" />
         </div>
 
