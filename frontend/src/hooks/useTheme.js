@@ -1,5 +1,5 @@
 export const PRESETS = [
-  { id: 'famille',   name: 'Famille',    primary: '#D9B99B', primaryDark: '#AE947C', dark: '#8B5A7A', darkBg: '#66486A', surface: '#FDF7F3' },
+  { id: 'famille',   name: 'Famille',    primary: '#2D7A42', primaryDark: '#1E5830', dark: '#C49A36', darkBg: '#0E3D1E', surface: '#F5F8F2' },
   { id: 'ocean',     name: 'Océan',      primary: '#0A78BE', primaryDark: '#055A96', dark: '#23ADFF', darkBg: '#0A3250', surface: '#E6F6FF' },
   { id: 'foret',     name: 'Forêt',      primary: '#16A34A', primaryDark: '#15803D', dark: '#4ADE80', darkBg: '#052E16', surface: '#F0FDF4' },
   { id: 'violet',    name: 'Violet',     primary: '#7C3AED', primaryDark: '#6D28D9', dark: '#A78BFA', darkBg: '#1E0A3C', surface: '#F5F3FF' },
@@ -39,7 +39,16 @@ export function applyTheme(theme) {
 export function loadSavedTheme() {
   try {
     const saved = localStorage.getItem('app-theme')
-    if (saved) applyTheme(JSON.parse(saved))
+    if (saved) {
+      const theme = JSON.parse(saved)
+      // Migrate old famille theme (beige/mauve) to new green/gold theme
+      if (theme.primary === '#D9B99B') {
+        applyTheme(PRESETS[0])
+        localStorage.setItem('app-theme', JSON.stringify(PRESETS[0]))
+      } else {
+        applyTheme(theme)
+      }
+    }
   } catch { /* ignore */ }
 }
 
