@@ -1,5 +1,5 @@
 export const PRESETS = [
-  { id: 'famille',  name: 'Famille',  primary: '#2D7A42', primaryDark: '#1E5830', dark: '#C49A36', darkBg: '#0E3D1E', surface: '#F5F8F2' },
+  { id: 'famille',  name: 'Famille',  primary: '#245C33', primaryDark: '#193E23', dark: '#C49A36', darkBg: '#0D2415', surface: '#F5F8F2' },
   { id: 'emeraude', name: 'Émeraude', primary: '#1A7A4A', primaryDark: '#0F5533', dark: '#D4B044', darkBg: '#0A3825', surface: '#F0FAF2' },
   { id: 'sapin',    name: 'Sapin',    primary: '#1B5E34', primaryDark: '#113D22', dark: '#B87E28', darkBg: '#091F12', surface: '#F2F7F3' },
   { id: 'olive',    name: 'Olive',    primary: '#6B7C3D', primaryDark: '#4A5628', dark: '#C8983A', darkBg: '#2E3419', surface: '#F8F7EC' },
@@ -14,12 +14,6 @@ function hexToRgb(hex) {
   return `${r} ${g} ${b}`
 }
 
-export function darkenHex(hex, factor = 0.7) {
-  const r = Math.round(parseInt(hex.slice(1, 3), 16) * factor)
-  const g = Math.round(parseInt(hex.slice(3, 5), 16) * factor)
-  const b = Math.round(parseInt(hex.slice(5, 7), 16) * factor)
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
-}
 
 export function applyTheme(theme) {
   const root = document.documentElement
@@ -40,8 +34,8 @@ export function loadSavedTheme() {
     const saved = localStorage.getItem('app-theme')
     if (saved) {
       const theme = JSON.parse(saved)
-      // Migrate old famille theme (beige/mauve) to new green/gold theme
-      if (theme.primary === '#D9B99B') {
+      // Migrate old famille theme (beige/mauve or previous green) to current default
+      if (theme.primary === '#D9B99B' || theme.primary === '#2D7A42') {
         applyTheme(PRESETS[0])
         localStorage.setItem('app-theme', JSON.stringify(PRESETS[0]))
       } else {
