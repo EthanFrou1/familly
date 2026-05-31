@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { authApi, setToken } from '../services/api'
-import ThemePicker from '../components/shared/ThemePicker'
 
 function ForgotPasswordModal({ onClose }) {
   const [email, setEmail] = useState('')
@@ -96,7 +95,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [inviteNeedsEmail, setInviteNeedsEmail] = useState(false)
   const [showForgot, setShowForgot] = useState(false)
-  const [showTheme, setShowTheme] = useState(false)
   const inviteMode = !!token
 
   useEffect(() => {
@@ -144,17 +142,6 @@ export default function Login() {
   return (
     <div className="relative flex h-full flex-col items-center justify-center overflow-hidden bg-dark px-6">
       <Background />
-
-      {/* Floating theme button */}
-      <button
-        onClick={() => setShowTheme(true)}
-        className="fixed bottom-6 right-4 z-40 h-10 w-10 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm flex items-center justify-center active:scale-90 transition-transform"
-        aria-label="Changer le thème"
-      >
-        <PaletteIcon className="h-5 w-5 text-white/60" />
-      </button>
-
-      <ThemePicker open={showTheme} onClose={() => setShowTheme(false)} />
 
       <div className="relative z-10 w-full max-w-sm">
 
@@ -282,17 +269,6 @@ export default function Login() {
   )
 }
 
-function PaletteIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z" />
-      <circle cx="6.5"  cy="11.5" r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="9.5"  cy="7.5"  r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="14.5" cy="7.5"  r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="17.5" cy="11.5" r="1.5" fill="currentColor" stroke="none" />
-    </svg>
-  )
-}
 
 function Background() {
   return (

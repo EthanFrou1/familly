@@ -6,7 +6,6 @@ import MemberFormModal from '../members/MemberFormModal'
 import SuccessAddModal from '../members/SuccessAddModal'
 import RelationSuggestionModal from '../members/RelationSuggestionModal'
 import { membersApi } from '../../services/api'
-import ThemePicker from '../shared/ThemePicker'
 
 export default function BottomNav() {
   const { user, logout } = useAuth()
@@ -17,7 +16,6 @@ export default function BottomNav() {
   const [showAddMember, setShowAddMember] = useState(false)
   const [newMember, setNewMember] = useState(null)
   const [relationSuggestions, setRelationSuggestions] = useState(null)
-  const [showTheme, setShowTheme] = useState(false)
 
   async function handleAddMember(form) {
     const { data } = await membersApi.create(form)
@@ -170,17 +168,6 @@ export default function BottomNav() {
         />
       )}
 
-      {/* Floating theme button */}
-      <button
-        onClick={() => setShowTheme(true)}
-        className="fixed right-4 z-40 h-10 w-10 rounded-full bg-white shadow-lg border border-gray-100 flex items-center justify-center active:scale-90 transition-transform"
-        style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
-        aria-label="Changer le thème"
-      >
-        <PaletteIcon className="h-5 w-5 text-primary" />
-      </button>
-
-      <ThemePicker open={showTheme} onClose={() => setShowTheme(false)} />
     </>
   )
 }
@@ -246,17 +233,6 @@ function TimelineIcon() {
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
       <circle cx="12" cy="12" r="9" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h2M19 12h2M12 3v2M12 19v2" />
-    </svg>
-  )
-}
-function PaletteIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z" />
-      <circle cx="6.5"  cy="11.5" r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="9.5"  cy="7.5"  r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="14.5" cy="7.5"  r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="17.5" cy="11.5" r="1.5" fill="currentColor" stroke="none" />
     </svg>
   )
 }
