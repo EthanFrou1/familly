@@ -37,7 +37,7 @@ export default function ResetPassword() {
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-10">
-          <img src="/icons/icon-192x192.png" alt="MyBigFamily" className="h-20 w-20 rounded-2xl shadow-lg shadow-primary/40 mb-4 mx-auto" />
+          <img src="/icons/icon-192x192.png" alt="MyBigFamily" className="h-40 w-40 rounded-2xl shadow-lg shadow-primary/40 mb-4 mx-auto" />
           <h1 className="text-3xl font-black text-white tracking-tight">MyBigFamily</h1>
           <p className="text-white/70 text-sm mt-1.5">Nouveau mot de passe</p>
         </div>
