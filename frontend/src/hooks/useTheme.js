@@ -1,11 +1,10 @@
 export const PRESETS = [
-  { id: 'famille',   name: 'Famille',    primary: '#2D7A42', primaryDark: '#1E5830', dark: '#C49A36', darkBg: '#0E3D1E', surface: '#F5F8F2' },
-  { id: 'ocean',     name: 'Océan',      primary: '#0A78BE', primaryDark: '#055A96', dark: '#23ADFF', darkBg: '#0A3250', surface: '#E6F6FF' },
-  { id: 'foret',     name: 'Forêt',      primary: '#16A34A', primaryDark: '#15803D', dark: '#4ADE80', darkBg: '#052E16', surface: '#F0FDF4' },
-  { id: 'violet',    name: 'Violet',     primary: '#7C3AED', primaryDark: '#6D28D9', dark: '#A78BFA', darkBg: '#1E0A3C', surface: '#F5F3FF' },
-  { id: 'soleil',    name: 'Soleil',     primary: '#D97706', primaryDark: '#B45309', dark: '#FCD34D', darkBg: '#3C1A00', surface: '#FFFBEB' },
-  { id: 'rose',      name: 'Rose',       primary: '#DB2777', primaryDark: '#BE185D', dark: '#F9A8D4', darkBg: '#3C0A1A', surface: '#FFF0F5' },
-  { id: 'turquoise', name: 'Turquoise',  primary: '#0D9488', primaryDark: '#0F766E', dark: '#2DD4BF', darkBg: '#042F2E', surface: '#F0FDFA' },
+  { id: 'famille',  name: 'Famille',  primary: '#2D7A42', primaryDark: '#1E5830', dark: '#C49A36', darkBg: '#0E3D1E', surface: '#F5F8F2' },
+  { id: 'emeraude', name: 'Émeraude', primary: '#1A7A4A', primaryDark: '#0F5533', dark: '#D4B044', darkBg: '#0A3825', surface: '#F0FAF2' },
+  { id: 'sapin',    name: 'Sapin',    primary: '#1B5E34', primaryDark: '#113D22', dark: '#B87E28', darkBg: '#091F12', surface: '#F2F7F3' },
+  { id: 'olive',    name: 'Olive',    primary: '#6B7C3D', primaryDark: '#4A5628', dark: '#C8983A', darkBg: '#2E3419', surface: '#F8F7EC' },
+  { id: 'prairie',  name: 'Prairie',  primary: '#3D9E56', primaryDark: '#2A7040', dark: '#DDB94A', darkBg: '#1A4A28', surface: '#EDFAF2' },
+  { id: 'automne',  name: 'Automne',  primary: '#C49A36', primaryDark: '#A07828', dark: '#2D7A42', darkBg: '#3C2810', surface: '#FBF6EC' },
 ]
 
 function hexToRgb(hex) {
