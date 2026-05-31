@@ -113,9 +113,14 @@ function parsePhone(value) {
   const normalized = value.replace(/[\s\-().]/g, '')
   const sorted = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length)
   for (const { code } of sorted) {
-    if (normalized.startsWith(code)) return { dialCode: code, local: normalized.slice(code.length) }
+    if (normalized.startsWith(code)) return { dialCode: code, local: normalized.slice(code.length).replace(/^0/, '') }
   }
-  return { dialCode: null, local: normalized.replace(/^\+/, '') }
+  return { dialCode: null, local: normalized.replace(/^\+/, '').replace(/^0/, '') }
+}
+
+// Retire espaces/ponctuation ET le 0 initial pour construire un numéro international propre
+function cleanLocal(raw) {
+  return raw.replace(/[\s\-().]/g, '').replace(/^0/, '')
 }
 
 const EMPTY = {
@@ -371,7 +376,10 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
                   value={phoneDial}
                   onChange={code => {
                     setPhoneDial(code)
-                    set('phone', phoneLocal.trim() ? `${code}${phoneLocal.replace(/[\s\-().]/g, '')}` : '')
+                    const clean = cleanLocal(phoneLocal)
+                    set('phone', clean ? `${code}${clean}` : '')
+                    setWaDial(code)
+                    set('whatsappNumber', clean ? `${code}${clean}` : '')
                   }}
                 />
                 <input
@@ -381,7 +389,11 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
                   onChange={e => {
                     const local = e.target.value.replace(/[^\d\s\-().]/g, '')
                     setPhoneLocal(local)
-                    set('phone', local.trim() ? `${phoneDial}${local.replace(/[\s\-().]/g, '')}` : '')
+                    const clean = cleanLocal(local)
+                    set('phone', clean ? `${phoneDial}${clean}` : '')
+                    setWaLocal(local)
+                    setWaDial(phoneDial)
+                    set('whatsappNumber', clean ? `${phoneDial}${clean}` : '')
                   }}
                   className="flex-1 px-3 py-2.5 text-sm bg-transparent outline-none min-w-0"
                   placeholder="6 12 34 56 78"
@@ -420,7 +432,8 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
                       value={waDial}
                       onChange={code => {
                         setWaDial(code)
-                        set('whatsappNumber', waLocal.trim() ? `${code}${waLocal.replace(/[\s\-().]/g, '')}` : '')
+                        const clean = cleanLocal(waLocal)
+                        set('whatsappNumber', clean ? `${code}${clean}` : '')
                       }}
                     />
                     <input
@@ -429,7 +442,8 @@ export default function MemberFormModal({ open, onClose, onSubmit, initial = nul
                       onChange={e => {
                         const local = e.target.value.replace(/[^\d\s\-().]/g, '')
                         setWaLocal(local)
-                        set('whatsappNumber', local.trim() ? `${waDial}${local.replace(/[\s\-().]/g, '')}` : '')
+                        const clean = cleanLocal(local)
+                        set('whatsappNumber', clean ? `${waDial}${clean}` : '')
                       }}
                       className="flex-1 px-3 py-2.5 text-sm bg-transparent outline-none min-w-0"
                       placeholder="6 12 34 56 78"
