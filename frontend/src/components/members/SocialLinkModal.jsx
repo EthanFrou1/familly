@@ -185,7 +185,7 @@ export default function SocialLinkModal({ network, currentValue, memberCountry, 
   const [showHelp, setShowHelp] = useState(true)
 
   const fullNumber = localNumber.trim()
-    ? `${dialCode}${localNumber.replace(/[\s\-().]/g, '')}`
+    ? `${dialCode}${localNumber.replace(/[\s\-().]/g, '').replace(/^0/, '')}`
     : ''
 
   const hasChanged = isWhatsapp

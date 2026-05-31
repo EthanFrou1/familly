@@ -337,7 +337,9 @@ export default function Profile() {
   const birthYear = member.birthDate ? new Date(member.birthDate).getFullYear() : null
   const deathYear = member.deathDate ? new Date(member.deathDate).getFullYear() : null
   const lifespan = birthYear && deathYear ? `${birthYear} – ${deathYear}` : (birthYear ? `${birthYear}` : null)
-  const whatsappHref = member.whatsappNumber ? `https://wa.me/${member.whatsappNumber.replace(/[\s+\-()]/g, '')}` : null
+  const whatsappHref = member.whatsappNumber
+    ? `https://wa.me/${member.whatsappNumber.replace(/[\s+\-()]/g, '').replace(/^(\d{1,3})0(\d{8,})$/, '$1$2')}`
+    : null
 
   return (
     <div className="overflow-y-auto h-full bg-gray-50 pb-8 animate-fade-in">
