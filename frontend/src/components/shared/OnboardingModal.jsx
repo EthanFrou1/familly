@@ -494,7 +494,7 @@ export default function OnboardingModal({ user, onDone }) {
             onClick={onNext[step]}
             disabled={loading}
             className="w-full py-4 rounded-2xl font-bold text-sm text-white disabled:opacity-50 active:scale-[0.98] transition-transform shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #b07848 0%, #7a4f2e 100%)', boxShadow: '0 4px 20px rgba(168,112,72,0.35)' }}
+            style={{ background: 'linear-gradient(135deg, var(--c-primary) 0%, var(--c-primary-dark) 100%)', boxShadow: '0 4px 20px rgba(36,92,51,0.35)' }}
           >
             {loading ? 'Enregistrement…' : step < 3 ? 'Continuer →' : "C'est parti ! 🎉"}
           </button>
