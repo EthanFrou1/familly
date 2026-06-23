@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { membersApi } from '../../services/api'
 
-const inputCls = "w-full rounded-2xl bg-white/[0.08] border border-white/10 px-4 py-3.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-primary/60 focus:bg-white/[0.12] transition-all"
+const inputCls = "w-full rounded-2xl bg-black/[0.06] border border-black/10 px-4 py-3.5 text-black text-sm placeholder-black/35 focus:outline-none focus:border-primary/60 focus:bg-black/[0.08] transition-all"
 const errorCls = "text-xs text-red-300 mt-1.5"
 
 function validatePhone(phone) {
@@ -68,7 +68,7 @@ const STEP_META = [
 const PWA_STEPS = {
   apple: [
     { icon: '🧭', text: 'Ouvre ce site dans Safari (pas Chrome ni Firefox)' },
-    { icon: '⬆️', text: 'Appuie sur le bouton Partager en bas de l\'écran' },
+    { icon: '⬆️', text: 'Appuie sur ', shareIcon: true, textAfter: "en bas de l'écran, ou les 3 petits points" },
     { icon: '➕', text: 'Fais défiler et appuie sur « Sur l\'écran d\'accueil »' },
     { icon: '✅', text: 'Appuie sur « Ajouter » en haut à droite' },
   ],
@@ -102,7 +102,6 @@ export default function OnboardingModal({ user, onDone }) {
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [phoneType, setPhoneType] = useState(detectPhoneType)
-  const [showVideo, setShowVideo] = useState(false)
   const fileRef = useRef()
 
   useEffect(() => {
@@ -353,7 +352,7 @@ export default function OnboardingModal({ user, onDone }) {
                 <label className="block text-[11px] font-semibold text-black/60 uppercase tracking-wide mb-2">Date de naissance</label>
                 <input type="date" value={birthDate}
                   onChange={e => { setBirthDate(e.target.value); setErrors(v => ({ ...v, birthDate: null })) }}
-                  className={`${inputCls} [color-scheme:dark]`} />
+                  className={`${inputCls} [color-scheme:light]`} />
                 {errors.birthDate && <p className={errorCls}>{errors.birthDate}</p>}
               </div>
               <div>
@@ -426,40 +425,25 @@ export default function OnboardingModal({ user, onDone }) {
               {/* iPhone : vignette vidéo + étapes */}
               {phoneType === 'apple' && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setShowVideo(true)}
-                    className="w-full flex items-center gap-4 rounded-2xl bg-white/[0.06] border border-white/[0.10] px-4 py-3 active:opacity-70 transition-opacity"
-                  >
-                    <div className="relative rounded-xl overflow-hidden shrink-0" style={{ width: 52, height: 88 }}>
-                      <img
-                        src="https://img.youtube.com/vi/UxCvNcRYVUU/hqdefault.jpg"
-                        alt="Tutoriel"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <div className="h-7 w-7 rounded-full bg-white/90 flex items-center justify-center">
-                          <svg className="h-3.5 w-3.5 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-sm font-semibold text-white">Voir le tutoriel vidéo</p>
-                      <p className="text-xs text-white/40 mt-0.5">Guide pas à pas pour iPhone • Safari</p>
-                    </div>
-                    <svg className="h-4 w-4 text-white/30 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
                   <div className="space-y-2">
                     {PWA_STEPS.apple.map((s, i) => (
                       <div key={i} className="flex items-start gap-3 rounded-2xl bg-white/[0.05] border border-white/[0.07] px-4 py-3">
                         <span className="text-xl shrink-0 mt-0.5">{s.icon}</span>
                         <div className="flex-1">
                           <span className="text-[10px] font-bold text-primary/70 uppercase tracking-wide">Étape {i + 1}</span>
-                          <p className="text-sm text-white/75 leading-snug">{s.text}</p>
+                          {s.shareIcon ? (
+                            <p className="text-sm text-white/75 leading-snug flex flex-wrap items-center gap-1">
+                              <span>{s.text}</span>
+                              <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
+                                <polyline points="16 6 12 2 8 6"/>
+                                <line x1="12" y1="2" x2="12" y2="15"/>
+                              </svg>
+                              <span>{s.textAfter}</span>
+                            </p>
+                          ) : (
+                            <p className="text-sm text-white/75 leading-snug">{s.text}</p>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -501,39 +485,13 @@ export default function OnboardingModal({ user, onDone }) {
           </button>
           <button
             onClick={step < 3 ? () => setStep(s => s + 1) : onDone}
-            className="w-full py-2 text-sm text-black/45 text-center"
+            className="w-full py-2 text-sm text-black/45 text-center border border-black/15 rounded-2xl"
           >
             {step < 3 ? 'Passer cette étape' : "Passer pour l'instant"}
           </button>
         </div>
       </div>
 
-      {/* Modale vidéo plein écran */}
-      {showVideo && createPortal(
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90" onClick={() => setShowVideo(false)}>
-          <button
-            onClick={() => setShowVideo(false)}
-            className="absolute top-6 right-5 h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-white active:bg-white/20"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{ width: '80vw', maxWidth: 360, aspectRatio: '9/16' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <iframe
-              src="https://www.youtube.com/embed/UxCvNcRYVUU?autoplay=1&playsinline=1&rel=0"
-              allow="autoplay; fullscreen"
-              allowFullScreen
-              className="w-full h-full border-0"
-            />
-          </div>
-        </div>,
-        document.body
-      )}
     </div>,
     document.body
   )
