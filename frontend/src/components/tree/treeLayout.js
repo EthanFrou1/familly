@@ -72,7 +72,7 @@ export function buildTreeLayout(members, relations, colorMap) {
   const valid = r => memberIds.has(r.memberAId) && memberIds.has(r.memberBId)
 
   const pcRelations  = relations.filter(r => r.type === 'ParentChild'  && valid(r))
-  const spRelations  = relations.filter(r => r.type === 'Spouse'        && valid(r))
+  const spRelations  = relations.filter(r => (r.type === 'Spouse' || r.type === 'Partner') && valid(r))
   const sepRelations = relations.filter(r => r.type === 'Separated'     && valid(r))
   const sibRelations = relations.filter(r => r.type === 'Sibling'       && valid(r))
   const hsbRelations = relations.filter(r => r.type === 'HalfSibling'   && valid(r))

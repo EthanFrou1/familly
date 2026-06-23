@@ -7,7 +7,8 @@ import { matchesSearch } from '../../utils/normalize'
 const RELATION_OPTIONS = [
   { value: 'ParentChild_A', label: 'est parent de', apiType: 'ParentChild', memberAIsCurrent: true },
   { value: 'ParentChild_B', label: "est l'enfant de", apiType: 'ParentChild', memberAIsCurrent: false },
-  { value: 'Spouse', label: 'est conjoint(e) de', apiType: 'Spouse', memberAIsCurrent: true },
+  { value: 'Spouse', label: 'est marié(e) avec', apiType: 'Spouse', memberAIsCurrent: true },
+  { value: 'Partner', label: 'est en couple avec (non marié(e))', apiType: 'Partner', memberAIsCurrent: true },
   { value: 'Separated', label: 'est séparé(e) / divorcé(e) de', apiType: 'Separated', memberAIsCurrent: true },
   { value: 'Sibling', label: 'est frère / sœur de', apiType: 'Sibling', memberAIsCurrent: true },
   { value: 'HalfSibling', label: 'est demi-frère / demi-sœur de', apiType: 'HalfSibling', memberAIsCurrent: true },
