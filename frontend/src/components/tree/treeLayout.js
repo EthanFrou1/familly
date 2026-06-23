@@ -269,11 +269,11 @@ export function buildTreeLayout(members, relations, colorMap) {
     markerEnd: { type: 'arrowclosed', color: '#9CA3AF', width: 12, height: 12 },
   }))
 
-  // Spouse (horizontal, pink)
+  // Spouse / Partner (horizontal, pink)
   spRelations.forEach(r => rfEdges.push(horizEdge(`sp-${r.id}`, r.memberAId, r.memberBId, {
     style: { stroke: '#F472B6', strokeWidth: 2 },
-    label: '♥',
-    labelStyle: { fill: '#F472B6', fontSize: 11, fontWeight: 700 },
+    label: r.type === 'Spouse' ? '💍' : '♥',
+    labelStyle: { fill: '#F472B6', fontSize: r.type === 'Spouse' ? 13 : 11, fontWeight: 700 },
     labelBgStyle: { fill: 'transparent' },
   })))
 
