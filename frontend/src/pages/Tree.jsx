@@ -4,6 +4,7 @@ import { ReactFlowProvider } from '@xyflow/react'
 import { useFamily } from '../hooks/useFamily'
 import { useAuth } from '../hooks/useAuth'
 import { familiesApi } from '../services/api'
+import { usePageRefresh } from '../hooks/usePageRefresh'
 import FamilyTree from '../components/tree/FamilyTree'
 import Select from '../components/shared/Select'
 import SiblingsSuggestionModal from '../components/tree/SiblingsSuggestionModal'
@@ -27,6 +28,10 @@ export default function Tree() {
   useEffect(() => {
     familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
   }, [])
+
+  usePageRefresh(() => {
+    familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
+  })
 
   const siblingsSuggestions = useMemo(
     () => isAdmin ? detectImplicitSiblings(members, relations) : [],

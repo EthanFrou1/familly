@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { familiesApi } from '../services/api'
+import { usePageRefresh } from '../hooks/usePageRefresh'
 import { matchesSearch } from '../utils/normalize'
 import { FAMILY_PALETTE } from '../components/tree/treeLayout'
 import Avatar from '../components/shared/Avatar'
@@ -21,6 +22,10 @@ export default function Members() {
   useEffect(() => {
     familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
   }, [])
+
+  usePageRefresh(() => {
+    familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
+  })
 
   const filtered = useMemo(() => {
     let result = members

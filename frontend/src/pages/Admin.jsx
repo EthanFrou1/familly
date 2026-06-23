@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { adminApi, familiesApi, membersApi } from '../services/api'
+import { usePageRefresh } from '../hooks/usePageRefresh'
 import { matchesSearch } from '../utils/normalize'
 import Avatar from '../components/shared/Avatar'
 import Select from '../components/shared/Select'
@@ -42,6 +43,13 @@ export default function Admin() {
       .then(([{ data: m }, { data: f }]) => { setOverview(m); setFamilies(f) })
       .finally(() => setLoading(false))
   }, [isAdmin])
+
+  usePageRefresh(() => {
+    if (!isAdmin) return
+    Promise.all([adminApi.getMembersOverview(), familiesApi.getAll()])
+      .then(([{ data: m }, { data: f }]) => { setOverview(m); setFamilies(f) })
+      .catch(() => {})
+  })
 
   const filtered = useMemo(() => {
     let r = overview

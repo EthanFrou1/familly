@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { familiesApi, settingsApi, relationsApi, activityLogsApi, photosApi } from '../services/api'
+import { usePageRefresh } from '../hooks/usePageRefresh'
 import Avatar from '../components/shared/Avatar'
 import BirthdayPopup from '../components/home/BirthdayPopup'
 import CalendarExportSheet from '../components/members/CalendarExportSheet'
@@ -158,6 +159,12 @@ export default function Home() {
     activityLogsApi.getAll(10).then(({ data }) => setActivityLogs(data)).catch(() => {})
     photosApi.getAll().then(({ data }) => setRecentPhotos(data.slice(0, 6))).catch(() => {})
   }, [members])
+
+  usePageRefresh(() => {
+    relationsApi.getAll().then(({ data }) => setRelations(data)).catch(() => {})
+    activityLogsApi.getAll(10).then(({ data }) => setActivityLogs(data)).catch(() => {})
+    photosApi.getAll().then(({ data }) => setRecentPhotos(data.slice(0, 6))).catch(() => {})
+  })
 
   async function handleSaveName(e) {
     e.preventDefault()

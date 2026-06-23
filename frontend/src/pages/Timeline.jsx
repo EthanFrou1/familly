@@ -4,6 +4,7 @@ import imageCompression from 'browser-image-compression'
 import { timelineApi, membersApi, relationsApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
+import { usePageRefresh } from '../hooks/usePageRefresh'
 import Avatar from '../components/shared/Avatar'
 import Select from '../components/shared/Select'
 import ConfirmModal from '../components/shared/ConfirmModal'
@@ -63,6 +64,10 @@ export default function Timeline() {
       .then(({ data }) => setEvents(data))
       .finally(() => setLoading(false))
   }, [])
+
+  usePageRefresh(() => {
+    timelineApi.getAll().then(({ data }) => setEvents(data)).catch(() => {})
+  })
 
   // Événements auto depuis les membres (naissances + décès)
   const autoEvents = useMemo(() => {

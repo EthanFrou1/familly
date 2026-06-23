@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { membersApi } from '../services/api'
+import { usePageRefresh } from '../hooks/usePageRefresh'
 
 const MembersContext = createContext(null)
 
@@ -17,6 +18,8 @@ export function MembersProvider({ children }) {
   useEffect(() => {
     refresh().finally(() => setLoading(false))
   }, [refresh])
+
+  usePageRefresh(refresh)
 
   return (
     <MembersContext.Provider value={{ members, loading, refresh }}>
