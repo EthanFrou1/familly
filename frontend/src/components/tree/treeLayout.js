@@ -153,6 +153,8 @@ export function buildTreeLayout(members, relations, colorMap) {
     const realIds = realChildsByParent.get(parentId) || new Set()
     const sibSet  = new Set(childIds)
 
+    console.log('[TREE] group', memberMap[parentId]?.firstName, '→ real:', [...realIds].map(id => memberMap[id]?.firstName), '| all:', childIds.map(id => memberMap[id]?.firstName))
+
     // Couple partners present in this sibling group
     const couplePartner = new Map()
     ;[...spRelations, ...sepRelations].forEach(r => {
