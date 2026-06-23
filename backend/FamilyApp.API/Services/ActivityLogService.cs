@@ -23,12 +23,12 @@ public class ActivityLogService(AppDbContext db)
             var userIdStr = actor.FindFirstValue(ClaimTypes.NameIdentifier);
             if (Guid.TryParse(userIdStr, out var userId))
             {
-                var member = await db.Members
-                    .Where(m => m.UserId == userId)
-                    .Select(m => new { m.FirstName, m.LastName })
+                var actorMember = await db.Users
+                    .Where(u => u.Id == userId)
+                    .Select(u => new { u.Member.FirstName, u.Member.LastName })
                     .FirstOrDefaultAsync();
-                if (member is not null)
-                    actorName = $"{member.FirstName} {member.LastName}";
+                if (actorMember is not null)
+                    actorName = $"{actorMember.FirstName} {actorMember.LastName}";
             }
         }
 
