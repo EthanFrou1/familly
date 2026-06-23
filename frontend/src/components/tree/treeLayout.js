@@ -153,12 +153,29 @@ export function buildTreeLayout(members, relations, colorMap) {
     const realIds = realChildsByParent.get(parentId) || new Set()
     const sibSet  = new Set(childIds)
 
-    console.log('[TREE] group', memberMap[parentId]?.firstName, '→ real:', [...realIds].map(id => memberMap[id]?.firstName), '| all:', childIds.map(id => memberMap[id]?.firstName))
+    const _pName = memberMap[parentId]?.firstName
+    console.log('[TREE] group', _pName, '→ real:', [...realIds].map(id => memberMap[id]?.firstName), '| all:', childIds.map(id => memberMap[id]?.firstName))
 
-    // Couple partners present in this sibling group
+    // Find y-level reference for this sibling group
+    const yRef = g.node(childIds[0])?.y ?? 0
+    const Y_TOL = NODE_H * 0.8
+
+    // Expand group to include in-law spouses at the same y level
+    const familyGroupIds = new Set(childIds)
+    ;[...spRelations, ...sepRelations].forEach(r => {
+      const inA = sibSet.has(r.memberAId)
+      const inB = sibSet.has(r.memberBId)
+      if (!inA && !inB) return
+      const otherId = inA ? r.memberBId : r.memberAId
+      const otherNode = g.node(otherId)
+      if (!otherNode || repositioned.has(otherId)) return
+      if (Math.abs(otherNode.y - yRef) < Y_TOL) familyGroupIds.add(otherId)
+    })
+
+    // Couple partner map: include in-laws at the same y level
     const couplePartner = new Map()
     ;[...spRelations, ...sepRelations].forEach(r => {
-      if (sibSet.has(r.memberAId) && sibSet.has(r.memberBId)) {
+      if (sibSet.has(r.memberAId) || sibSet.has(r.memberBId)) {
         couplePartner.set(r.memberAId, r.memberBId)
         couplePartner.set(r.memberBId, r.memberAId)
       }
@@ -181,14 +198,20 @@ export function buildTreeLayout(members, relations, colorMap) {
       if (placed.has(id)) return
       ordered.push(id); placed.add(id)
       const partner = couplePartner.get(id)
-      if (partner && !placed.has(partner)) { ordered.push(partner); placed.add(partner) }
+      if (partner && !placed.has(partner) && familyGroupIds.has(partner)) {
+        ordered.push(partner); placed.add(partner)
+      }
     })
-    // Any remaining members not yet placed (unmatched inferred nodes)
-    childIds.filter(id => !placed.has(id)).forEach(id => { ordered.push(id); placed.add(id) })
+    // Any remaining family members not yet placed
+    ;[...familyGroupIds].filter(id => !placed.has(id)).forEach(id => {
+      ordered.push(id); placed.add(id)
+    })
 
-    // Assign the sorted dagre x-slots to the ordered sequence
-    const slots = childIds.map(id => g.node(id).x).sort((a, b) => a - b)
-    ordered.forEach((id, i) => { g.node(id).x = slots[i]; repositioned.add(id) })
+    // X slots from the full family group (siblings + their in-law spouses)
+    const slots = [...familyGroupIds].map(id => g.node(id).x).sort((a, b) => a - b)
+    ordered.forEach((id, i) => {
+      if (i < slots.length) { g.node(id).x = slots[i]; repositioned.add(id) }
+    })
   })
   // ──────────────────────────────────────────────────────────────────────────
 
