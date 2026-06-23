@@ -151,48 +151,42 @@ export function buildTreeLayout(members, relations, colorMap) {
     if (childIds.length < 2) return
 
     const realIds = realChildsByParent.get(parentId) || new Set()
+    const sibSet  = new Set(childIds)
 
-    // Average dagre X per family (fallback) + oldest REAL child date per family
-    const famXSum = new Map(), famXCount = new Map()
-    const famOldestRealDate = new Map()
-    childIds.forEach(id => {
-      const key = memberMap[id]?.familyId ?? `__solo_${id}`
-      famXSum.set(key, (famXSum.get(key) ?? 0) + g.node(id).x)
-      famXCount.set(key, (famXCount.get(key) ?? 0) + 1)
-      if (realIds.has(id) && memberMap[id]?.birthDate) {
-        const bd = new Date(memberMap[id].birthDate).getTime()
-        if (!famOldestRealDate.has(key) || bd < famOldestRealDate.get(key))
-          famOldestRealDate.set(key, bd)
+    // Couple partners present in this sibling group
+    const couplePartner = new Map()
+    ;[...spRelations, ...sepRelations].forEach(r => {
+      if (sibSet.has(r.memberAId) && sibSet.has(r.memberBId)) {
+        couplePartner.set(r.memberAId, r.memberBId)
+        couplePartner.set(r.memberBId, r.memberAId)
       }
     })
-    const famAvgX = key => (famXSum.get(key) ?? 0) / (famXCount.get(key) ?? 1)
 
-    const sorted = [...childIds].sort((a, b) => {
+    // Sort real children by birth date (oldest → left)
+    const realChildren = [...realIds].filter(id => sibSet.has(id))
+    realChildren.sort((a, b) => {
       const ma = memberMap[a], mb = memberMap[b]
-      const keyA = ma?.familyId ?? `__solo_${a}`
-      const keyB = mb?.familyId ?? `__solo_${b}`
-
-      // Primary: between family groups → oldest real child of the group goes left
-      if (keyA !== keyB) {
-        const dateA = famOldestRealDate.get(keyA) ?? Infinity
-        const dateB = famOldestRealDate.get(keyB) ?? Infinity
-        const dAge = dateA - dateB
-        if (dAge !== 0) return dAge
-        return famAvgX(keyA) - famAvgX(keyB) // fallback: dagre order
-      }
-
-      // Secondary: within same family group, oldest first
       if (!ma?.birthDate && !mb?.birthDate) return 0
       if (!ma?.birthDate) return 1
       if (!mb?.birthDate) return -1
       return new Date(ma.birthDate) - new Date(mb.birthDate)
     })
 
-    const slots = childIds.map(id => g.node(id).x).sort((a, b) => a - b)
-    sorted.forEach((id, i) => {
-      g.node(id).x = slots[i]
-      repositioned.add(id)
+    // Build sequence: each real child immediately followed by their couple partner
+    const ordered = []
+    const placed  = new Set()
+    realChildren.forEach(id => {
+      if (placed.has(id)) return
+      ordered.push(id); placed.add(id)
+      const partner = couplePartner.get(id)
+      if (partner && !placed.has(partner)) { ordered.push(partner); placed.add(partner) }
     })
+    // Any remaining members not yet placed (unmatched inferred nodes)
+    childIds.filter(id => !placed.has(id)).forEach(id => { ordered.push(id); placed.add(id) })
+
+    // Assign the sorted dagre x-slots to the ordered sequence
+    const slots = childIds.map(id => g.node(id).x).sort((a, b) => a - b)
+    ordered.forEach((id, i) => { g.node(id).x = slots[i]; repositioned.add(id) })
   })
   // ──────────────────────────────────────────────────────────────────────────
 
