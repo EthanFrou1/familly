@@ -124,11 +124,18 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   dagre.layout(g)
 
-  // ── Reorder siblings: families grouped together, then oldest→left within each family ──
-  // Dagre ignores node insertion order, so we post-process x positions.
-  // Rule: keep siblings of the same family adjacent (using dagre's family avg-x as anchor),
-  // then sort by birthDate within each family group.
+  // ── Reorder siblings: family groups ordered by real child's age, oldest→left ──
+  // "Real child" = directly linked via pcRelations (not an inferred spouse).
+  // Within each family group, members are also sorted oldest→left.
   const memberMap = Object.fromEntries(members.map(m => [m.id, m]))
+
+  // Track which children come from real ParentChild relations (vs inferred spouse edges)
+  const realChildsByParent = new Map()
+  pcRelations.forEach(r => {
+    if (!realChildsByParent.has(r.memberAId)) realChildsByParent.set(r.memberAId, new Set())
+    realChildsByParent.get(r.memberAId).add(r.memberBId)
+  })
+
   const parentToChildIds = new Map()
   ;[
     ...pcRelations.map(r => ({ parentId: r.memberAId, childId: r.memberBId })),
@@ -139,21 +146,49 @@ export function buildTreeLayout(members, relations, colorMap) {
   })
 
   const repositioned = new Set()
-  parentToChildIds.forEach(childIdSet => {
+  parentToChildIds.forEach((childIdSet, parentId) => {
     const childIds = [...childIdSet].filter(id => g.node(id) && !repositioned.has(id))
     if (childIds.length < 2) return
 
+    const realIds = realChildsByParent.get(parentId) || new Set()
+
+    // Average dagre X per family (fallback) + oldest REAL child date per family
+    const famXSum = new Map(), famXCount = new Map()
+    const famOldestRealDate = new Map()
+    childIds.forEach(id => {
+      const key = memberMap[id]?.familyId ?? `__solo_${id}`
+      famXSum.set(key, (famXSum.get(key) ?? 0) + g.node(id).x)
+      famXCount.set(key, (famXCount.get(key) ?? 0) + 1)
+      if (realIds.has(id) && memberMap[id]?.birthDate) {
+        const bd = new Date(memberMap[id].birthDate).getTime()
+        if (!famOldestRealDate.has(key) || bd < famOldestRealDate.get(key))
+          famOldestRealDate.set(key, bd)
+      }
+    })
+    const famAvgX = key => (famXSum.get(key) ?? 0) / (famXCount.get(key) ?? 1)
+
     const sorted = [...childIds].sort((a, b) => {
       const ma = memberMap[a], mb = memberMap[b]
+      const keyA = ma?.familyId ?? `__solo_${a}`
+      const keyB = mb?.familyId ?? `__solo_${b}`
+
+      // Primary: between family groups → oldest real child of the group goes left
+      if (keyA !== keyB) {
+        const dateA = famOldestRealDate.get(keyA) ?? Infinity
+        const dateB = famOldestRealDate.get(keyB) ?? Infinity
+        const dAge = dateA - dateB
+        if (dAge !== 0) return dAge
+        return famAvgX(keyA) - famAvgX(keyB) // fallback: dagre order
+      }
+
+      // Secondary: within same family group, oldest first
       if (!ma?.birthDate && !mb?.birthDate) return 0
       if (!ma?.birthDate) return 1
       if (!mb?.birthDate) return -1
       return new Date(ma.birthDate) - new Date(mb.birthDate)
     })
 
-    // Current x centres sorted ascending → these are the slots to fill
     const slots = childIds.map(id => g.node(id).x).sort((a, b) => a - b)
-
     sorted.forEach((id, i) => {
       g.node(id).x = slots[i]
       repositioned.add(id)
