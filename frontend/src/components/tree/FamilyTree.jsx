@@ -8,11 +8,11 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import PersonNode from './PersonNode'
-import { SiblingEdge, SiblingArchEdge } from './SiblingEdge'
+import { SiblingEdge, SiblingArchEdge, SpouseEdge } from './SiblingEdge'
 import { buildTreeLayout, buildFamilyColorMap } from './treeLayout'
 
 const nodeTypes = { person: PersonNode }
-const edgeTypes = { siblingBracket: SiblingEdge, siblingArch: SiblingArchEdge }
+const edgeTypes = { siblingBracket: SiblingEdge, siblingArch: SiblingArchEdge, spouse: SpouseEdge }
 
 function ZoomControls() {
   const { zoomIn, zoomOut, fitView } = useReactFlow()
