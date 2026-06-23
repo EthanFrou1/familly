@@ -153,14 +153,26 @@ export function buildTreeLayout(members, relations, colorMap) {
     })
     const famAvgX = key => (famXSum.get(key) ?? 0) / (famXCount.get(key) ?? 1)
 
+    // Oldest birth date (smallest timestamp) in each family group → that family goes left
+    const famOldestDate = new Map()
+    childIds.forEach(id => {
+      const key = memberMap[id]?.familyId ?? `__solo_${id}`
+      const bd = memberMap[id]?.birthDate ? new Date(memberMap[id].birthDate).getTime() : Infinity
+      if (!famOldestDate.has(key) || bd < famOldestDate.get(key)) famOldestDate.set(key, bd)
+    })
+
     const sorted = [...childIds].sort((a, b) => {
       const ma = memberMap[a], mb = memberMap[b]
       const keyA = ma?.familyId ?? `__solo_${a}`
       const keyB = mb?.familyId ?? `__solo_${b}`
 
-      // Primary: keep families grouped by their current x position in dagre
-      const dFam = famAvgX(keyA) - famAvgX(keyB)
-      if (Math.abs(dFam) > 1) return dFam
+      // Primary: between families → oldest family (by oldest member) goes left
+      if (keyA !== keyB) {
+        const dAge = famOldestDate.get(keyA) - famOldestDate.get(keyB)
+        if (dAge !== 0) return dAge
+        // Fallback: dagre x order if no birth dates
+        return famAvgX(keyA) - famAvgX(keyB)
+      }
 
       // Secondary: within the same family, oldest first
       if (!ma?.birthDate && !mb?.birthDate) return 0
