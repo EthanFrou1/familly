@@ -218,15 +218,23 @@ function GalerieTab() {
         ) : (
           <div className="grid grid-cols-3 gap-0.5 p-0.5">
             {uploading && <UploadPlaceholder />}
-            {filteredPhotos.map((photo, i) => (
-              <PhotoThumb
-                key={photo.id}
-                photo={photo}
-                onClick={selectionMode ? () => togglePhotoSelect(photo.id) : () => setViewerIndex(i)}
-                selectionMode={selectionMode}
-                isSelected={selectedIds.has(photo.id)}
-              />
-            ))}
+            {filteredPhotos.map((photo, i) => {
+              const ownPhoto = photo.uploaderId === user?.memberId || user?.role === 'Admin'
+              return (
+                <PhotoThumb
+                  key={photo.id}
+                  photo={photo}
+                  onClick={
+                    selectionMode
+                      ? (ownPhoto ? () => togglePhotoSelect(photo.id) : undefined)
+                      : () => setViewerIndex(i)
+                  }
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(photo.id)}
+                  nonSelectable={selectionMode && !ownPhoto}
+                />
+              )
+            })}
           </div>
         )}
       </div>
@@ -278,8 +286,8 @@ function GalerieTab() {
       <ConfirmModal
         open={showDeleteConfirm}
         title="Supprimer les photos ?"
-        message={`Les photos sélectionnées seront définitivement supprimées.`}
-        confirmLabel={galleryDeleting ? 'Suppression…' : 'Supprimer'}
+        message="Les photos sélectionnées seront définitivement supprimées."
+        loading={galleryDeleting}
         onConfirm={handleDeleteSelected}
         onCancel={() => setShowDeleteConfirm(false)}
       />
@@ -792,14 +800,18 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
   )
 }
 
-function PhotoThumb({ photo, onClick, isDownloaded, selectionMode, isSelected }) {
+function PhotoThumb({ photo, onClick, isDownloaded, selectionMode, isSelected, nonSelectable = false }) {
   const daysLeft = photo.expiresAt
     ? Math.ceil((new Date(photo.expiresAt) - new Date()) / 86400000)
     : null
   const showExpiry = daysLeft !== null && daysLeft <= 7
 
   return (
-    <button className="aspect-square active:opacity-80 relative overflow-hidden" onClick={onClick}>
+    <button
+      className={`aspect-square relative overflow-hidden ${nonSelectable ? 'opacity-30' : 'active:opacity-80'}`}
+      onClick={onClick}
+      disabled={nonSelectable}
+    >
       <img src={photo.cloudinaryUrl} alt="" className="h-full w-full object-cover" />
       {photo.uploaderName && !selectionMode && (
         <span className="absolute bottom-1 left-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white truncate max-w-[80%]" style={{ backgroundColor: 'rgba(42,18,8,0.82)' }}>
