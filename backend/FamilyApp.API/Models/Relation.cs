@@ -6,7 +6,8 @@ public enum RelationType
     Spouse,
     Sibling,
     HalfSibling,
-    Separated
+    Separated,
+    Partner
 }
 
 public class Relation

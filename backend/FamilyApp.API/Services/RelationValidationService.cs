@@ -22,7 +22,7 @@ public class RelationValidationService(AppDbContext db)
             .ToListAsync();
 
         bool hasParentChild = existing.Any(r => r.Type == RelationType.ParentChild);
-        bool hasSpouse      = existing.Any(r => r.Type == RelationType.Spouse);
+        bool hasSpouse      = existing.Any(r => r.Type == RelationType.Spouse || r.Type == RelationType.Partner);
         bool hasSibling     = existing.Any(r =>
             r.Type == RelationType.Sibling || r.Type == RelationType.HalfSibling);
 
@@ -53,6 +53,7 @@ public class RelationValidationService(AppDbContext db)
                 break;
 
             case RelationType.Spouse:
+            case RelationType.Partner:
                 if (hasParentChild)
                     return "Ces membres sont déjà dans une relation parent-enfant — impossible d'ajouter un lien conjugal.";
                 if (hasSibling)

@@ -318,15 +318,19 @@ export default function Profile() {
   const canEdit = isAdmin || isOwnProfile || isDelegateManager
 
   const spouseRelation = relations.find(r => r.type === 'Spouse')
-  const separatedRelation = !spouseRelation ? relations.find(r => r.type === 'Separated') : null
+  const partnerRelation = !spouseRelation ? relations.find(r => r.type === 'Partner') : null
+  const separatedRelation = (!spouseRelation && !partnerRelation) ? relations.find(r => r.type === 'Separated') : null
   const marriedLabel = spouseRelation
     ? `${member.gender === 'F' ? 'Mariée à' : member.gender === 'M' ? 'Marié à' : 'Marié(e) à'} ${spouseRelation.relatedMemberName.split(' ')[0]}`
+    : null
+  const partnerLabel = partnerRelation
+    ? `En couple avec ${partnerRelation.relatedMemberName.split(' ')[0]}`
     : null
   const separatedLabel = separatedRelation
     ? `${member.gender === 'F' ? 'Séparée de' : member.gender === 'M' ? 'Séparé de' : 'Séparé(e) de'} ${separatedRelation.relatedMemberName.split(' ')[0]}`
     : null
 
-  const pieceRapporteeLabel = !member.familyId && !spouseRelation ? 'Pièce rapportée' : null
+  const pieceRapporteeLabel = !member.familyId && !spouseRelation && !partnerRelation ? 'Pièce rapportée' : null
   const isDeceased = !member.isAlive
   const ageAtDeath = (isDeceased && member.birthDate && member.deathDate)
     ? Math.floor((new Date(member.deathDate) - new Date(member.birthDate)) / (365.25 * 24 * 3600 * 1000))
@@ -426,6 +430,11 @@ export default function Profile() {
             {marriedLabel && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-pink-500/20 text-white border border-pink-400/30">
                 💍 {marriedLabel}
+              </span>
+            )}
+            {partnerLabel && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-white border border-rose-400/20">
+                ❤️ {partnerLabel}
               </span>
             )}
             {separatedLabel && (
@@ -1094,7 +1103,7 @@ function computeRelationSuggestions(memberId, allRelations) {
       if (r.memberAId === memberId) siblingIds.add(r.memberBId)
       if (r.memberBId === memberId) siblingIds.add(r.memberAId)
     }
-    if (r.type === 'Spouse') {
+    if (r.type === 'Spouse' || r.type === 'Partner') {
       if (r.memberAId === memberId) spouseIds.add(r.memberBId)
       if (r.memberBId === memberId) spouseIds.add(r.memberAId)
     }
@@ -1214,7 +1223,7 @@ function computeRelationSuggestions(memberId, allRelations) {
   return suggestions
 }
 
-const REL_LABELS = { Sibling: 'Frère / Sœur', ParentChild: 'Enfant de', ParentChild_parent: 'Parent de', Spouse: 'Conjoint(e)', Separated: 'Séparé(e) / Divorcé(e)' }
+const REL_LABELS = { Sibling: 'Frère / Sœur', ParentChild: 'Enfant de', ParentChild_parent: 'Parent de', Spouse: 'Marié(e) à', Partner: 'En couple avec', Separated: 'Séparé(e) / Divorcé(e)' }
 
 function SuggestionRow({ suggestion, onAccept }) {
   const [loading, setLoading] = useState(false)
@@ -1352,7 +1361,8 @@ const LOG_LABELS = {
 
 const REL_TYPE_LABELS = {
   ParentChild: 'Parent / Enfant',
-  Spouse:      'Conjoint(e)',
+  Spouse:      'Marié(e)',
+  Partner:     'En couple',
   Sibling:     'Frère / Sœur',
   HalfSibling: 'Demi-frère/sœur',
   Separated:   'Séparé(e) / Divorcé(e)',

@@ -373,7 +373,7 @@ function EventFormModal({ event, existingEvents = [], onClose, onSave }) {
   const couples = useMemo(() => {
     const memberMap = Object.fromEntries(members.map(m => [m.id, m]))
     return relations
-      .filter(r => r.type === 'Spouse')
+      .filter(r => r.type === 'Spouse' || r.type === 'Partner')
       .map(r => {
         const a = memberMap[r.memberAId]
         const b = memberMap[r.memberBId]
