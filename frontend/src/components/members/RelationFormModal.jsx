@@ -45,6 +45,7 @@ export default function RelationFormModal({ open, onClose, onSubmit, currentMemb
       await onSubmit(payload)
       setRelationType('')
       setOtherMemberId('')
+      setSearch('')
       onClose()
     } catch (err) {
       const msg = err.response?.data?.message
