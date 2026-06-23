@@ -191,14 +191,15 @@ export default function OnboardingModal({ user, onDone }) {
   const onNext = [handleNext0, handleNext1, handleNext2, onDone]
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
-      style={{ background: 'linear-gradient(160deg, #1c0c04 0%, #2a1208 60%, #160902 100%)' }}
-    >
-      {/* Ambient orbs */}
-      <div className="pointer-events-none absolute -top-20 -right-16 h-80 w-80 rounded-full bg-primary/20 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/2 -left-24 h-64 w-64 rounded-full bg-amber-900/25 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-20 right-0 h-56 w-56 rounded-full bg-orange-950/30 blur-3xl" />
+    <div className="fixed inset-0 z-[200] flex flex-col overflow-hidden bg-dark">
+      {/* Ambient orbs — même DA que Login */}
+      <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 -right-20 h-80 w-80 rounded-full bg-amber-800/20 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-orange-600/10 blur-3xl" />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '48px 48px' }}
+      />
 
       {/* Top bar */}
       <div className="relative flex items-center justify-between px-5 pt-14 pb-0 shrink-0">
@@ -281,7 +282,7 @@ export default function OnboardingModal({ user, onDone }) {
 
         {step === 2 && (
           <div className="relative flex items-center justify-center">
-            <div className="absolute h-36 w-36 rounded-full bg-emerald-700/15 blur-2xl" />
+            <div className="absolute h-36 w-36 rounded-full bg-primary/15 blur-2xl" />
             <div className="relative h-24 w-24 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center">
               <span className="text-5xl">🏠</span>
             </div>
