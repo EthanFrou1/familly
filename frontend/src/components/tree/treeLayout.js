@@ -124,6 +124,10 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   dagre.layout(g)
 
+  // Save original X positions before sibling reordering (needed for shift propagation)
+  const dagreOriginalX = new Map()
+  g.nodes().forEach(id => { const n = g.node(id); if (n) dagreOriginalX.set(id, n.x) })
+
   // ── Reorder siblings: family groups ordered by real child's age, oldest→left ──
   // "Real child" = directly linked via pcRelations (not an inferred spouse).
   // Within each family group, members are also sorted oldest→left.
@@ -221,6 +225,41 @@ export function buildTreeLayout(members, relations, colorMap) {
     const n = g.node(id)
     if (n) positions[id] = { x: n.x - NODE_W / 2, y: n.y - NODE_H / 2 }
   })
+
+  // ── Propagate X shifts from repositioned nodes to all descendants ─────────
+  // Dagre computed children's X based on parents' original positions. After we
+  // reorder parents, children must follow by the same delta.
+  {
+    const propagated = new Set()
+    const rootIds = g.nodes().filter(id => !(childToParents.get(id)?.size))
+    const bfsQueue = [...rootIds]
+    rootIds.forEach(id => propagated.add(id))
+
+    while (bfsQueue.length) {
+      const pid = bfsQueue.shift()
+      ;(parentToChildIds.get(pid) || new Set()).forEach(cid => {
+        if (propagated.has(cid)) return
+        const posChild = positions[cid]
+        if (!posChild) return
+
+        const parents = [...(childToParents.get(cid) || [])]
+        if (!parents.length) { propagated.add(cid); bfsQueue.push(cid); return }
+
+        // Average delta across all parents (handles two-parent couples)
+        const avgDelta = parents.reduce((sum, p) => {
+          const curX  = (positions[p]?.x ?? 0) + NODE_W / 2
+          const origX = dagreOriginalX.get(p) ?? curX
+          return sum + (curX - origX)
+        }, 0) / parents.length
+
+        if (Math.abs(avgDelta) > 0.5) {
+          positions[cid] = { ...posChild, x: posChild.x + avgDelta }
+        }
+        propagated.add(cid)
+        bfsQueue.push(cid)
+      })
+    }
+  }
 
   // ── Fix isolated spouse nodes: insert next to partner, shifting all right nodes ──
   const dagreEdgeNodes = new Set()
