@@ -1,3 +1,30 @@
+import { EdgeLabelRenderer } from '@xyflow/react'
+
+export function SpouseEdge({ id, sourceX, sourceY, targetX, targetY, style, data }) {
+  const midX = (sourceX + targetX) / 2
+  const midY = (sourceY + targetY) / 2
+
+  return (
+    <>
+      <path id={id} d={`M ${sourceX} ${sourceY} L ${targetX} ${targetY}`} fill="none" style={style} />
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${midX}px,${midY}px)`,
+            pointerEvents: 'none',
+          }}
+          className="nodrag nopan"
+        >
+          <div style={{ background: '#fff', border: '1.5px solid #F9A8D4', borderRadius: '9999px', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, boxShadow: '0 1px 4px 0 rgba(0,0,0,0.10)' }}>
+            {data?.icon}
+          </div>
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  )
+}
+
 const DROP = 18
 const RADIUS = 6
 

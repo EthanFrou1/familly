@@ -243,7 +243,7 @@ export function buildTreeLayout(members, relations, colorMap) {
     const posB = positions[idB]
     const leftId  = (posA?.x ?? 0) <= (posB?.x ?? 0) ? idA : idB
     const rightId = leftId === idA ? idB : idA
-    return { id, source: leftId, target: rightId, sourceHandle: 'right', targetHandle: 'left', type: 'straight', ...extra }
+    return { id, source: leftId, target: rightId, sourceHandle: 'right', targetHandle: 'left', ...extra }
   }
 
   function archEdge(id, idA, idB, extra) {
@@ -271,10 +271,9 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   // Spouse / Partner (horizontal, pink)
   spRelations.forEach(r => rfEdges.push(horizEdge(`sp-${r.id}`, r.memberAId, r.memberBId, {
+    type: 'spouse',
     style: { stroke: '#F472B6', strokeWidth: 2 },
-    label: r.type === 'Spouse' ? '💍' : '♥',
-    labelStyle: { fill: '#F472B6', fontSize: r.type === 'Spouse' ? 13 : 11, fontWeight: 700 },
-    labelBgStyle: { fill: 'transparent' },
+    data: { icon: r.type === 'Spouse' ? '💍' : '♥' },
   })))
 
   // Separated (horizontal, orange dashed)
