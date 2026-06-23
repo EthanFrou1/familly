@@ -229,6 +229,22 @@ export function buildTreeLayout(members, relations, colorMap) {
   sibRelations.forEach(r => alignY(r.memberAId, r.memberBId))
   hsbRelations.forEach(r => alignY(r.memberAId, r.memberBId))
 
+  // ── Older spouse always on the LEFT ───────────────────────────────────────
+  spRelations.forEach(r => {
+    const posA = positions[r.memberAId]
+    const posB = positions[r.memberBId]
+    if (!posA || !posB) return
+    const mA = memberMap[r.memberAId]
+    const mB = memberMap[r.memberBId]
+    if (!mA?.birthDate || !mB?.birthDate) return
+    const aIsOlder = new Date(mA.birthDate) < new Date(mB.birthDate)
+    const aIsLeft  = posA.x < posB.x
+    if (aIsOlder !== aIsLeft) {
+      positions[r.memberAId] = { ...posA, x: posB.x }
+      positions[r.memberBId] = { ...posB, x: posA.x }
+    }
+  })
+
   // ── React Flow nodes ───────────────────────────────────────────────────────
   const rfNodes = members.map(m => ({
     id: m.id,
