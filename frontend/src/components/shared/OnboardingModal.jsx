@@ -339,25 +339,25 @@ export default function OnboardingModal({ user, onDone }) {
       {/* Text + form */}
       <div className="flex-1 flex flex-col px-6 overflow-y-auto">
         <div className="mb-5">
-          <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-1">
+          <p className="text-[11px] font-semibold text-black/60 uppercase tracking-widest mb-1">
             Bienvenue, {user.firstName} !
           </p>
           <h2 className="text-2xl font-black text-white leading-tight">{STEP_META[step].title}</h2>
-          <p className="text-white/45 text-sm mt-1.5 leading-relaxed">{STEP_META[step].desc}</p>
+          <p className="text-black/65 text-sm mt-1.5 leading-relaxed">{STEP_META[step].desc}</p>
         </div>
 
         <div className="flex-1">
           {step === 1 && (
             <div className="flex flex-col gap-4">
               <div>
-                <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Date de naissance</label>
+                <label className="block text-[11px] font-semibold text-black/60 uppercase tracking-wide mb-2">Date de naissance</label>
                 <input type="date" value={birthDate}
                   onChange={e => { setBirthDate(e.target.value); setErrors(v => ({ ...v, birthDate: null })) }}
                   className={`${inputCls} [color-scheme:dark]`} />
                 {errors.birthDate && <p className={errorCls}>{errors.birthDate}</p>}
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Téléphone</label>
+                <label className="block text-[11px] font-semibold text-black/60 uppercase tracking-wide mb-2">Téléphone</label>
                 <input type="tel" value={phone} inputMode="tel"
                   onChange={e => { setPhone(e.target.value.replace(/[^0-9\s+\-().]/g, '')); setErrors(v => ({ ...v, phone: null })) }}
                   placeholder="06 12 34 56 78" className={inputCls} />
@@ -369,21 +369,21 @@ export default function OnboardingModal({ user, onDone }) {
           {step === 2 && (
             <div className="flex flex-col gap-3">
               <div>
-                <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Adresse</label>
+                <label className="block text-[11px] font-semibold text-black/60 uppercase tracking-wide mb-2">Adresse</label>
                 <PlacesInput value={address} onChange={setAddress} onSelect={handlePlaceSelect} />
               </div>
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Code postal</label>
+                  <label className="block text-[11px] font-semibold text-black/60 uppercase tracking-wide mb-2">Code postal</label>
                   <input type="text" value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="75001" className={inputCls} />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Ville</label>
+                  <label className="block text-[11px] font-semibold text-black/60 uppercase tracking-wide mb-2">Ville</label>
                   <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="Paris" className={inputCls} />
                 </div>
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-white/35 uppercase tracking-wide mb-2">Pays</label>
+                <label className="block text-[11px] font-semibold text-black/60 uppercase tracking-wide mb-2">Pays</label>
                 <input type="text" value={country} onChange={e => setCountry(e.target.value)} placeholder="France" className={inputCls} />
               </div>
             </div>
@@ -501,7 +501,7 @@ export default function OnboardingModal({ user, onDone }) {
           </button>
           <button
             onClick={step < 3 ? () => setStep(s => s + 1) : onDone}
-            className="w-full py-2 text-sm text-white/20 text-center"
+            className="w-full py-2 text-sm text-black/45 text-center"
           >
             {step < 3 ? 'Passer cette étape' : "Passer pour l'instant"}
           </button>
