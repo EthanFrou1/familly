@@ -290,29 +290,7 @@ export default function OnboardingModal({ user, onDone }) {
           </div>
         )}
 
-        {step === 3 && phoneType === 'apple' && (
-          <button
-            type="button"
-            onClick={() => setShowVideo(true)}
-            className="relative rounded-2xl overflow-hidden active:opacity-80 transition-opacity"
-            style={{ width: 90, height: 160 }}
-          >
-            <img
-              src="https://img.youtube.com/vi/UxCvNcRYVUU/hqdefault.jpg"
-              alt="Tutoriel PWA iPhone"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-              <div className="h-12 w-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                <svg className="h-5 w-5 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </div>
-            </div>
-          </button>
-        )}
-
-        {step === 3 && phoneType !== 'apple' && (
+        {step === 3 && (
           <div className="flex gap-4 items-center">
             <div className="relative">
               <div className="absolute inset-0 rounded-2xl bg-primary/15 blur-xl" />
@@ -424,9 +402,8 @@ export default function OnboardingModal({ user, onDone }) {
 
               {/* iPhone : vignette vidéo + étapes */}
               {phoneType === 'apple' && (
-                <>
-                  <div className="space-y-2">
-                    {PWA_STEPS.apple.map((s, i) => (
+                <div className="space-y-2">
+                  {PWA_STEPS.apple.map((s, i) => (
                       <div key={i} className="flex items-start gap-3 rounded-2xl bg-white/[0.05] border border-white/[0.07] px-4 py-3">
                         <span className="text-xl shrink-0 mt-0.5">{s.icon}</span>
                         <div className="flex-1">
@@ -447,8 +424,7 @@ export default function OnboardingModal({ user, onDone }) {
                         </div>
                       </div>
                     ))}
-                  </div>
-                </>
+                </div>
               )}
 
               {/* Android : étapes texte */}
