@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { membersApi, relationsApi } from '../services/api'
+import { usePageRefresh } from './usePageRefresh'
 
 export function useFamily() {
   const [members, setMembers] = useState([])
@@ -18,6 +19,13 @@ export function useFamily() {
   const reloadRelations = useCallback(() => {
     relationsApi.getAll().then(({ data }) => setRelations(data)).catch(() => {})
   }, [])
+
+  const reloadAll = useCallback(() => {
+    membersApi.getAll().then(({ data }) => setMembers(data)).catch(() => {})
+    relationsApi.getAll().then(({ data }) => setRelations(data)).catch(() => {})
+  }, [])
+
+  usePageRefresh(reloadAll)
 
   return { members, relations, loading, reloadRelations }
 }

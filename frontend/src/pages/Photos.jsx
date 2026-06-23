@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import imageCompression from 'browser-image-compression'
 import { albumsApi, photosApi } from '../services/api'
 import { useAuth } from '../hooks/useAuth'
+import { usePageRefresh } from '../hooks/usePageRefresh'
 import PhotoViewer from '../components/photos/PhotoViewer'
 import CreateAlbumModal from '../components/photos/CreateAlbumModal'
 import GalleryPickerModal from '../components/photos/GalleryPickerModal'
@@ -67,6 +68,10 @@ function GalerieTab() {
     setLoading(true)
     photosApi.getAll().then(({ data }) => setPhotos(data)).finally(() => setLoading(false))
   }, [])
+
+  usePageRefresh(() => {
+    photosApi.getAll().then(({ data }) => setPhotos(data)).catch(() => {})
+  })
 
   async function handleUpload(e) {
     const file = e.target.files[0]
@@ -296,6 +301,10 @@ function AlbumsTab() {
   useEffect(() => {
     albumsApi.getAll().then(({ data }) => setAlbums(data)).finally(() => setLoading(false))
   }, [])
+
+  usePageRefresh(() => {
+    albumsApi.getAll().then(({ data }) => setAlbums(data)).catch(() => {})
+  })
 
   if (selectedAlbum) {
     return (

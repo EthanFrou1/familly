@@ -5,6 +5,7 @@ import { useMembers } from '../store/MembersContext'
 import { useAuth } from '../hooks/useAuth'
 import { matchesSearch } from '../utils/normalize'
 import { familiesApi, membersApi } from '../services/api'
+import { usePageRefresh } from '../hooks/usePageRefresh'
 import Avatar from '../components/shared/Avatar'
 import ConfirmModal from '../components/shared/ConfirmModal'
 
@@ -33,6 +34,10 @@ export default function Families() {
       .then(({ data }) => setFamilies(data))
       .finally(() => setLoading(false))
   }, [])
+
+  usePageRefresh(() => {
+    familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
+  })
 
   const membersByFamily = useMemo(() => {
     const map = {}
