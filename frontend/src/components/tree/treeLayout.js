@@ -143,38 +143,8 @@ export function buildTreeLayout(members, relations, colorMap) {
     const childIds = [...childIdSet].filter(id => g.node(id) && !repositioned.has(id))
     if (childIds.length < 2) return
 
-    // Compute each family's average x in this sibling group.
-    // Pièce rapportée (no familyId) get a unique key so they act as a solo group.
-    const famXSum = new Map(), famXCount = new Map()
-    childIds.forEach(id => {
-      const key = memberMap[id]?.familyId ?? `__solo_${id}`
-      famXSum.set(key, (famXSum.get(key) ?? 0) + g.node(id).x)
-      famXCount.set(key, (famXCount.get(key) ?? 0) + 1)
-    })
-    const famAvgX = key => (famXSum.get(key) ?? 0) / (famXCount.get(key) ?? 1)
-
-    // Oldest birth date (smallest timestamp) in each family group → that family goes left
-    const famOldestDate = new Map()
-    childIds.forEach(id => {
-      const key = memberMap[id]?.familyId ?? `__solo_${id}`
-      const bd = memberMap[id]?.birthDate ? new Date(memberMap[id].birthDate).getTime() : Infinity
-      if (!famOldestDate.has(key) || bd < famOldestDate.get(key)) famOldestDate.set(key, bd)
-    })
-
     const sorted = [...childIds].sort((a, b) => {
       const ma = memberMap[a], mb = memberMap[b]
-      const keyA = ma?.familyId ?? `__solo_${a}`
-      const keyB = mb?.familyId ?? `__solo_${b}`
-
-      // Primary: between families → oldest family (by oldest member) goes left
-      if (keyA !== keyB) {
-        const dAge = famOldestDate.get(keyA) - famOldestDate.get(keyB)
-        if (dAge !== 0) return dAge
-        // Fallback: dagre x order if no birth dates
-        return famAvgX(keyA) - famAvgX(keyB)
-      }
-
-      // Secondary: within the same family, oldest first
       if (!ma?.birthDate && !mb?.birthDate) return 0
       if (!ma?.birthDate) return 1
       if (!mb?.birthDate) return -1
