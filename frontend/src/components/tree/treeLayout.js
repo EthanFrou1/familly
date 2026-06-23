@@ -71,383 +71,288 @@ export function buildTreeLayout(members, relations, colorMap) {
   const memberIds = new Set(members.map(m => m.id))
   const valid = r => memberIds.has(r.memberAId) && memberIds.has(r.memberBId)
 
-  const pcRelations  = relations.filter(r => r.type === 'ParentChild'  && valid(r))
-  const spRelations  = relations.filter(r => (r.type === 'Spouse' || r.type === 'Partner') && valid(r))
-  const sepRelations = relations.filter(r => r.type === 'Separated'     && valid(r))
-  const sibRelations = relations.filter(r => r.type === 'Sibling'       && valid(r))
-  const hsbRelations = relations.filter(r => r.type === 'HalfSibling'   && valid(r))
+  const pcRels  = relations.filter(r => r.type === 'ParentChild'  && valid(r))
+  const spRels  = relations.filter(r => (r.type === 'Spouse' || r.type === 'Partner') && valid(r))
+  const sepRels = relations.filter(r => r.type === 'Separated'    && valid(r))
+  const sibRels = relations.filter(r => r.type === 'Sibling'      && valid(r))
+  const hsbRels = relations.filter(r => r.type === 'HalfSibling'  && valid(r))
 
-  // ── Build parent maps ──────────────────────────────────────────────────────
-  const childToParents = new Map() // childId → Set<parentId>
-  pcRelations.forEach(r => {
-    if (!childToParents.has(r.memberBId)) childToParents.set(r.memberBId, new Set())
-    childToParents.get(r.memberBId).add(r.memberAId)
-  })
-
-  // ── Sibling inference: give missing parents from sibling's known parents ───
-  const inferredEdges = [] // { parentId, childId }
-  ;[...sibRelations, ...hsbRelations].forEach(r => {
-    const aParents = childToParents.get(r.memberAId) || new Set()
-    const bParents = childToParents.get(r.memberBId) || new Set()
-
-    if (aParents.size > 0 && bParents.size === 0) {
-      aParents.forEach(parentId => {
-        inferredEdges.push({ parentId, childId: r.memberBId })
-        if (!childToParents.has(r.memberBId)) childToParents.set(r.memberBId, new Set())
-        childToParents.get(r.memberBId).add(parentId)
-      })
-    } else if (bParents.size > 0 && aParents.size === 0) {
-      bParents.forEach(parentId => {
-        inferredEdges.push({ parentId, childId: r.memberAId })
-        if (!childToParents.has(r.memberAId)) childToParents.set(r.memberAId, new Set())
-        childToParents.get(r.memberAId).add(parentId)
-      })
-    }
-  })
-
-  // ── Dagre layout ───────────────────────────────────────────────────────────
-  const g = new dagre.graphlib.Graph({ multigraph: false })
-  g.setGraph({ rankdir: 'TB', nodesep: H_SEP, ranksep: V_SEP, marginx: 60, marginy: 60 })
-  g.setDefaultEdgeLabel(() => ({}))
-
-  const sortedByAge = [...members].sort((a, b) => {
-    if (!a.birthDate && !b.birthDate) return 0
-    if (!a.birthDate) return 1
-    if (!b.birthDate) return -1
-    return new Date(a.birthDate) - new Date(b.birthDate)
-  })
-  sortedByAge.forEach(m => g.setNode(m.id, { width: NODE_W, height: NODE_H }))
-  pcRelations.forEach(r => g.setEdge(r.memberAId, r.memberBId))
-  inferredEdges.forEach(({ parentId, childId }) => {
-    if (!g.hasEdge(parentId, childId)) g.setEdge(parentId, childId)
-  })
-
-  dagre.layout(g)
-
-  // Save original X positions before sibling reordering (needed for shift propagation)
-  const dagreOriginalX = new Map()
-  g.nodes().forEach(id => { const n = g.node(id); if (n) dagreOriginalX.set(id, n.x) })
-
-  // ── Reorder siblings: family groups ordered by real child's age, oldest→left ──
-  // "Real child" = directly linked via pcRelations (not an inferred spouse).
-  // Within each family group, members are also sorted oldest→left.
   const memberMap = Object.fromEntries(members.map(m => [m.id, m]))
+  const COUPLE_W  = 2 * NODE_W + H_SEP
+  const MARGIN_X  = 60
+  const MARGIN_Y  = 60
 
-  // Track which children come from real ParentChild relations (vs inferred spouse edges)
-  const realChildsByParent = new Map()
-  pcRelations.forEach(r => {
-    if (!realChildsByParent.has(r.memberAId)) realChildsByParent.set(r.memberAId, new Set())
-    realChildsByParent.get(r.memberAId).add(r.memberBId)
+  // ── 1. Build parent / child maps ───────────────────────────────────────────
+  const childToParents   = new Map() // childId → Set<parentId>
+  const parentToChildren = new Map() // parentId → Set<childId>
+
+  const addEdge = (parentId, childId) => {
+    if (!childToParents.has(childId))   childToParents.set(childId, new Set())
+    childToParents.get(childId).add(parentId)
+    if (!parentToChildren.has(parentId)) parentToChildren.set(parentId, new Set())
+    parentToChildren.get(parentId).add(childId)
+  }
+
+  pcRels.forEach(r => addEdge(r.memberAId, r.memberBId))
+
+  // Infer parents from explicit sibling relations
+  ;[...sibRels, ...hsbRels].forEach(r => {
+    const aP = childToParents.get(r.memberAId) || new Set()
+    const bP = childToParents.get(r.memberBId) || new Set()
+    if (aP.size > 0 && bP.size === 0) aP.forEach(pid => addEdge(pid, r.memberBId))
+    else if (bP.size > 0 && aP.size === 0) bP.forEach(pid => addEdge(pid, r.memberAId))
   })
 
-  const parentToChildIds = new Map()
-  ;[
-    ...pcRelations.map(r => ({ parentId: r.memberAId, childId: r.memberBId })),
-    ...inferredEdges,
-  ].forEach(({ parentId, childId }) => {
-    if (!parentToChildIds.has(parentId)) parentToChildIds.set(parentId, new Set())
-    parentToChildIds.get(parentId).add(childId)
+  // ── 2. Build spouse map ────────────────────────────────────────────────────
+  const spousesOf = new Map() // personId → personId[]
+  ;[...spRels, ...sepRels].forEach(r => {
+    if (!spousesOf.has(r.memberAId)) spousesOf.set(r.memberAId, [])
+    if (!spousesOf.has(r.memberBId)) spousesOf.set(r.memberBId, [])
+    if (!spousesOf.get(r.memberAId).includes(r.memberBId)) spousesOf.get(r.memberAId).push(r.memberBId)
+    if (!spousesOf.get(r.memberBId).includes(r.memberAId)) spousesOf.get(r.memberBId).push(r.memberAId)
   })
 
-  const repositioned = new Set()
-  parentToChildIds.forEach((childIdSet, parentId) => {
-    const childIds = [...childIdSet].filter(id => g.node(id) && !repositioned.has(id))
-    if (childIds.length < 2) return
+  // ── 3. FamilySlot: core layout unit ───────────────────────────────────────
+  // A slot = one couple (or single person) + their children's slots.
+  // anchor = the biological child; spouse = their partner (may be null).
+  // Children are sorted oldest → left before slot creation.
 
-    const realIds = realChildsByParent.get(parentId) || new Set()
-    const sibSet  = new Set(childIds)
+  const personToSlot  = new Map() // personId → the slot this person appears in
+  const visitedPersons = new Set()
 
-    const _pName = memberMap[parentId]?.firstName
-    console.log('[TREE] group', _pName, '→ real:', [...realIds].map(id => memberMap[id]?.firstName), '| all:', childIds.map(id => memberMap[id]?.firstName))
+  const birthOf = id => memberMap[id]?.birthDate ? new Date(memberMap[id].birthDate) : null
+  const cmpAge  = (a, b) => {
+    const dA = birthOf(a), dB = birthOf(b)
+    if (!dA && !dB) return 0
+    if (!dA) return 1
+    if (!dB) return -1
+    return dA - dB
+  }
 
-    // Find y-level reference for this sibling group
-    const yRef = g.node(childIds[0])?.y ?? 0
-    const Y_TOL = NODE_H * 0.8
+  const makeSlot = (anchorId, generation) => {
+    if (visitedPersons.has(anchorId)) return null
+    visitedPersons.add(anchorId)
 
-    // Expand group to include in-law spouses at the same y level
-    const familyGroupIds = new Set(childIds)
-    ;[...spRelations, ...sepRelations].forEach(r => {
-      const inA = sibSet.has(r.memberAId)
-      const inB = sibSet.has(r.memberBId)
-      if (!inA && !inB) return
-      const otherId = inA ? r.memberBId : r.memberAId
-      const otherNode = g.node(otherId)
-      if (!otherNode || repositioned.has(otherId)) return
-      if (Math.abs(otherNode.y - yRef) < Y_TOL) familyGroupIds.add(otherId)
-    })
+    // Pick first unvisited spouse as co-anchor
+    const spouse = (spousesOf.get(anchorId) || []).find(sid => !visitedPersons.has(sid)) ?? null
+    if (spouse) visitedPersons.add(spouse)
 
-    // Couple partner map: include in-laws at the same y level
-    const couplePartner = new Map()
-    ;[...spRelations, ...sepRelations].forEach(r => {
-      if (sibSet.has(r.memberAId) || sibSet.has(r.memberBId)) {
-        couplePartner.set(r.memberAId, r.memberBId)
-        couplePartner.set(r.memberBId, r.memberAId)
-      }
-    })
+    const adults = spouse ? [anchorId, spouse] : [anchorId]
+    const slot   = {
+      adults,
+      childSlots:   [],
+      subtreeWidth: 0,
+      x: 0,
+      y: MARGIN_Y + generation * (NODE_H + V_SEP),
+    }
+    adults.forEach(id => personToSlot.set(id, slot))
 
-    // Sort real children by birth date (oldest → left)
-    const realChildren = [...realIds].filter(id => sibSet.has(id))
-    realChildren.sort((a, b) => {
-      const ma = memberMap[a], mb = memberMap[b]
-      if (!ma?.birthDate && !mb?.birthDate) return 0
-      if (!ma?.birthDate) return 1
-      if (!mb?.birthDate) return -1
-      return new Date(ma.birthDate) - new Date(mb.birthDate)
-    })
+    // Collect all children of any adult in this slot, sorted oldest → left
+    const childIds = new Set()
+    adults.forEach(aid => (parentToChildren.get(aid) || new Set()).forEach(cid => childIds.add(cid)))
 
-    // Build sequence: each real child immediately followed by their couple partner
-    const ordered = []
-    const placed  = new Set()
-    realChildren.forEach(id => {
-      if (placed.has(id)) return
-      ordered.push(id); placed.add(id)
-      const partner = couplePartner.get(id)
-      if (partner && !placed.has(partner) && familyGroupIds.has(partner)) {
-        ordered.push(partner); placed.add(partner)
-      }
-    })
-    // Any remaining family members not yet placed
-    ;[...familyGroupIds].filter(id => !placed.has(id)).forEach(id => {
-      ordered.push(id); placed.add(id)
-    })
-
-    // X slots from the full family group (siblings + their in-law spouses)
-    const slots = [...familyGroupIds].map(id => g.node(id).x).sort((a, b) => a - b)
-    ordered.forEach((id, i) => {
-      if (i < slots.length) { g.node(id).x = slots[i]; repositioned.add(id) }
-    })
-  })
-  // ──────────────────────────────────────────────────────────────────────────
-
-  // Extract positions (dagre center → top-left)
-  const positions = {}
-  g.nodes().forEach(id => {
-    const n = g.node(id)
-    if (n) positions[id] = { x: n.x - NODE_W / 2, y: n.y - NODE_H / 2 }
-  })
-
-  // ── Propagate X shifts from repositioned nodes to all descendants ─────────
-  // Dagre computed children's X based on parents' original positions. After we
-  // reorder parents, children must follow by the same delta.
-  {
-    const propagated = new Set()
-    const rootIds = g.nodes().filter(id => !(childToParents.get(id)?.size))
-    const bfsQueue = [...rootIds]
-    rootIds.forEach(id => propagated.add(id))
-
-    while (bfsQueue.length) {
-      const pid = bfsQueue.shift()
-      ;(parentToChildIds.get(pid) || new Set()).forEach(cid => {
-        if (propagated.has(cid)) return
-        const posChild = positions[cid]
-        if (!posChild) return
-
-        const parents = [...(childToParents.get(cid) || [])]
-        if (!parents.length) { propagated.add(cid); bfsQueue.push(cid); return }
-
-        // Average delta across all parents (handles two-parent couples)
-        const avgDelta = parents.reduce((sum, p) => {
-          const curX  = (positions[p]?.x ?? 0) + NODE_W / 2
-          const origX = dagreOriginalX.get(p) ?? curX
-          return sum + (curX - origX)
-        }, 0) / parents.length
-
-        if (Math.abs(avgDelta) > 0.5) {
-          positions[cid] = { ...posChild, x: posChild.x + avgDelta }
-        }
-        propagated.add(cid)
-        bfsQueue.push(cid)
+    ;[...childIds]
+      .filter(cid => !visitedPersons.has(cid))
+      .sort(cmpAge)
+      .forEach(cid => {
+        const cs = makeSlot(cid, generation + 1)
+        if (cs) slot.childSlots.push(cs)
       })
-    }
+
+    return slot
   }
 
-  // ── Fix isolated spouse nodes: insert next to partner, shifting all right nodes ──
-  const dagreEdgeNodes = new Set()
-  g.edges().forEach(e => { dagreEdgeNodes.add(e.v); dagreEdgeNodes.add(e.w) })
+  // ── 4. Find root anchors ───────────────────────────────────────────────────
+  // Root = no parents visible in the tree.
+  // In-law root = no parents AND spouse has parents → will be picked up inside makeSlot.
 
-  ;[...spRelations, ...sepRelations].forEach(r => {
-    const aIsolated = !dagreEdgeNodes.has(r.memberAId)
-    const bIsolated = !dagreEdgeNodes.has(r.memberBId)
+  const hasParents = id => (childToParents.get(id)?.size ?? 0) > 0
+  const isInLaw    = id => !hasParents(id) && (spousesOf.get(id) || []).some(hasParents)
 
-    let floatingId, anchorId
-    if (aIsolated && !bIsolated) { floatingId = r.memberAId; anchorId = r.memberBId }
-    else if (!aIsolated && bIsolated) { floatingId = r.memberBId; anchorId = r.memberAId }
-    else return
-
-    const anchor = positions[anchorId]
-    if (!anchor) return
-
-    const insertX = anchor.x + NODE_W + H_SEP
-    const dx = NODE_W + H_SEP
-
-    // Shift every node to the right of insertX, all rows, preserving internal spacing
-    Object.entries(positions).forEach(([id, pos]) => {
-      if (id !== floatingId && pos.x >= insertX - H_SEP / 2) {
-        positions[id] = { ...pos, x: pos.x + dx }
-      }
+  const rootSeen = new Set()
+  const rootAnchors = members
+    .map(m => m.id)
+    .filter(id => !hasParents(id) && !isInLaw(id))
+    .sort(cmpAge) // oldest first → oldest sibling leftmost
+    .filter(id => {
+      if (rootSeen.has(id)) return false
+      rootSeen.add(id)
+      ;(spousesOf.get(id) || []).forEach(sid => rootSeen.add(sid))
+      return true
     })
 
-    positions[floatingId] = { x: insertX, y: anchor.y }
-  })
+  const rootSlots = rootAnchors.map(id => makeSlot(id, 0)).filter(Boolean)
 
-  // ── Y-align horizontal pairs (spouse + sibling) ───────────────────────────
-  const alignY = (idA, idB) => {
-    const posA = positions[idA]
-    const posB = positions[idB]
-    if (!posA || !posB) return
-    const refY = Math.min(posA.y, posB.y)
-    positions[idA] = { ...posA, y: refY }
-    positions[idB] = { ...posB, y: refY }
-  }
-  spRelations.forEach(r => alignY(r.memberAId, r.memberBId))
-  sepRelations.forEach(r => alignY(r.memberAId, r.memberBId))
-  sibRelations.forEach(r => alignY(r.memberAId, r.memberBId))
-  hsbRelations.forEach(r => alignY(r.memberAId, r.memberBId))
-
-  // ── Older spouse always on the LEFT ───────────────────────────────────────
-  spRelations.forEach(r => {
-    const posA = positions[r.memberAId]
-    const posB = positions[r.memberBId]
-    if (!posA || !posB) return
-    const mA = memberMap[r.memberAId]
-    const mB = memberMap[r.memberBId]
-    if (!mA?.birthDate || !mB?.birthDate) return
-    const aIsOlder = new Date(mA.birthDate) < new Date(mB.birthDate)
-    const aIsLeft  = posA.x < posB.x
-    if (aIsOlder !== aIsLeft) {
-      positions[r.memberAId] = { ...posA, x: posB.x }
-      positions[r.memberBId] = { ...posB, x: posA.x }
+  // Catch any remaining unvisited members (fully disconnected nodes)
+  members.forEach(m => {
+    if (!visitedPersons.has(m.id)) {
+      const s = makeSlot(m.id, 0)
+      if (s) rootSlots.push(s)
     }
   })
 
-  // ── React Flow nodes ───────────────────────────────────────────────────────
+  // ── 5. Bottom-up: compute subtree widths ───────────────────────────────────
+  const calcWidth = slot => {
+    const adultW = slot.adults.length >= 2 ? COUPLE_W : NODE_W
+    if (!slot.childSlots.length) { slot.subtreeWidth = adultW; return adultW }
+    slot.childSlots.forEach(calcWidth)
+    const childrenW = slot.childSlots.reduce((s, cs) => s + cs.subtreeWidth, 0)
+                    + Math.max(0, slot.childSlots.length - 1) * H_SEP
+    slot.subtreeWidth = Math.max(adultW, childrenW)
+    return slot.subtreeWidth
+  }
+  rootSlots.forEach(calcWidth)
+
+  // ── 6. Top-down: assign (x, y) positions ──────────────────────────────────
+  const positions = {}
+
+  const assignPos = (slot, centerX) => {
+    slot.x = centerX
+
+    if (slot.adults.length === 1) {
+      positions[slot.adults[0]] = { x: centerX - NODE_W / 2, y: slot.y }
+    } else {
+      // Older adult on the left
+      const [a, b] = slot.adults
+      const leftId  = cmpAge(a, b) <= 0 ? a : b
+      const rightId = leftId === a ? b : a
+      positions[leftId]  = { x: centerX - COUPLE_W / 2,                   y: slot.y }
+      positions[rightId] = { x: centerX - COUPLE_W / 2 + NODE_W + H_SEP,  y: slot.y }
+    }
+
+    if (!slot.childSlots.length) return
+
+    const childrenW = slot.childSlots.reduce((s, cs) => s + cs.subtreeWidth, 0)
+                    + Math.max(0, slot.childSlots.length - 1) * H_SEP
+
+    let cx = centerX - childrenW / 2
+    slot.childSlots.forEach(cs => {
+      assignPos(cs, cx + cs.subtreeWidth / 2)
+      cx += cs.subtreeWidth + H_SEP
+    })
+  }
+
+  let cx = MARGIN_X
+  rootSlots.forEach(rs => {
+    assignPos(rs, cx + rs.subtreeWidth / 2)
+    cx += rs.subtreeWidth + H_SEP
+  })
+
+  // Fallback: any member still without a position (shouldn't happen)
+  members.forEach(m => { if (!positions[m.id]) positions[m.id] = { x: 0, y: 0 } })
+
+  // ── 7. React Flow nodes ────────────────────────────────────────────────────
   const rfNodes = members.map(m => ({
     id: m.id,
     type: 'person',
-    position: positions[m.id] || { x: 0, y: 0 },
+    position: positions[m.id],
     data: { member: m, color: m.familyId ? (colorMap[m.familyId] || null) : null },
   }))
 
-  // ── Helper: horizontal edge always goes left-node → right-node ────────────
-  function horizEdge(id, idA, idB, extra) {
-    const posA = positions[idA]
-    const posB = positions[idB]
-    const leftId  = (posA?.x ?? 0) <= (posB?.x ?? 0) ? idA : idB
-    const rightId = leftId === idA ? idB : idA
-    return { id, source: leftId, target: rightId, sourceHandle: 'right', targetHandle: 'left', ...extra }
+  // ── 8. React Flow edges ────────────────────────────────────────────────────
+  const horizEdge = (id, idA, idB, extra) => {
+    const xA = positions[idA]?.x ?? 0, xB = positions[idB]?.x ?? 0
+    const [l, r] = xA <= xB ? [idA, idB] : [idB, idA]
+    return { id, source: l, target: r, sourceHandle: 'right', targetHandle: 'left', ...extra }
   }
 
-  function archEdge(id, idA, idB, extra) {
-    const posA = positions[idA]
-    const posB = positions[idB]
-    const leftId  = (posA?.x ?? 0) <= (posB?.x ?? 0) ? idA : idB
-    const rightId = leftId === idA ? idB : idA
-    return { id, source: leftId, target: rightId, sourceHandle: 'topSource', targetHandle: 'topTarget', type: 'siblingArch', ...extra }
+  const archEdge = (id, idA, idB, extra) => {
+    const xA = positions[idA]?.x ?? 0, xB = positions[idB]?.x ?? 0
+    const [l, r] = xA <= xB ? [idA, idB] : [idB, idA]
+    return { id, source: l, target: r, sourceHandle: 'topSource', targetHandle: 'topTarget', type: 'siblingArch', ...extra }
   }
 
-  // ── React Flow edges ───────────────────────────────────────────────────────
   const rfEdges = []
 
-  // Parent → child (vertical)
-  pcRelations.forEach(r => rfEdges.push({
+  // Parent → child (vertical arrow)
+  pcRels.forEach(r => rfEdges.push({
     id: `pc-${r.id}`,
-    source: r.memberAId,
-    target: r.memberBId,
-    sourceHandle: 'bottom',
-    targetHandle: 'top',
+    source: r.memberAId, target: r.memberBId,
+    sourceHandle: 'bottom', targetHandle: 'top',
     type: 'smoothstep',
     style: { stroke: '#9CA3AF', strokeWidth: 2 },
     markerEnd: { type: 'arrowclosed', color: '#9CA3AF', width: 12, height: 12 },
   }))
 
   // Spouse / Partner (horizontal, pink)
-  spRelations.forEach(r => rfEdges.push(horizEdge(`sp-${r.id}`, r.memberAId, r.memberBId, {
+  spRels.forEach(r => rfEdges.push(horizEdge(`sp-${r.id}`, r.memberAId, r.memberBId, {
     type: 'spouse',
     style: { stroke: '#F472B6', strokeWidth: 2 },
     data: { icon: r.type === 'Spouse' ? '💍' : '♥' },
   })))
 
   // Separated (horizontal, orange dashed)
-  sepRelations.forEach(r => rfEdges.push(horizEdge(`sep-${r.id}`, r.memberAId, r.memberBId, {
+  sepRels.forEach(r => rfEdges.push(horizEdge(`sep-${r.id}`, r.memberAId, r.memberBId, {
     style: { stroke: '#FB923C', strokeWidth: 1.5, strokeDasharray: '6 4' },
-    label: '💔',
-    labelStyle: { fontSize: 13 },
-    labelBgStyle: { fill: 'transparent' },
+    label: '💔', labelStyle: { fontSize: 13 }, labelBgStyle: { fill: 'transparent' },
   })))
 
-  // Sibling edges — arc below nodes (bottom→bottom), adjacent pairs only to avoid arc overlap
-  const siblingArc = (id, idA, idB, extra) => ({
-    id,
-    source: idA,
-    target: idB,
-    sourceHandle: 'bottom',
-    targetHandle: 'bottomTarget',
-    type: 'siblingBracket',
-    ...extra,
-  })
-
-  const hasCommonVisibleParent = (idA, idB) => {
-    const aParents = childToParents.get(idA) || new Set()
-    const bParents = childToParents.get(idB) || new Set()
-    return [...aParents].some(p => bParents.has(p) && memberIds.has(p))
+  // Sibling edges — horizontal bracket between adjacent siblings
+  const hasCommonParent = (a, b) => {
+    const aP = childToParents.get(a) || new Set()
+    const bP = childToParents.get(b) || new Set()
+    return [...aP].some(p => bP.has(p) && memberIds.has(p))
   }
 
-  // Check if a spouse/separated node sits between idA and idB horizontally
-  const spouseIds = new Set()
-  ;[...spRelations, ...sepRelations].forEach(r => {
-    spouseIds.add(`${r.memberAId}|${r.memberBId}`)
-    spouseIds.add(`${r.memberBId}|${r.memberAId}`)
+  const spousePairSet = new Set()
+  ;[...spRels, ...sepRels].forEach(r => {
+    spousePairSet.add(`${r.memberAId}|${r.memberBId}`)
+    spousePairSet.add(`${r.memberBId}|${r.memberAId}`)
   })
-  const hasSpouseBetween = (idA, idB) => {
-    const xA = (positions[idA]?.x ?? 0) + NODE_W / 2
-    const xB = (positions[idB]?.x ?? 0) + NODE_W / 2
+
+  const spouseBetween = (a, b) => {
+    const xA = (positions[a]?.x ?? 0) + NODE_W / 2
+    const xB = (positions[b]?.x ?? 0) + NODE_W / 2
     const lo = Math.min(xA, xB), hi = Math.max(xA, xB)
     return members.some(m => {
       const mx = (positions[m.id]?.x ?? 0) + NODE_W / 2
-      return mx > lo && mx < hi && (spouseIds.has(`${m.id}|${idA}`) || spouseIds.has(`${m.id}|${idB}`))
+      return mx > lo && mx < hi &&
+        (spousePairSet.has(`${m.id}|${a}`) || spousePairSet.has(`${m.id}|${b}`))
     })
   }
 
-  const drawAdjacentSiblings = (relations, idPrefix, style) => {
-    if (!relations.length) return
+  const drawSiblingEdges = (rels, prefix, style) => {
+    if (!rels.length) return
     const adj = new Map()
-    relations.forEach(r => {
+    rels.forEach(r => {
       if (!adj.has(r.memberAId)) adj.set(r.memberAId, new Set())
       if (!adj.has(r.memberBId)) adj.set(r.memberBId, new Set())
       adj.get(r.memberAId).add(r.memberBId)
       adj.get(r.memberBId).add(r.memberAId)
     })
-    const visited = new Set()
-    relations.forEach(r => {
-      for (const startId of [r.memberAId, r.memberBId]) {
-        if (visited.has(startId)) continue
-        const component = []
-        const queue = [startId]
-        while (queue.length) {
-          const id = queue.shift()
-          if (visited.has(id)) continue
-          visited.add(id)
-          component.push(id)
-          adj.get(id)?.forEach(n => { if (!visited.has(n)) queue.push(n) })
+    const seen = new Set()
+    rels.forEach(r => {
+      for (const start of [r.memberAId, r.memberBId]) {
+        if (seen.has(start)) continue
+        const comp = []
+        const q = [start]
+        while (q.length) {
+          const id = q.shift()
+          if (seen.has(id)) continue
+          seen.add(id); comp.push(id)
+          adj.get(id)?.forEach(n => { if (!seen.has(n)) q.push(n) })
         }
-        component.sort((a, b) => (positions[a]?.x ?? 0) - (positions[b]?.x ?? 0))
-        for (let i = 0; i < component.length - 1; i++) {
-          const idA = component[i], idB = component[i + 1]
-          if (hasCommonVisibleParent(idA, idB)) {
-            if (!hasSpouseBetween(idA, idB))
-              rfEdges.push(horizEdge(`${idPrefix}-${idA}-${idB}`, idA, idB, { style }))
-            else
-              rfEdges.push(archEdge(`${idPrefix}-${idA}-${idB}`, idA, idB, { style }))
+        comp.sort((a, b) => (positions[a]?.x ?? 0) - (positions[b]?.x ?? 0))
+        for (let i = 0; i < comp.length - 1; i++) {
+          const [a, b] = [comp[i], comp[i + 1]]
+          if (hasCommonParent(a, b)) {
+            rfEdges.push(spouseBetween(a, b)
+              ? archEdge(`${prefix}-${a}-${b}`, a, b, { style })
+              : horizEdge(`${prefix}-${a}-${b}`, a, b, { style }))
           } else {
-            rfEdges.push(siblingArc(`${idPrefix}-${idA}-${idB}`, idA, idB, { style }))
+            rfEdges.push({
+              id: `${prefix}-${a}-${b}`, source: a, target: b,
+              sourceHandle: 'bottom', targetHandle: 'bottomTarget',
+              type: 'siblingBracket', style,
+            })
           }
         }
       }
     })
   }
 
-  drawAdjacentSiblings(sibRelations, 'sib', { stroke: '#9CA3AF', strokeWidth: 1.5, strokeDasharray: '6 3' })
-  drawAdjacentSiblings(hsbRelations, 'hsb', { stroke: '#9CA3AF', strokeWidth: 1.5, strokeDasharray: '2 5' })
+  drawSiblingEdges(sibRels, 'sib', { stroke: '#9CA3AF', strokeWidth: 1.5, strokeDasharray: '6 3' })
+  drawSiblingEdges(hsbRels, 'hsb', { stroke: '#9CA3AF', strokeWidth: 1.5, strokeDasharray: '2 5' })
 
   return { rfNodes, rfEdges }
 }
