@@ -49,7 +49,7 @@ function ZoomControls() {
   )
 }
 
-export default function FamilyTree({ members, relations, families, currentMemberId, onNodeClick, highlightGeneration, onGenerationMap }) {
+export default function FamilyTree({ members, relations, families, currentMemberId, onNodeClick, highlightGeneration, onGenerationMap, focusMemberIds }) {
   const colorMap = useMemo(() => buildFamilyColorMap(families), [families])
 
   const { rfNodes: rawNodes, rfEdges: edges, generationMap } = useMemo(
@@ -63,15 +63,20 @@ export default function FamilyTree({ members, relations, families, currentMember
 
   const nodes = useMemo(
     () => rawNodes.map(n => {
-      const gen = generationMap[n.id] ?? 0
-      const dimmed = highlightGeneration != null && gen !== highlightGeneration
+      let dimmed = false
+      if (focusMemberIds) {
+        dimmed = !focusMemberIds.has(n.id)
+      } else if (highlightGeneration != null) {
+        const gen = generationMap[n.id] ?? 0
+        dimmed = gen !== highlightGeneration
+      }
       return {
         ...n,
         data: { ...n.data, isCurrentUser: n.data.member.id === currentMemberId },
         style: dimmed ? { opacity: 0.15, transition: 'opacity 0.2s' } : { transition: 'opacity 0.2s' },
       }
     }),
-    [rawNodes, currentMemberId, generationMap, highlightGeneration]
+    [rawNodes, currentMemberId, generationMap, highlightGeneration, focusMemberIds]
   )
 
   if (!members.length) {
