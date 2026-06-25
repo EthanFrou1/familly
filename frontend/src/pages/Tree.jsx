@@ -7,6 +7,7 @@ import { familiesApi } from '../services/api'
 import { usePageRefresh } from '../hooks/usePageRefresh'
 import FamilyTree from '../components/tree/FamilyTree'
 import Select from '../components/shared/Select'
+import Avatar from '../components/shared/Avatar'
 import SiblingsSuggestionModal from '../components/tree/SiblingsSuggestionModal'
 import { detectImplicitSiblings } from '../components/tree/treeLayout'
 
@@ -26,6 +27,8 @@ export default function Tree() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [generationMap, setGenerationMap] = useState({})
   const [selectedGen, setSelectedGen] = useState(null)
+  const [focusedMemberId, setFocusedMemberId] = useState(null)
+  const [showPersonSheet, setShowPersonSheet] = useState(false)
 
   useEffect(() => {
     familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
@@ -81,9 +84,24 @@ export default function Tree() {
       .sort((a, b) => a.gen - b.gen)
   }, [generationMap, filteredMembers])
 
-  // Reset selectedGen when filter changes
+  const focusMemberIds = useMemo(() => {
+    if (!focusedMemberId) return null
+    const ids = new Set([focusedMemberId])
+    relations.forEach(r => {
+      if (r.memberAId === focusedMemberId) ids.add(r.memberBId)
+      if (r.memberBId === focusedMemberId) ids.add(r.memberAId)
+    })
+    return ids
+  }, [focusedMemberId, relations])
+
+  const focusedMember = useMemo(
+    () => focusedMemberId ? members.find(m => m.id === focusedMemberId) : null,
+    [focusedMemberId, members]
+  )
+
+  // Reset filters when view mode changes
   const treeKey = `${viewMode}-${familyId}`
-  useEffect(() => { setSelectedGen(null) }, [treeKey])
+  useEffect(() => { setSelectedGen(null); setFocusedMemberId(null) }, [treeKey])
 
   if (loading) return (
     <div className="flex h-full items-center justify-center">
@@ -105,16 +123,16 @@ export default function Tree() {
       <div className="relative flex-1 bg-gray-50">
 
       {/* ── Filtres inline ── */}
-      <div className="absolute top-3 left-3 right-3 z-20 flex flex-col gap-2">
+      <div className="absolute top-3 left-3 right-3 z-20 flex flex-col gap-1.5">
         {/* Filtre vue */}
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
-          <div className="flex items-center gap-2 bg-white rounded-2xl shadow-md px-3 py-2 shrink-0">
-            <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <div className="flex items-center gap-1.5 bg-white rounded-xl shadow-sm px-2 py-1.5 shrink-0">
+            <svg className="h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
             </svg>
             <button
               onClick={() => setViewMode('all')}
-              className={`rounded-xl px-3 py-1 text-sm font-semibold transition-all ${
+              className={`rounded-lg px-2 py-0.5 text-xs font-semibold transition-all ${
                 viewMode === 'all' ? 'bg-primary text-white' : 'text-gray-600 active:bg-gray-100'
               }`}
             >
@@ -122,14 +140,14 @@ export default function Tree() {
             </button>
             <button
               onClick={() => setViewMode('branch')}
-              className={`rounded-xl px-3 py-1 text-sm font-semibold transition-all ${
+              className={`rounded-lg px-2 py-0.5 text-xs font-semibold transition-all ${
                 viewMode === 'branch' ? 'bg-primary text-white' : 'text-gray-600 active:bg-gray-100'
               }`}
             >
               Ma branche
             </button>
             {families.length > 0 && (
-              <div className="w-36 shrink-0">
+              <div className="w-28 shrink-0">
                 <Select
                   value={viewMode === 'family' ? familyId : ''}
                   onChange={e => {
@@ -145,16 +163,41 @@ export default function Tree() {
                 </Select>
               </div>
             )}
+
+            <div className="w-px bg-gray-200 self-stretch mx-0.5" />
+
+            {/* Bouton focus personne */}
+            {focusedMember ? (
+              <button
+                onClick={() => setFocusedMemberId(null)}
+                className="rounded-lg px-2 py-0.5 text-xs font-semibold bg-primary text-white flex items-center gap-1 shrink-0"
+              >
+                <span className="max-w-[56px] truncate">{focusedMember.firstName}</span>
+                <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowPersonSheet(true)}
+                className="rounded-lg p-1 text-gray-500 active:bg-gray-100 shrink-0"
+                title="Centrer sur un membre"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
         {/* Chips génération */}
-        {generationCounts.length > 1 && (
+        {generationCounts.length > 1 && !focusedMemberId && (
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-            <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm px-2 py-1.5 shrink-0">
+            <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm px-2 py-1 shrink-0">
               <button
                 onClick={() => setSelectedGen(null)}
-                className={`rounded-lg px-2 py-0.5 text-xs font-semibold transition-all ${
+                className={`rounded-md px-2 py-0.5 text-xs font-semibold transition-all ${
                   selectedGen === null ? 'bg-primary text-white' : 'text-gray-500 active:bg-gray-100'
                 }`}
               >
@@ -164,7 +207,7 @@ export default function Tree() {
                 <button
                   key={gen}
                   onClick={() => setSelectedGen(selectedGen === gen ? null : gen)}
-                  className={`rounded-lg px-2 py-0.5 text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap transition-all ${
                     selectedGen === gen ? 'bg-primary text-white' : 'text-gray-500 active:bg-gray-100'
                   }`}
                 >
@@ -266,6 +309,7 @@ export default function Tree() {
             onNodeClick={m => navigate(`/profile/${m.id}`)}
             highlightGeneration={selectedGen}
             onGenerationMap={setGenerationMap}
+            focusMemberIds={focusMemberIds}
           />
         </ReactFlowProvider>
       </div>
@@ -278,6 +322,71 @@ export default function Tree() {
           onCreated={() => reloadRelations()}
         />
       )}
+
+      {/* ── Person focus sheet ── */}
+      {showPersonSheet && (
+        <PersonFocusSheet
+          members={filteredMembers}
+          onSelect={id => { setFocusedMemberId(id); setSelectedGen(null) }}
+          onClose={() => setShowPersonSheet(false)}
+        />
+      )}
+      </div>
+    </div>
+  )
+}
+
+function PersonFocusSheet({ members, onSelect, onClose }) {
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return members
+    return members.filter(m =>
+      `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
+    )
+  }, [members, search])
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-t-2xl max-h-[70vh] flex flex-col shadow-2xl">
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        </div>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-2 shrink-0">
+          <p className="text-sm font-bold text-gray-800">Centrer sur un membre</p>
+          <button onClick={onClose} className="p-1 text-gray-400 active:text-gray-600">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        {/* Search */}
+        <div className="px-4 pb-3 shrink-0">
+          <input
+            autoFocus
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher un membre…"
+            className="w-full rounded-xl bg-gray-100 px-3 py-2 text-sm focus:outline-none focus:bg-gray-200"
+          />
+        </div>
+        {/* List */}
+        <div className="overflow-y-auto flex-1 pb-8">
+          {filtered.map((m, idx) => (
+            <button
+              key={m.id}
+              onClick={() => { onSelect(m.id); onClose() }}
+              className={`flex items-center gap-3 w-full px-4 py-2.5 active:bg-gray-50 ${idx < filtered.length - 1 ? 'border-b border-gray-50' : ''}`}
+            >
+              <Avatar src={m.profilePictureUrl} name={`${m.firstName} ${m.lastName}`} size="sm" />
+              <span className="text-sm font-medium text-gray-800">{m.firstName} {m.lastName}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
