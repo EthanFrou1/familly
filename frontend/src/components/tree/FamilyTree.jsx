@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import {
   ReactFlow,
   Background,
@@ -49,21 +49,29 @@ function ZoomControls() {
   )
 }
 
-export default function FamilyTree({ members, relations, families, currentMemberId, onNodeClick }) {
+export default function FamilyTree({ members, relations, families, currentMemberId, onNodeClick, highlightGeneration, onGenerationMap }) {
   const colorMap = useMemo(() => buildFamilyColorMap(families), [families])
 
-  const { rfNodes: rawNodes, rfEdges: edges } = useMemo(
+  const { rfNodes: rawNodes, rfEdges: edges, generationMap } = useMemo(
     () => buildTreeLayout(members, relations, colorMap),
     [members, relations, colorMap]
   )
 
+  useEffect(() => {
+    onGenerationMap?.(generationMap)
+  }, [generationMap]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const nodes = useMemo(
-    () => rawNodes.map(n =>
-      n.data.member.id === currentMemberId
-        ? { ...n, data: { ...n.data, isCurrentUser: true } }
-        : n
-    ),
-    [rawNodes, currentMemberId]
+    () => rawNodes.map(n => {
+      const gen = generationMap[n.id] ?? 0
+      const dimmed = highlightGeneration != null && gen !== highlightGeneration
+      return {
+        ...n,
+        data: { ...n.data, isCurrentUser: n.data.member.id === currentMemberId },
+        style: dimmed ? { opacity: 0.15, transition: 'opacity 0.2s' } : { transition: 'opacity 0.2s' },
+      }
+    }),
+    [rawNodes, currentMemberId, generationMap, highlightGeneration]
   )
 
   if (!members.length) {
