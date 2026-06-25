@@ -82,6 +82,8 @@ export function buildTreeLayout(members, relations, colorMap) {
   const MARGIN_X  = 60
   const MARGIN_Y  = 60
 
+  const generationMap = {}
+
   // ── 1. Build parent / child maps ───────────────────────────────────────────
   const childToParents   = new Map() // childId → Set<parentId>
   const parentToChildren = new Map() // parentId → Set<childId>
@@ -132,10 +134,11 @@ export function buildTreeLayout(members, relations, colorMap) {
   const makeSlot = (anchorId, generation) => {
     if (visitedPersons.has(anchorId)) return null
     visitedPersons.add(anchorId)
+    generationMap[anchorId] = generation
 
     // Pick first unvisited spouse as co-anchor
     const spouse = (spousesOf.get(anchorId) || []).find(sid => !visitedPersons.has(sid)) ?? null
-    if (spouse) visitedPersons.add(spouse)
+    if (spouse) { visitedPersons.add(spouse); generationMap[spouse] = generation }
 
     const adults = spouse ? [anchorId, spouse] : [anchorId]
     const slot   = {
@@ -354,5 +357,5 @@ export function buildTreeLayout(members, relations, colorMap) {
   drawSiblingEdges(sibRels, 'sib', { stroke: '#9CA3AF', strokeWidth: 1.5, strokeDasharray: '6 3' })
   drawSiblingEdges(hsbRels, 'hsb', { stroke: '#9CA3AF', strokeWidth: 1.5, strokeDasharray: '2 5' })
 
-  return { rfNodes, rfEdges }
+  return { rfNodes, rfEdges, generationMap }
 }

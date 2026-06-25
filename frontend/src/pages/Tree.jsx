@@ -24,6 +24,8 @@ export default function Tree() {
   const [familyId, setFamilyId] = useState(initialFamilyId)
   const [showLegend, setShowLegend] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [generationMap, setGenerationMap] = useState({})
+  const [selectedGen, setSelectedGen] = useState(null)
 
   useEffect(() => {
     familiesApi.getAll().then(({ data }) => setFamilies(data)).catch(() => {})
@@ -68,8 +70,20 @@ export default function Tree() {
     return members
   }, [viewMode, familyId, members, user, relations])
 
-  // Key to reset ReactFlow when filter changes
+  const generationCounts = useMemo(() => {
+    const counts = {}
+    filteredMembers.forEach(m => {
+      const gen = generationMap[m.id] ?? 0
+      counts[gen] = (counts[gen] || 0) + 1
+    })
+    return Object.entries(counts)
+      .map(([gen, count]) => ({ gen: Number(gen), count }))
+      .sort((a, b) => a.gen - b.gen)
+  }, [generationMap, filteredMembers])
+
+  // Reset selectedGen when filter changes
   const treeKey = `${viewMode}-${familyId}`
+  useEffect(() => { setSelectedGen(null) }, [treeKey])
 
   if (loading) return (
     <div className="flex h-full items-center justify-center">
@@ -91,45 +105,75 @@ export default function Tree() {
       <div className="relative flex-1 bg-gray-50">
 
       {/* ── Filtres inline ── */}
-      <div className="absolute top-3 left-3 right-3 z-20 justify-center pb-3 flex items-center gap-2 overflow-x-auto scrollbar-none">
-        <div className="flex items-center gap-2 bg-white rounded-2xl shadow-md px-3 py-2 shrink-0">
-          <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
-          </svg>
-          <button
-            onClick={() => setViewMode('all')}
-            className={`rounded-xl px-3 py-1 text-sm font-semibold transition-all ${
-              viewMode === 'all' ? 'bg-primary text-white' : 'text-gray-600 active:bg-gray-100'
-            }`}
-          >
-            Tous
-          </button>
-          <button
-            onClick={() => setViewMode('branch')}
-            className={`rounded-xl px-3 py-1 text-sm font-semibold transition-all ${
-              viewMode === 'branch' ? 'bg-primary text-white' : 'text-gray-600 active:bg-gray-100'
-            }`}
-          >
-            Ma branche
-          </button>
-          {families.length > 0 && (
-            <div className="w-36 shrink-0">
-              <Select
-                value={viewMode === 'family' ? familyId : ''}
-                onChange={e => {
-                  const val = e.target.value
-                  if (val) { setFamilyId(val); setViewMode('family') }
-                  else setViewMode('all')
-                }}
-                placeholder="Toutes familles"
-              >
-                {families.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </Select>
-            </div>
-          )}
+      <div className="absolute top-3 left-3 right-3 z-20 flex flex-col gap-2">
+        {/* Filtre vue */}
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+          <div className="flex items-center gap-2 bg-white rounded-2xl shadow-md px-3 py-2 shrink-0">
+            <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+            </svg>
+            <button
+              onClick={() => setViewMode('all')}
+              className={`rounded-xl px-3 py-1 text-sm font-semibold transition-all ${
+                viewMode === 'all' ? 'bg-primary text-white' : 'text-gray-600 active:bg-gray-100'
+              }`}
+            >
+              Tous
+            </button>
+            <button
+              onClick={() => setViewMode('branch')}
+              className={`rounded-xl px-3 py-1 text-sm font-semibold transition-all ${
+                viewMode === 'branch' ? 'bg-primary text-white' : 'text-gray-600 active:bg-gray-100'
+              }`}
+            >
+              Ma branche
+            </button>
+            {families.length > 0 && (
+              <div className="w-36 shrink-0">
+                <Select
+                  value={viewMode === 'family' ? familyId : ''}
+                  onChange={e => {
+                    const val = e.target.value
+                    if (val) { setFamilyId(val); setViewMode('family') }
+                    else setViewMode('all')
+                  }}
+                  placeholder="Toutes familles"
+                >
+                  {families.map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </Select>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Chips génération */}
+        {generationCounts.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm px-2 py-1.5 shrink-0">
+              <button
+                onClick={() => setSelectedGen(null)}
+                className={`rounded-lg px-2 py-0.5 text-xs font-semibold transition-all ${
+                  selectedGen === null ? 'bg-primary text-white' : 'text-gray-500 active:bg-gray-100'
+                }`}
+              >
+                Toutes
+              </button>
+              {generationCounts.map(({ gen, count }) => (
+                <button
+                  key={gen}
+                  onClick={() => setSelectedGen(selectedGen === gen ? null : gen)}
+                  className={`rounded-lg px-2 py-0.5 text-xs font-semibold whitespace-nowrap transition-all ${
+                    selectedGen === gen ? 'bg-primary text-white' : 'text-gray-500 active:bg-gray-100'
+                  }`}
+                >
+                  G{gen + 1} · {count}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Legend button — low left ── */}
@@ -220,6 +264,8 @@ export default function Tree() {
             families={families}
             currentMemberId={user?.memberId}
             onNodeClick={m => navigate(`/profile/${m.id}`)}
+            highlightGeneration={selectedGen}
+            onGenerationMap={setGenerationMap}
           />
         </ReactFlowProvider>
       </div>
