@@ -65,6 +65,7 @@
   width: calc(100vw - 2rem) !important;
   max-width: calc(100vw - 2rem) !important;
   box-sizing: border-box !important;
+  z-index: 10000 !important; /* above modal z-[9999] — needed on iOS Safari where keyboard shifts viewport */
 }
 
 /* Prevent browser autofill from changing input background */
