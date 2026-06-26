@@ -111,39 +111,39 @@ export default function BottomNav() {
       )}
 
       <nav className={`safe-bottom border-t border-gray-200 bg-white relative transition-all duration-200 ${fabOpen ? 'z-30' : 'z-50'}`}>
-        <div className="flex items-end">
+        <div className="flex items-end landscape:items-center">
           <NavLink to="/" end
             className={({ isActive }) => tabCls(isActive)}>
-            <HomeIcon className="h-6 w-6" /><span className="mt-0.5">Accueil</span>
+            <HomeIcon className="h-6 w-6 landscape:h-5 landscape:w-5" /><span className="mt-0.5 landscape:hidden">Accueil</span>
           </NavLink>
 
           <NavLink to="/tree"
             className={({ isActive }) => tabCls(isActive)}>
-            <TreeIcon className="h-6 w-6" /><span className="mt-0.5">Arbre</span>
+            <TreeIcon className="h-6 w-6 landscape:h-5 landscape:w-5" /><span className="mt-0.5 landscape:hidden">Arbre</span>
           </NavLink>
 
           {/* FAB central */}
-          <div className="flex flex-col items-center justify-end pb-2 px-3" style={{ minWidth: 72 }}>
+          <div className="flex flex-col items-center justify-end pb-2 landscape:pb-0 landscape:justify-center px-3" style={{ minWidth: 72 }}>
             <button
               onClick={() => setFabOpen(o => !o)}
-              className={`h-14 w-14 -mt-5 rounded-full text-white shadow-lg flex items-center justify-center active:scale-95 transition-all ${fabOpen ? 'bg-gray-700' : 'bg-primary'}`}
+              className={`h-14 w-14 -mt-5 landscape:h-9 landscape:w-9 landscape:mt-0 rounded-full text-white shadow-lg flex items-center justify-center active:scale-95 transition-all ${fabOpen ? 'bg-gray-700' : 'bg-primary'}`}
             >
-              <svg className={`h-7 w-7 transition-transform duration-200 ${fabOpen ? 'rotate-45' : ''}`}
+              <svg className={`h-7 w-7 landscape:h-5 landscape:w-5 transition-transform duration-200 ${fabOpen ? 'rotate-45' : ''}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
             </button>
-            <span className="text-xs text-gray-400 mt-1">Action</span>
+            <span className="text-xs text-gray-400 mt-1 landscape:hidden">Action</span>
           </div>
 
           <NavLink to="/members"
             className={({ isActive }) => tabCls(isActive)}>
-            <MembersIcon className="h-6 w-6" /><span className="mt-0.5">Membres</span>
+            <MembersIcon className="h-6 w-6 landscape:h-5 landscape:w-5" /><span className="mt-0.5 landscape:hidden">Membres</span>
           </NavLink>
 
           <NavLink to="/profile"
             className={({ isActive }) => tabCls(isActive)}>
-            <ProfileIcon className="h-6 w-6" /><span className="mt-0.5">Profil</span>
+            <ProfileIcon className="h-6 w-6 landscape:h-5 landscape:w-5" /><span className="mt-0.5 landscape:hidden">Profil</span>
           </NavLink>
         </div>
       </nav>
@@ -185,7 +185,7 @@ function MenuItem({ icon, label, onClick, border = false, danger = false }) {
 }
 
 const tabCls = (isActive) =>
-  `flex flex-1 flex-col items-center justify-center py-2 min-h-[56px] text-xs transition-colors ${isActive ? 'text-primary' : 'text-gray-400'}`
+  `flex flex-1 flex-col items-center justify-center py-2 landscape:py-1 min-h-[56px] landscape:min-h-[36px] text-xs transition-colors ${isActive ? 'text-primary' : 'text-gray-400'}`
 
 function HomeIcon({ className }) {
   return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>

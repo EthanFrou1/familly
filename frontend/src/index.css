@@ -86,3 +86,12 @@ input:-webkit-autofill:active {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* En paysage sur iPhone, le notch/Dynamic Island est sur le côté :
+   la nav du bas doit aussi respecter les safe areas gauche/droite */
+@media (orientation: landscape) {
+  .safe-bottom {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
