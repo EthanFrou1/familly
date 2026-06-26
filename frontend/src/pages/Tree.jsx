@@ -10,6 +10,7 @@ import Select from '../components/shared/Select'
 import Avatar from '../components/shared/Avatar'
 import SiblingsSuggestionModal from '../components/tree/SiblingsSuggestionModal'
 import { detectImplicitSiblings } from '../components/tree/treeLayout'
+import { matchesSearch } from '../utils/normalize'
 
 export default function Tree() {
   const { members, relations, loading, reloadRelations } = useFamily()
@@ -371,10 +372,9 @@ function PersonFocusSheet({ members, onSelect, onClose }) {
   }, [])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return members
+    if (!search.trim()) return members
     return members.filter(m =>
-      `${m.firstName} ${m.lastName}`.toLowerCase().includes(q)
+      matchesSearch(`${m.firstName} ${m.lastName}`, search)
     )
   }, [members, search])
 
