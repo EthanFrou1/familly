@@ -79,6 +79,7 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   const memberMap = Object.fromEntries(members.map(m => [m.id, m]))
   const COUPLE_W  = 2 * NODE_W + H_SEP
+  const TRIPLE_W  = 3 * NODE_W + 2 * H_SEP
   const MARGIN_X  = 60
   const MARGIN_Y  = 60
 
@@ -105,21 +106,50 @@ export function buildTreeLayout(members, relations, colorMap) {
     else if (bP.size > 0 && aP.size === 0) bP.forEach(pid => addEdge(pid, r.memberAId))
   })
 
-  // ── 2. Build spouse map ────────────────────────────────────────────────────
-  const spousesOf = new Map() // personId → personId[]
-  ;[...spRels, ...sepRels].forEach(r => {
-    if (!spousesOf.has(r.memberAId)) spousesOf.set(r.memberAId, [])
-    if (!spousesOf.has(r.memberBId)) spousesOf.set(r.memberBId, [])
-    if (!spousesOf.get(r.memberAId).includes(r.memberBId)) spousesOf.get(r.memberAId).push(r.memberBId)
-    if (!spousesOf.get(r.memberBId).includes(r.memberAId)) spousesOf.get(r.memberBId).push(r.memberAId)
+  // ── 2. Build current-spouse / ex-spouse maps ──────────────────────────────
+  const addPair = (map, aId, bId) => {
+    if (!map.has(aId)) map.set(aId, [])
+    if (!map.has(bId)) map.set(bId, [])
+    if (!map.get(aId).includes(bId)) map.get(aId).push(bId)
+    if (!map.get(bId).includes(aId)) map.get(bId).push(aId)
+  }
+  const currentSpousesOf = new Map() // Spouse / Partner → right side
+  const exSpousesOf      = new Map() // Separated        → left side
+  spRels.forEach(r => addPair(currentSpousesOf, r.memberAId, r.memberBId))
+  sepRels.forEach(r => addPair(exSpousesOf,     r.memberAId, r.memberBId))
+  // Union — used for isInLaw / rootSeen
+  const spousesOf = new Map()
+  ;[currentSpousesOf, exSpousesOf].forEach(src =>
+    src.forEach((ids, id) => {
+      if (!spousesOf.has(id)) spousesOf.set(id, [])
+      ids.forEach(sid => { if (!spousesOf.get(id).includes(sid)) spousesOf.get(id).push(sid) })
+    })
+  )
+  // People who have both a current and an ex spouse — must be the central anchor of a triple slot
+  const hasExAndCurrent = id =>
+    (currentSpousesOf.get(id)?.length > 0) && (exSpousesOf.get(id)?.length > 0)
+
+  // ── 3. Triple-slot pre-computation ────────────────────────────────────────
+  // A "triple-slot anchor" is someone who has BOTH a current partner AND an ex.
+  // They must appear in the centre: [ex | anchor | current].
+  // Their ex AND current are "reserved" — no other slot may claim them, even
+  // if they have their own parents in the tree (the parent→child arrow will
+  // simply be drawn as a long line to wherever they end up).
+
+  const tripleSlotAnchors = new Set()
+  const reservedForTriple = new Set() // ex-spouses + current spouses of anchors
+
+  members.forEach(m => {
+    if (hasExAndCurrent(m.id)) {
+      tripleSlotAnchors.add(m.id)
+      ;(currentSpousesOf.get(m.id) || []).forEach(sid => reservedForTriple.add(sid))
+      ;(exSpousesOf.get(m.id) || []).forEach(sid => reservedForTriple.add(sid))
+    }
   })
 
-  // ── 3. FamilySlot: core layout unit ───────────────────────────────────────
-  // A slot = one couple (or single person) + their children's slots.
-  // anchor = the biological child; spouse = their partner (may be null).
-  // Children are sorted oldest → left before slot creation.
+  // ── 4. FamilySlot: core layout unit ───────────────────────────────────────
 
-  const personToSlot  = new Map() // personId → the slot this person appears in
+  const personToSlot   = new Map()
   const visitedPersons = new Set()
 
   const birthOf = id => memberMap[id]?.birthDate ? new Date(memberMap[id].birthDate) : null
@@ -136,12 +166,29 @@ export function buildTreeLayout(members, relations, colorMap) {
     visitedPersons.add(anchorId)
     generationMap[anchorId] = generation
 
-    // Pick first unvisited spouse as co-anchor
-    const spouse = (spousesOf.get(anchorId) || []).find(sid => !visitedPersons.has(sid)) ?? null
-    if (spouse) { visitedPersons.add(spouse); generationMap[spouse] = generation }
+    let adults
 
-    const adults = spouse ? [anchorId, spouse] : [anchorId]
-    const slot   = {
+    if (tripleSlotAnchors.has(anchorId)) {
+      // ── Triple slot: [ex | anchor | current] ──────────────────────────────
+      const currentSpouse = (currentSpousesOf.get(anchorId) || []).find(sid => !visitedPersons.has(sid)) ?? null
+      if (currentSpouse) { visitedPersons.add(currentSpouse); generationMap[currentSpouse] = generation }
+
+      const exSpouse = (exSpousesOf.get(anchorId) || []).find(sid => !visitedPersons.has(sid)) ?? null
+      if (exSpouse) { visitedPersons.add(exSpouse); generationMap[exSpouse] = generation }
+
+      // Fixed display order: ex on the left, anchor in the middle, current on the right
+      adults = [exSpouse, anchorId, currentSpouse].filter(Boolean)
+    } else {
+      // ── Normal slot: single or couple ──────────────────────────────────────
+      // Don't claim anyone who is reserved for a triple slot or is themselves
+      // a triple-slot anchor (they will form their own slot when reached).
+      const spouse = [...(currentSpousesOf.get(anchorId) || []), ...(exSpousesOf.get(anchorId) || [])]
+        .find(sid => !visitedPersons.has(sid) && !reservedForTriple.has(sid) && !tripleSlotAnchors.has(sid)) ?? null
+      if (spouse) { visitedPersons.add(spouse); generationMap[spouse] = generation }
+      adults = spouse ? [anchorId, spouse] : [anchorId]
+    }
+
+    const slot = {
       adults,
       childSlots:   [],
       subtreeWidth: 0,
@@ -150,13 +197,27 @@ export function buildTreeLayout(members, relations, colorMap) {
     }
     adults.forEach(id => personToSlot.set(id, slot))
 
-    // Collect all children of any adult in this slot, sorted oldest → left
+    // Collect children
     const childIds = new Set()
-    adults.forEach(aid => (parentToChildren.get(aid) || new Set()).forEach(cid => childIds.add(cid)))
+    if (tripleSlotAnchors.has(anchorId)) {
+      // For triple slot, only collect the anchor's own children to avoid
+      // pulling in children of the ex/current from other relationships
+      ;(parentToChildren.get(anchorId) || new Set()).forEach(cid => childIds.add(cid))
+    } else {
+      adults.forEach(aid => (parentToChildren.get(aid) || new Set()).forEach(cid => childIds.add(cid)))
+    }
 
     ;[...childIds]
-      .filter(cid => !visitedPersons.has(cid))
-      .sort(cmpAge)
+      // Skip reserved persons — they will be claimed by their triple-slot anchor
+      .filter(cid => !visitedPersons.has(cid) && !reservedForTriple.has(cid))
+      // Process triple-slot anchors first so they claim their reserved spouses
+      // before any other sibling could be processed and accidentally visit them
+      .sort((a, b) => {
+        const aT = tripleSlotAnchors.has(a), bT = tripleSlotAnchors.has(b)
+        if (aT && !bT) return -1
+        if (!aT && bT) return 1
+        return cmpAge(a, b)
+      })
       .forEach(cid => {
         const cs = makeSlot(cid, generation + 1)
         if (cs) slot.childSlots.push(cs)
@@ -165,9 +226,7 @@ export function buildTreeLayout(members, relations, colorMap) {
     return slot
   }
 
-  // ── 4. Find root anchors ───────────────────────────────────────────────────
-  // Root = no parents visible in the tree.
-  // In-law root = no parents AND spouse has parents → will be picked up inside makeSlot.
+  // ── 5. Find root anchors ───────────────────────────────────────────────────
 
   const hasParents = id => (childToParents.get(id)?.size ?? 0) > 0
   const isInLaw    = id => !hasParents(id) && (spousesOf.get(id) || []).some(hasParents)
@@ -175,8 +234,16 @@ export function buildTreeLayout(members, relations, colorMap) {
   const rootSeen = new Set()
   const rootAnchors = members
     .map(m => m.id)
-    .filter(id => !hasParents(id) && !isInLaw(id))
-    .sort(cmpAge) // oldest first → oldest sibling leftmost
+    // Reserved persons are placed by their triple-slot anchor, not as roots
+    .filter(id => !hasParents(id) && !isInLaw(id) && !reservedForTriple.has(id))
+    .sort((a, b) => {
+      // Triple-slot anchors first so they claim their reserved spouses before
+      // any of those spouses could be visited through another path
+      const aT = tripleSlotAnchors.has(a), bT = tripleSlotAnchors.has(b)
+      if (aT && !bT) return -1
+      if (!aT && bT) return 1
+      return cmpAge(a, b)
+    })
     .filter(id => {
       if (rootSeen.has(id)) return false
       rootSeen.add(id)
@@ -186,7 +253,7 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   const rootSlots = rootAnchors.map(id => makeSlot(id, 0)).filter(Boolean)
 
-  // Catch any remaining unvisited members (fully disconnected nodes)
+  // Catch any remaining unvisited members (disconnected or reserved but orphaned)
   members.forEach(m => {
     if (!visitedPersons.has(m.id)) {
       const s = makeSlot(m.id, 0)
@@ -194,9 +261,11 @@ export function buildTreeLayout(members, relations, colorMap) {
     }
   })
 
-  // ── 5. Bottom-up: compute subtree widths ───────────────────────────────────
+  // ── 6. Bottom-up: compute subtree widths ───────────────────────────────────
   const calcWidth = slot => {
-    const adultW = slot.adults.length >= 2 ? COUPLE_W : NODE_W
+    const adultW = slot.adults.length >= 3 ? TRIPLE_W
+                 : slot.adults.length >= 2 ? COUPLE_W
+                 : NODE_W
     if (!slot.childSlots.length) { slot.subtreeWidth = adultW; return adultW }
     slot.childSlots.forEach(calcWidth)
     const childrenW = slot.childSlots.reduce((s, cs) => s + cs.subtreeWidth, 0)
@@ -206,7 +275,7 @@ export function buildTreeLayout(members, relations, colorMap) {
   }
   rootSlots.forEach(calcWidth)
 
-  // ── 6. Top-down: assign (x, y) positions ──────────────────────────────────
+  // ── 7. Top-down: assign (x, y) positions ──────────────────────────────────
   const positions = {}
 
   const assignPos = (slot, centerX) => {
@@ -214,13 +283,19 @@ export function buildTreeLayout(members, relations, colorMap) {
 
     if (slot.adults.length === 1) {
       positions[slot.adults[0]] = { x: centerX - NODE_W / 2, y: slot.y }
+    } else if (slot.adults.length === 3) {
+      // Fixed order: [ex, anchor, current] — anchor is always in the middle
+      const [ex, anchor, current] = slot.adults
+      positions[ex]      = { x: centerX - TRIPLE_W / 2,                      y: slot.y }
+      positions[anchor]  = { x: centerX - TRIPLE_W / 2 + NODE_W + H_SEP,     y: slot.y }
+      positions[current] = { x: centerX - TRIPLE_W / 2 + 2 * (NODE_W + H_SEP), y: slot.y }
     } else {
-      // Older adult on the left
+      // Couple: older adult on the left
       const [a, b] = slot.adults
       const leftId  = cmpAge(a, b) <= 0 ? a : b
       const rightId = leftId === a ? b : a
-      positions[leftId]  = { x: centerX - COUPLE_W / 2,                   y: slot.y }
-      positions[rightId] = { x: centerX - COUPLE_W / 2 + NODE_W + H_SEP,  y: slot.y }
+      positions[leftId]  = { x: centerX - COUPLE_W / 2,                  y: slot.y }
+      positions[rightId] = { x: centerX - COUPLE_W / 2 + NODE_W + H_SEP, y: slot.y }
     }
 
     if (!slot.childSlots.length) return
