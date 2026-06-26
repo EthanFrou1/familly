@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ReactFlowProvider } from '@xyflow/react'
 import { useFamily } from '../hooks/useFamily'
@@ -338,6 +338,25 @@ export default function Tree() {
 
 function PersonFocusSheet({ members, onSelect, onClose }) {
   const [search, setSearch] = useState('')
+  const sheetRef = useRef(null)
+
+  // Remonte la sheet quand le clavier iOS apparaît
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const update = () => {
+      if (!sheetRef.current) return
+      const keyboardHeight = Math.max(0, window.innerHeight - vv.height)
+      sheetRef.current.style.transform = `translateY(-${keyboardHeight}px)`
+      sheetRef.current.style.maxHeight = `${vv.height * 0.9}px`
+    }
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -350,7 +369,7 @@ function PersonFocusSheet({ members, onSelect, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-t-2xl max-h-[70vh] flex flex-col shadow-2xl">
+      <div ref={sheetRef} className="relative bg-white rounded-t-2xl max-h-[70vh] flex flex-col shadow-2xl" style={{ transition: 'transform 0.15s, max-height 0.15s' }}>
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="w-10 h-1 rounded-full bg-gray-200" />
