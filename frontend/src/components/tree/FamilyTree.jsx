@@ -51,6 +51,7 @@ function ZoomControls() {
 
 export default function FamilyTree({ members, relations, families, currentMemberId, onNodeClick, highlightGeneration, onGenerationMap, focusMemberIds }) {
   const colorMap = useMemo(() => buildFamilyColorMap(families), [families])
+  const { fitView } = useReactFlow()
 
   const { rfNodes: rawNodes, rfEdges: edges, generationMap } = useMemo(
     () => buildTreeLayout(members, relations, colorMap),
@@ -60,6 +61,19 @@ export default function FamilyTree({ members, relations, families, currentMember
   useEffect(() => {
     onGenerationMap?.(generationMap)
   }, [generationMap]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!focusMemberIds) return
+    const timer = setTimeout(() => {
+      fitView({
+        nodes: [...focusMemberIds].map(id => ({ id })),
+        duration: 400,
+        padding: 0.4,
+        maxZoom: 1.2,
+      })
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [focusMemberIds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const nodes = useMemo(
     () => rawNodes.map(n => {
