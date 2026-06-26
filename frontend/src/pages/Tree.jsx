@@ -166,30 +166,42 @@ export default function Tree() {
 
             <div className="w-px bg-gray-200 self-stretch mx-0.5" />
 
-            {/* Bouton focus personne */}
-            {focusedMember ? (
+            {/* Bouton focus personne — icône seule, toujours */}
+            <button
+              onClick={() => setShowPersonSheet(true)}
+              className={`rounded-lg p-1 shrink-0 transition-all ${
+                focusedMemberId ? 'text-primary' : 'text-gray-500 active:bg-gray-100'
+              }`}
+              title="Centrer sur un membre"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Chip personne sélectionnée — ligne séparée pour éviter le débordement */}
+        {focusedMember && (
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 bg-primary rounded-lg shadow-sm px-2.5 py-1 shrink-0 max-w-full">
+              <svg className="h-3 w-3 text-white/70 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span className="text-xs font-semibold text-white truncate">
+                {focusedMember.firstName} {focusedMember.lastName}
+              </span>
               <button
                 onClick={() => setFocusedMemberId(null)}
-                className="rounded-lg px-2 py-0.5 text-xs font-semibold bg-primary text-white flex items-center gap-1 shrink-0"
+                className="ml-0.5 shrink-0 text-white/80 active:text-white"
               >
-                <span className="max-w-[56px] truncate">{focusedMember.firstName}</span>
-                <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-            ) : (
-              <button
-                onClick={() => setShowPersonSheet(true)}
-                className="rounded-lg p-1 text-gray-500 active:bg-gray-100 shrink-0"
-                title="Centrer sur un membre"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </button>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Chips génération */}
         {generationCounts.length > 1 && !focusedMemberId && (
