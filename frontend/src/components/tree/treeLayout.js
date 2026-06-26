@@ -210,14 +210,7 @@ export function buildTreeLayout(members, relations, colorMap) {
     ;[...childIds]
       // Skip reserved persons — they will be claimed by their triple-slot anchor
       .filter(cid => !visitedPersons.has(cid) && !reservedForTriple.has(cid))
-      // Process triple-slot anchors first so they claim their reserved spouses
-      // before any other sibling could be processed and accidentally visit them
-      .sort((a, b) => {
-        const aT = tripleSlotAnchors.has(a), bT = tripleSlotAnchors.has(b)
-        if (aT && !bT) return -1
-        if (!aT && bT) return 1
-        return cmpAge(a, b)
-      })
+      .sort(cmpAge)
       .forEach(cid => {
         const cs = makeSlot(cid, generation + 1)
         if (cs) slot.childSlots.push(cs)
@@ -236,14 +229,7 @@ export function buildTreeLayout(members, relations, colorMap) {
     .map(m => m.id)
     // Reserved persons are placed by their triple-slot anchor, not as roots
     .filter(id => !hasParents(id) && !isInLaw(id) && !reservedForTriple.has(id))
-    .sort((a, b) => {
-      // Triple-slot anchors first so they claim their reserved spouses before
-      // any of those spouses could be visited through another path
-      const aT = tripleSlotAnchors.has(a), bT = tripleSlotAnchors.has(b)
-      if (aT && !bT) return -1
-      if (!aT && bT) return 1
-      return cmpAge(a, b)
-    })
+    .sort(cmpAge) // oldest first → oldest sibling leftmost
     .filter(id => {
       if (rootSeen.has(id)) return false
       rootSeen.add(id)
