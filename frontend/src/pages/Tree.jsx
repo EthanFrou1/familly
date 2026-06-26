@@ -124,7 +124,7 @@ export default function Tree() {
       <div className="relative flex-1 bg-gray-50">
 
       {/* ── Filtres inline ── */}
-      <div className="absolute top-3 left-3 right-3 z-20 landscape:top-2 flex flex-col gap-1.5 landscape:gap-1">
+      <div className="absolute top-3 left-3 right-3 z-20 landscape:top-2 landscape:left-1/2 landscape:-translate-x-1/2 landscape:right-auto landscape:w-auto flex flex-col gap-1.5 landscape:gap-1">
         {/* Filtre vue */}
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
           <div className="flex items-center gap-1.5 bg-white rounded-xl shadow-sm px-2 py-1.5 shrink-0">
