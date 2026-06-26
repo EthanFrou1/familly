@@ -3,6 +3,8 @@ import { EdgeLabelRenderer } from '@xyflow/react'
 export function SpouseEdge({ id, sourceX, sourceY, targetX, targetY, style, data }) {
   const midX = (sourceX + targetX) / 2
   const midY = (sourceY + targetY) / 2
+  const borderColor = data?.borderColor || '#F9A8D4'
+  const textColor = data?.textColor || '#F472B6'
 
   return (
     <>
@@ -16,7 +18,7 @@ export function SpouseEdge({ id, sourceX, sourceY, targetX, targetY, style, data
           }}
           className="nodrag nopan"
         >
-          <div style={{ background: '#fff', border: '1.5px solid #F9A8D4', borderRadius: '9999px', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, boxShadow: '0 1px 4px 0 rgba(0,0,0,0.10)', color: '#F472B6' }}>
+          <div style={{ background: '#fff', border: `1.5px solid ${borderColor}`, borderRadius: '9999px', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, boxShadow: '0 1px 4px 0 rgba(0,0,0,0.10)', color: textColor }}>
             {data?.icon}
           </div>
         </div>
