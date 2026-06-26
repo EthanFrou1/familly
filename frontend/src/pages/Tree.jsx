@@ -113,8 +113,8 @@ export default function Tree() {
   return (
     <div className="flex flex-col h-full">
 
-      {/* ── Header fixe ── */}
-      <div className="bg-dark px-5 pt-10 pb-4 shrink-0">
+      {/* ── Header fixe — masqué en paysage pour maximiser l'arbre ── */}
+      <div className="bg-dark px-5 pt-10 pb-4 shrink-0 landscape:hidden">
         <h1 className="text-2xl font-bold text-white">Arbre familial</h1>
         <p className="text-sm text-white mt-0.5">
           Pincez pour zoomer · Glissez pour naviguer · Appuyez sur un membre pour voir son profil
@@ -124,7 +124,7 @@ export default function Tree() {
       <div className="relative flex-1 bg-gray-50">
 
       {/* ── Filtres inline ── */}
-      <div className="absolute top-3 left-3 right-3 z-20 flex flex-col gap-1.5">
+      <div className="absolute top-3 left-3 right-3 z-20 landscape:top-2 flex flex-col gap-1.5 landscape:gap-1">
         {/* Filtre vue */}
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
           <div className="flex items-center gap-1.5 bg-white rounded-xl shadow-sm px-2 py-1.5 shrink-0">
@@ -204,9 +204,9 @@ export default function Tree() {
           </div>
         )}
 
-        {/* Chips génération */}
+        {/* Chips génération — masquées en paysage pour maximiser l'arbre */}
         {generationCounts.length > 1 && !focusedMemberId && (
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none landscape:hidden">
             <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm px-2 py-1 shrink-0">
               <button
                 onClick={() => setSelectedGen(null)}
