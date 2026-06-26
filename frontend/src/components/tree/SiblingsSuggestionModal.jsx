@@ -46,7 +46,7 @@ export default function SiblingsSuggestionModal({ suggestions, onClose, onCreate
   const remaining = suggestions.filter(s => !created.has(pairKey(s)))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40" onClick={onClose}>
       <div
         className="w-full max-w-md bg-white rounded-t-3xl shadow-2xl pb-20 max-h-[80vh] flex flex-col"
         onClick={e => e.stopPropagation()}

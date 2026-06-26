@@ -286,8 +286,9 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   // Separated (horizontal, orange dashed)
   sepRels.forEach(r => rfEdges.push(horizEdge(`sep-${r.id}`, r.memberAId, r.memberBId, {
+    type: 'spouse',
     style: { stroke: '#FB923C', strokeWidth: 1.5, strokeDasharray: '6 4' },
-    label: '💔', labelStyle: { fontSize: 13 }, labelBgStyle: { fill: 'transparent' },
+    data: { icon: '💔', borderColor: '#FB923C', textColor: '#FB923C' },
   })))
 
   // Sibling edges — horizontal bracket between adjacent siblings
