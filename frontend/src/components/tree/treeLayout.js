@@ -115,7 +115,17 @@ export function buildTreeLayout(members, relations, colorMap) {
   }
   const currentSpousesOf = new Map() // Spouse / Partner → right side
   const exSpousesOf      = new Map() // Separated        → left side
-  spRels.forEach(r => addPair(currentSpousesOf, r.memberAId, r.memberBId))
+  spRels.forEach(r => {
+    // A deceased spouse is treated as an ex in layout so a widower who remarried
+    // becomes a triple-slot anchor: [deceased | person | current]
+    const aDeceased = memberMap[r.memberAId] && !memberMap[r.memberAId].isAlive
+    const bDeceased = memberMap[r.memberBId] && !memberMap[r.memberBId].isAlive
+    if (aDeceased || bDeceased) {
+      addPair(exSpousesOf, r.memberAId, r.memberBId)
+    } else {
+      addPair(currentSpousesOf, r.memberAId, r.memberBId)
+    }
+  })
   sepRels.forEach(r => addPair(exSpousesOf,     r.memberAId, r.memberBId))
   // Union — used for isInLaw / rootSeen
   const spousesOf = new Map()
