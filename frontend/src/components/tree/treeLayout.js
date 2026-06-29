@@ -208,8 +208,9 @@ export function buildTreeLayout(members, relations, colorMap) {
     }
 
     ;[...childIds]
-      // Skip reserved persons — they will be claimed by their triple-slot anchor
-      .filter(cid => !visitedPersons.has(cid) && !reservedForTriple.has(cid))
+      // Allow reserved persons to be placed at their correct generation via their parents.
+      // If they were already claimed by a triple-slot, visitedPersons prevents double-processing.
+      .filter(cid => !visitedPersons.has(cid))
       .sort(cmpAge)
       .forEach(cid => {
         const cs = makeSlot(cid, generation + 1)
@@ -242,7 +243,17 @@ export function buildTreeLayout(members, relations, colorMap) {
   // Catch any remaining unvisited members (disconnected or reserved but orphaned)
   members.forEach(m => {
     if (!visitedPersons.has(m.id)) {
-      const s = makeSlot(m.id, 0)
+      // Infer generation: from parents already placed, or from visited spouses (for in-laws / triple-slot anchors)
+      const parents = [...(childToParents.get(m.id) || new Set())]
+      const parentGens = parents.map(pid => generationMap[pid]).filter(g => g !== undefined)
+      const allSpouses = spousesOf.get(m.id) || []
+      const spouseGens = allSpouses.map(sid => generationMap[sid]).filter(g => g !== undefined)
+
+      let gen = 0
+      if (parentGens.length > 0) gen = Math.max(...parentGens) + 1
+      else if (spouseGens.length > 0) gen = Math.max(...spouseGens)
+
+      const s = makeSlot(m.id, gen)
       if (s) rootSlots.push(s)
     }
   })
