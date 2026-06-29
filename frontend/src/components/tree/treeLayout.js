@@ -148,12 +148,19 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   const tripleSlotAnchors = new Set()
   const reservedForTriple = new Set() // ex-spouses + current spouses of anchors
+  const memberToTripleAnchor = new Map() // reserved member → their anchor
 
   members.forEach(m => {
     if (hasExAndCurrent(m.id)) {
       tripleSlotAnchors.add(m.id)
-      ;(currentSpousesOf.get(m.id) || []).forEach(sid => reservedForTriple.add(sid))
-      ;(exSpousesOf.get(m.id) || []).forEach(sid => reservedForTriple.add(sid))
+      ;(currentSpousesOf.get(m.id) || []).forEach(sid => {
+        reservedForTriple.add(sid)
+        if (!memberToTripleAnchor.has(sid)) memberToTripleAnchor.set(sid, m.id)
+      })
+      ;(exSpousesOf.get(m.id) || []).forEach(sid => {
+        reservedForTriple.add(sid)
+        if (!memberToTripleAnchor.has(sid)) memberToTripleAnchor.set(sid, m.id)
+      })
     }
   })
 
@@ -173,6 +180,19 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   const makeSlot = (anchorId, generation) => {
     if (visitedPersons.has(anchorId)) return null
+
+    // If this person is reserved for a triple-slot (they are someone's current or ex spouse)
+    // and their anchor hasn't been placed yet, delegate to the anchor so the full
+    // [ex | anchor | current] slot is created at the correct generation.
+    // This ensures e.g. Claire-Marie (child of Michel, partner of Franck) pulls Franck's
+    // triple-slot down into Michel's subtree at the right generation.
+    if (reservedForTriple.has(anchorId) && memberToTripleAnchor.has(anchorId)) {
+      const anchor = memberToTripleAnchor.get(anchorId)
+      if (!visitedPersons.has(anchor)) return makeSlot(anchor, generation)
+      // Anchor already visited — this person was already claimed; skip
+      return null
+    }
+
     visitedPersons.add(anchorId)
     generationMap[anchorId] = generation
 

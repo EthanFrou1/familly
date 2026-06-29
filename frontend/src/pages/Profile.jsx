@@ -356,16 +356,16 @@ export default function Profile() {
           style={{ background: familyColor ? familyColor.border : 'transparent' }}
         />
 
-        {/* Bouton retour vers la liste des membres */}
-        {location.state?.from === '/members' && (
+        {/* Bouton retour */}
+        {(location.state?.from === '/members' || location.state?.from === '/tree') && (
           <button
-            onClick={() => navigate('/members')}
+            onClick={() => navigate(location.state.from)}
             className="absolute top-6 left-4 flex items-center gap-1 rounded-full bg-white/10 border border-white/20 px-3 py-1.5 text-xs font-semibold text-white active:bg-white/20 transition-colors"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            Membres
+            {location.state.from === '/tree' ? 'Arbre' : 'Membres'}
           </button>
         )}
 

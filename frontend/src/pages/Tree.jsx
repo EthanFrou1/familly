@@ -319,7 +319,7 @@ export default function Tree() {
             relations={relations}
             families={families}
             currentMemberId={user?.memberId}
-            onNodeClick={m => navigate(`/profile/${m.id}`)}
+            onNodeClick={m => navigate(`/profile/${m.id}`, { state: { from: '/tree' } })}
             highlightGeneration={selectedGen}
             onGenerationMap={setGenerationMap}
             focusMemberIds={focusMemberIds}
