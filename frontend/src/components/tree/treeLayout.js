@@ -240,8 +240,15 @@ export function buildTreeLayout(members, relations, colorMap) {
 
   const rootSlots = rootAnchors.map(id => makeSlot(id, 0)).filter(Boolean)
 
-  // Catch any remaining unvisited members (disconnected or reserved but orphaned)
-  members.forEach(m => {
+  // Catch any remaining unvisited members (disconnected or reserved but orphaned).
+  // Process triple-slot anchors first so they can claim their reserved partners at the
+  // correct generation before those reserved persons are processed independently.
+  const fallbackOrder = [...members].sort((a, b) => {
+    const scoreA = tripleSlotAnchors.has(a.id) ? 0 : (reservedForTriple.has(a.id) ? 2 : 1)
+    const scoreB = tripleSlotAnchors.has(b.id) ? 0 : (reservedForTriple.has(b.id) ? 2 : 1)
+    return scoreA - scoreB
+  })
+  fallbackOrder.forEach(m => {
     if (!visitedPersons.has(m.id)) {
       // Infer generation: from parents already placed, or from visited spouses (for in-laws / triple-slot anchors)
       const parents = [...(childToParents.get(m.id) || new Set())]
