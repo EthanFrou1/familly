@@ -227,15 +227,12 @@ export function buildTreeLayout(members, relations, colorMap) {
     }
     adults.forEach(id => personToSlot.set(id, slot))
 
-    // Collect children
+    // Collect children of all adults (anchor + ex + current), not just the anchor.
+    // Collecting only the anchor's children misses children who have only the ex/current
+    // as their sole parent in the tree (e.g. Quentin whose only parent is Christophe,
+    // while the anchor is Céline).
     const childIds = new Set()
-    if (tripleSlotAnchors.has(anchorId)) {
-      // For triple slot, only collect the anchor's own children to avoid
-      // pulling in children of the ex/current from other relationships
-      ;(parentToChildren.get(anchorId) || new Set()).forEach(cid => childIds.add(cid))
-    } else {
-      adults.forEach(aid => (parentToChildren.get(aid) || new Set()).forEach(cid => childIds.add(cid)))
-    }
+    adults.forEach(aid => (parentToChildren.get(aid) || new Set()).forEach(cid => childIds.add(cid)))
 
     ;[...childIds]
       // Allow reserved persons to be placed at their correct generation via their parents.
