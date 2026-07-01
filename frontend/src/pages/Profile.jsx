@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
 import { membersApi, relationsApi, adminApi, settingsApi, familiesApi, pushApi, activityLogsApi, authApi, gamesApi } from '../services/api'
+import { formatDuration } from '../utils/memoryGame'
 import { getRelationshipLabel } from '../utils/relationshipUtils'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
@@ -579,10 +580,13 @@ export default function Profile() {
         {!isDeceased && (gameStats?.gamesPlayed > 0 || isOwnProfile) && (
           <Card title="Jeux">
             {gameStats?.gamesPlayed > 0 ? (
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-2 gap-2 text-center">
                 <StatBlock value={gameStats.gamesPlayed} label="Parties" />
                 <StatBlock value={gameStats.wins} label="Victoires" />
                 <StatBlock value={gameStats.losses} label="Défaites" />
+                {gameStats.bestDurationSeconds != null && (
+                  <StatBlock value={formatDuration(gameStats.bestDurationSeconds)} label="Meilleur temps" />
+                )}
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
