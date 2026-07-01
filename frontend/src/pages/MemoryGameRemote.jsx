@@ -40,6 +40,7 @@ export default function MemoryGameRemote() {
   const [pendingWinnerId, setPendingWinnerId] = useState(null)
   const [finalPlayers, setFinalPlayers] = useState([])
   const [gameDuration, setGameDuration] = useState(null)
+  const [codeCopied, setCodeCopied] = useState(false)
 
   const me = players.find(p => p.memberId === user?.memberId)
   const myColorIndex = me?.colorIndex
@@ -163,6 +164,12 @@ export default function MemoryGameRemote() {
     gameHub.flipCard(card.cardId).catch(() => {})
   }
 
+  async function handleCopyCode() {
+    await navigator.clipboard.writeText(code)
+    setCodeCopied(true)
+    setTimeout(() => setCodeCopied(false), 2000)
+  }
+
   function handleExit() {
     gameHub.leaveRoom().catch(() => {})
     navigate('/games')
@@ -211,7 +218,22 @@ export default function MemoryGameRemote() {
         <GameHeader title="Salon d'attente" onBack={handleExit} />
         <div className="px-4 mt-6 flex flex-col items-center">
           <p className="text-sm text-gray-500 mb-2">Code de la partie</p>
-          <p className="text-4xl font-black tracking-[0.3em] text-primary mb-6">{code}</p>
+          <p className="text-4xl font-black tracking-[0.3em] text-primary mb-3">{code}</p>
+          <button
+            onClick={handleCopyCode}
+            className="mb-6 flex items-center gap-1.5 rounded-full bg-white shadow-sm px-4 py-2 text-xs font-semibold text-gray-600 active:bg-gray-50"
+          >
+            {codeCopied ? (
+              'Copié !'
+            ) : (
+              <>
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copier le code
+              </>
+            )}
+          </button>
 
           <div className="w-full rounded-2xl bg-white shadow-sm divide-y divide-gray-50 overflow-hidden mb-6">
             {players.map(p => (
