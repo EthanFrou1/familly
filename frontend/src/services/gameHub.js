@@ -42,6 +42,7 @@ export function onHubEvent(event, handler) {
 }
 
 export const gameHub = {
+  getOpenRooms: () => getConnection().invoke('GetOpenRooms'),
   createRoom: (gameType) => getConnection().invoke('CreateRoom', gameType),
   joinRoom: (code) => getConnection().invoke('JoinRoom', code),
   leaveRoom: () => getConnection().invoke('LeaveRoom'),

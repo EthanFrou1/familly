@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
-import { connectHub, disconnectHub, gameHub, onHubEvent } from '../services/gameHub'
+import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
 import { membersWithPhoto, PLAYER_COLORS } from '../utils/memoryGame'
 import GameHeader from '../components/games/GameHeader'
 import DifficultySetupStep from '../components/games/DifficultySetupStep'
@@ -17,6 +17,8 @@ const MATCH_DELAY = 300
 
 export default function MemoryGameRemote() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const autoJoinCode = location.state?.autoJoinCode
   const { user } = useAuth()
   const { members } = useMembers()
   const { setHideChrome } = useUiChrome()
@@ -59,9 +61,13 @@ export default function MemoryGameRemote() {
     connectHub().catch(() => setError('Connexion impossible.'))
     return () => {
       gameHub.leaveRoom().catch(() => {})
-      disconnectHub()
     }
   }, [])
+
+  useEffect(() => {
+    if (autoJoinCode) handleJoinRoom(autoJoinCode)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoJoinCode])
 
   useEffect(() => {
     const offs = [
@@ -131,13 +137,14 @@ export default function MemoryGameRemote() {
     }
   }
 
-  async function handleJoinRoom() {
-    if (!joinCodeInput.trim()) return
+  async function handleJoinRoom(codeOverride) {
+    const codeToJoin = (codeOverride ?? joinCodeInput).trim()
+    if (!codeToJoin) return
     setConnecting(true)
     setError('')
     try {
       await connectHub()
-      const res = await gameHub.joinRoom(joinCodeInput.trim().toUpperCase())
+      const res = await gameHub.joinRoom(codeToJoin.toUpperCase())
       if (!res.success) { setError(res.error); return }
       setCode(res.code)
       setPlayers(res.players)
@@ -200,7 +207,7 @@ export default function MemoryGameRemote() {
               className="w-full rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-center text-lg font-bold tracking-[0.3em] uppercase focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <button
-              onClick={handleJoinRoom}
+              onClick={() => handleJoinRoom()}
               disabled={connecting || !joinCodeInput.trim()}
               className="w-full rounded-xl bg-primary/10 py-3 text-sm font-semibold text-primary active:bg-primary/20 disabled:opacity-50"
             >
