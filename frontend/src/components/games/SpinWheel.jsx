@@ -4,19 +4,20 @@ const SPIN_DURATION = 3200
 const REVEAL_HOLD = 1100
 const SLICE_COLORS = ['var(--c-primary)', 'var(--c-dark)']
 
-function buildGradient(n) {
-  const angle = 360 / n
-  const stops = []
-  for (let i = 0; i < n; i++) {
-    stops.push(`${SLICE_COLORS[i % 2]} ${i * angle}deg ${(i + 1) * angle}deg`)
-  }
+function buildGradient(items) {
+  const angle = 360 / items.length
+  const stops = items.map((item, i) => {
+    const color = item.color ?? SLICE_COLORS[i % SLICE_COLORS.length]
+    return `${color} ${i * angle}deg ${(i + 1) * angle}deg`
+  })
   return `conic-gradient(${stops.join(', ')})`
 }
 
 /**
  * Roue de tirage au sort générique, réutilisable pour n'importe quel jeu :
- * items = [{ id, label }], onSpinEnd(item) est appelé une fois l'animation
- * (rotation + révélation) terminée.
+ * items = [{ id, label, color? }], onSpinEnd(item) est appelé une fois
+ * l'animation (rotation + révélation) terminée. `color` est optionnel
+ * (une couleur CSS valide) ; à défaut, les couleurs du thème alternent.
  */
 export default function SpinWheel({ items, onSpinEnd, size = 260, spinLabel = 'Tourner', disabled = false }) {
   const [rotation, setRotation] = useState(0)
@@ -60,7 +61,7 @@ export default function SpinWheel({ items, onSpinEnd, size = 260, spinLabel = 'T
         <div
           className="h-full w-full rounded-full border-4 border-white shadow-xl overflow-hidden relative"
           style={{
-            background: buildGradient(items.length),
+            background: buildGradient(items),
             transform: `rotate(${rotation}deg)`,
             transition: spinning ? 'transform 3.2s cubic-bezier(0.15,0.65,0.2,1)' : 'none',
           }}

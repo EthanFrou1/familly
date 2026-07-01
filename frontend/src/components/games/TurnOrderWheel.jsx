@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import SpinWheel from './SpinWheel'
+import { PLAYER_COLORS } from '../../utils/memoryGame'
 
 /**
  * Tire l'ordre de jeu complet d'une liste de joueurs à l'aide de SpinWheel :
@@ -10,7 +11,11 @@ export default function TurnOrderWheel({ players, onOrderReady }) {
   const [remaining, setRemaining] = useState(players)
   const [order, setOrder] = useState([])
 
-  const items = remaining.map((p, i) => ({ id: i, label: p.name }))
+  const items = remaining.map((p, i) => ({
+    id: i,
+    label: p.name,
+    color: PLAYER_COLORS[p.colorIndex % PLAYER_COLORS.length]?.hex,
+  }))
 
   function handleSpinEnd(picked) {
     const winner = remaining[picked.id]
