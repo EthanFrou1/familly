@@ -146,9 +146,9 @@ export default function MemoryGame() {
   }
 
   return (
-    <div className="relative h-full bg-gray-50 overflow-y-auto">
-      <div className={`transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
-        <div className="px-4 pt-12 mb-3 space-y-2">
+    <div className="relative h-full bg-gray-50 overflow-hidden">
+      <div className={`h-full flex flex-col transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
+        <div className="px-4 pt-12 pb-3 space-y-2 shrink-0">
           <div className="rounded-2xl bg-white shadow-sm px-4 py-3 flex items-center gap-2">
             <span className="text-sm text-gray-500">Au tour de</span>
             <span className="flex-1 text-right text-sm font-bold text-primary truncate">{players[currentPlayer]?.name}</span>
@@ -169,7 +169,7 @@ export default function MemoryGame() {
           </div>
         </div>
 
-        <div className="px-4 pb-6">
+        <div className="flex-1 min-h-0 px-4 pb-4 grid place-items-center">
           <MemoryBoard
             deck={deck}
             flippedIds={flipped}
