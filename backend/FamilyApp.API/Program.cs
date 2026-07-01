@@ -34,6 +34,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 if (ctx.Request.Cookies.TryGetValue("access_token", out var token))
                     ctx.Token = token;
+
+                // Le hub SignalR est appelé directement sur le domaine Railway (le proxy
+                // Vercel ne gère pas les WebSockets), donc le cookie posé côté
+                // mybigfamily.fr n'y arrive jamais. Le client SignalR envoie alors le
+                // JWT via accessTokenFactory, transmis en query string pour ce chemin.
+                var accessToken = ctx.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                    ctx.Token = accessToken;
+
                 return Task.CompletedTask;
             }
         };
