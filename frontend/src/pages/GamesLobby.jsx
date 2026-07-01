@@ -62,17 +62,23 @@ export default function GamesLobby() {
               <h2 className="text-sm font-semibold text-gray-500">Dernières parties</h2>
             </div>
             <div className="divide-y divide-gray-50">
-              {recentResults.map(r => (
-                <div key={r.id} className="flex items-center justify-between px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      {r.winnerName ? `🏆 ${r.winnerName}` : 'Égalité'}
+              {recentResults.map(r => {
+                const ranked = [...r.players].sort((a, b) => b.score - a.score)
+                return (
+                  <div key={r.id} className="px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-700">
+                        {r.winnerName ? `🏆 ${r.winnerName}` : 'Égalité'}
+                      </p>
+                      <span className="text-xs text-gray-400">{formatDate(r.createdAt)}</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">{r.pairsCount} paires · {r.playerCount} joueurs</p>
+                    <p className="text-xs text-gray-500 mt-1.5">
+                      {ranked.map((p, i) => `${i + 1}. ${p.name} (${p.score})`).join(' · ')}
                     </p>
-                    <p className="text-xs text-gray-400">{r.pairsCount} paires · {r.playerCount} joueurs</p>
                   </div>
-                  <span className="text-xs text-gray-400">{formatDate(r.createdAt)}</span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}

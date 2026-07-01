@@ -46,7 +46,7 @@ export default function GameResultsScreen({ players, pairsCount, durationSeconds
         <button onClick={onReplay} className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white active:bg-primary-dark">
           Rejouer
         </button>
-        <button onClick={onExit} className="w-full py-3 text-sm font-semibold text-gray-500">
+        <button onClick={onExit} className="w-full rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-500">
           Retour aux jeux
         </button>
       </div>
