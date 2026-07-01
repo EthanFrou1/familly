@@ -60,6 +60,22 @@ export default function GamesLobby() {
           </button>
         </div>
 
+        <button
+          onClick={() => navigate('/games/leaderboard')}
+          className="w-full rounded-2xl bg-white shadow-sm px-4 py-4 flex items-center gap-4 active:opacity-70"
+        >
+          <div className="h-14 w-14 shrink-0 rounded-2xl bg-amber-400 flex items-center justify-center text-2xl">
+            🏆
+          </div>
+          <div className="flex-1 text-left">
+            <h2 className="font-semibold text-gray-800">Classements</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Podiums par jeu et classement général</p>
+          </div>
+          <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
         {recentResults.length > 0 && (
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
             <button
