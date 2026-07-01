@@ -26,8 +26,8 @@ export default function MemoryGame() {
   const [gameDuration, setGameDuration] = useState(null)
   const startTimeRef = useRef(null)
 
-  function handlePlayersChosen(names) {
-    setPlayers(names.map(name => ({ name, score: 0 })))
+  function handlePlayersChosen(chosenPlayers) {
+    setPlayers(chosenPlayers.map(p => ({ ...p, score: 0 })))
     setStep('difficulty')
   }
 

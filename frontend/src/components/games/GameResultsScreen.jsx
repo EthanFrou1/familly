@@ -14,7 +14,7 @@ export default function GameResultsScreen({ players, pairsCount, durationSeconds
     gamesApi.submitResult({
       gameType: 'memory',
       pairsCount,
-      players: players.map(p => ({ name: p.name, score: p.score })),
+      players: players.map(p => ({ name: p.name, score: p.score, memberId: p.memberId ?? null, isGuest: !!p.isGuest })),
       winnerName,
       durationSeconds,
     }).catch(() => {})
@@ -33,7 +33,10 @@ export default function GameResultsScreen({ players, pairsCount, durationSeconds
       <div className="rounded-2xl bg-white shadow-sm divide-y divide-gray-50 overflow-hidden">
         {ranked.map((p, i) => (
           <div key={p.name + i} className="flex items-center justify-between px-4 py-3">
-            <span className="text-sm font-medium text-gray-700">{i + 1}. {p.name}</span>
+            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              {i + 1}. {p.name}
+              {p.isGuest && <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">invité</span>}
+            </span>
             <span className="text-sm font-semibold text-primary">{p.score} paire{p.score !== 1 ? 's' : ''}</span>
           </div>
         ))}
