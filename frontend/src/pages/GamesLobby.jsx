@@ -17,7 +17,7 @@ export default function GamesLobby() {
   const unlocked = photoCount >= MIN_PAIRS_TO_UNLOCK
 
   useEffect(() => {
-    gamesApi.getResults('memory', 5)
+    gamesApi.getResults('memory', 10)
       .then(({ data }) => setRecentResults(data))
       .catch(() => {})
   }, [])
