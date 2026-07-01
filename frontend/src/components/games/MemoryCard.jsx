@@ -5,38 +5,22 @@ export default function MemoryCard({ card, isFlipped, isMatched, matchedRingClas
     <button
       onClick={onClick}
       disabled={disabled || revealed}
-      className="w-full h-full active:scale-95 transition-transform"
-      style={{ perspective: 800, WebkitPerspective: 800 }}
+      className="relative w-full h-full active:scale-95 transition-transform"
     >
+      {/* Dos de la carte */}
       <div
-        className={`relative w-full h-full transition-all duration-500 ${isMatched ? 'opacity-70' : ''}`}
-        style={{
-          transformStyle: 'preserve-3d',
-          WebkitTransformStyle: 'preserve-3d',
-          transform: revealed ? 'rotateY(180deg)' : 'rotateY(0deg)',
-          WebkitTransform: revealed ? 'rotateY(180deg)' : 'rotateY(0deg)',
-        }}
+        className="absolute inset-0 rounded-xl overflow-hidden shadow-sm bg-primary flex items-center justify-center text-white text-2xl transition-all duration-300"
+        style={{ opacity: revealed ? 0 : 1, transform: revealed ? 'scale(0.85)' : 'scale(1)' }}
       >
-        {/* Dos de la carte */}
-        <div
-          className="absolute inset-0 rounded-xl overflow-hidden shadow-sm bg-primary flex items-center justify-center text-white text-2xl"
-          style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
-        >
-          🌳
-        </div>
+        🌳
+      </div>
 
-        {/* Photo du membre */}
-        <div
-          className={`absolute inset-0 rounded-xl overflow-hidden shadow-sm ${isMatched ? `ring-2 ${matchedRingClass}` : ''}`}
-          style={{
-            backfaceVisibility: 'hidden',
-            WebkitBackfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
-            WebkitTransform: 'rotateY(180deg)',
-          }}
-        >
-          <img src={card.photoUrl} alt={card.name} className="h-full w-full object-cover" />
-        </div>
+      {/* Photo du membre */}
+      <div
+        className={`absolute inset-0 rounded-xl overflow-hidden shadow-sm transition-all duration-300 ${isMatched ? `ring-2 ${matchedRingClass}` : ''}`}
+        style={{ opacity: revealed ? (isMatched ? 0.7 : 1) : 0, transform: revealed ? 'scale(1)' : 'scale(0.85)' }}
+      >
+        <img src={card.photoUrl} alt={card.name} className="h-full w-full object-cover" />
       </div>
     </button>
   )
