@@ -87,7 +87,9 @@ function PlayerSlot({ index, isSelf, isOwnAccount, slot, member, candidates, onC
     : []
 
   function toggleLink() {
-    onChange(linked ? { mode: 'guest', memberId: null } : { mode: 'member', memberId: null })
+    if (linked) onChange({ mode: 'guest', memberId: null })
+    else if (searching) onChange({ mode: 'guest' })
+    else onChange({ mode: 'member', memberId: null })
   }
 
   return (
@@ -110,9 +112,11 @@ function PlayerSlot({ index, isSelf, isOwnAccount, slot, member, candidates, onC
           <button
             type="button"
             onClick={toggleLink}
-            className={`shrink-0 rounded-xl px-3 py-2.5 text-xs font-semibold ${linked ? 'bg-gray-100 text-gray-500' : 'bg-primary/10 text-primary'}`}
+            className={`shrink-0 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors ${
+              linked ? 'bg-primary text-white' : searching ? 'bg-gray-200 text-gray-600' : 'bg-primary/10 text-primary'
+            }`}
           >
-            {linked ? 'Délier' : 'Lier'}
+            {linked ? 'Délier' : searching ? 'Annuler' : 'Lier'}
           </button>
         )}
       </div>

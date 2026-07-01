@@ -5,6 +5,7 @@ import { useUiChrome } from '../store/UiChromeContext'
 import { buildDeck, membersWithPhoto } from '../utils/memoryGame'
 import PlayerSetupStep from '../components/games/PlayerSetupStep'
 import DifficultySetupStep from '../components/games/DifficultySetupStep'
+import TurnOrderWheel from '../components/games/TurnOrderWheel'
 import MemoryBoard from '../components/games/MemoryBoard'
 import GameResultsScreen from '../components/games/GameResultsScreen'
 
@@ -37,6 +38,16 @@ export default function MemoryGame() {
   function handlePlayersChosen(chosenPlayers) {
     setPlayers(chosenPlayers.map(p => ({ ...p, score: 0 })))
     setStep('difficulty')
+  }
+
+  function chooseDifficulty(count) {
+    setPairsCount(count)
+    setStep('order')
+  }
+
+  function handleOrderReady(orderedPlayers) {
+    setPlayers(orderedPlayers)
+    startGame(pairsCount)
   }
 
   function startGame(count) {
@@ -105,7 +116,16 @@ export default function MemoryGame() {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
         <Header title="Memory" onBack={() => setStep('players')} />
-        <DifficultySetupStep photoCount={photoCount} onBack={() => setStep('players')} onStart={startGame} />
+        <DifficultySetupStep photoCount={photoCount} onBack={() => setStep('players')} onStart={chooseDifficulty} />
+      </div>
+    )
+  }
+
+  if (step === 'order') {
+    return (
+      <div className="overflow-y-auto h-full bg-gray-50 pb-24">
+        <Header title="Memory" onBack={() => setStep('difficulty')} />
+        <TurnOrderWheel players={players} onOrderReady={handleOrderReady} />
       </div>
     )
   }
@@ -128,17 +148,13 @@ export default function MemoryGame() {
   return (
     <div className="relative h-full bg-gray-50 overflow-y-auto">
       <div className={`transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
-        <div className="bg-dark px-4 pt-12 pb-3 flex items-center justify-between">
-          <h1 className="text-lg font-bold text-white">Memory</h1>
-          <button onClick={() => setPaused(true)} className="text-white/80 p-1.5 -mr-1.5">
-            <DotsIcon />
-          </button>
-        </div>
-
-        <div className="px-4 mt-4 mb-3 space-y-2">
-          <div className="rounded-2xl bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+        <div className="px-4 pt-12 mb-3 space-y-2">
+          <div className="rounded-2xl bg-white shadow-sm px-4 py-3 flex items-center gap-2">
             <span className="text-sm text-gray-500">Au tour de</span>
-            <span className="text-sm font-bold text-primary">{players[currentPlayer]?.name}</span>
+            <span className="flex-1 text-right text-sm font-bold text-primary truncate">{players[currentPlayer]?.name}</span>
+            <button onClick={() => setPaused(true)} className="shrink-0 text-gray-400 -mr-1 p-1">
+              <DotsIcon />
+            </button>
           </div>
           <div className="flex gap-2">
             {players.map((p, i) => (

@@ -23,7 +23,7 @@ export default function DifficultySetupStep({ photoCount, onBack, onStart }) {
           </button>
         )
       })}
-      <button onClick={onBack} className="w-full rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-500">
+      <button onClick={onBack} className="w-full rounded-xl border border-dark py-3 text-sm font-semibold text-gray-500">
         Retour
       </button>
     </div>
