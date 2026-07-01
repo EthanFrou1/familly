@@ -79,8 +79,8 @@ export default function PlayerSetupStep({ onContinue }) {
 }
 
 function PlayerSlot({ index, isSelf, isOwnAccount, slot, member, candidates, onChange }) {
-  const linked = slot.mode === 'member' && !!slot.memberId
-  const searching = slot.mode === 'member' && !slot.memberId
+  const linked = isSelf || (slot.mode === 'member' && !!slot.memberId)
+  const searching = !isSelf && slot.mode === 'member' && !slot.memberId
 
   const filtered = searching && slot.search.trim()
     ? candidates.filter(m => matchesSearch(`${m.firstName} ${m.lastName}`, slot.search))
@@ -106,13 +106,15 @@ function PlayerSlot({ index, isSelf, isOwnAccount, slot, member, candidates, onC
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Vous</span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={toggleLink}
-          className={`shrink-0 rounded-xl px-3 py-2.5 text-xs font-semibold ${linked ? 'bg-gray-100 text-gray-500' : 'bg-primary/10 text-primary'}`}
-        >
-          {linked ? 'Délier' : 'Lier'}
-        </button>
+        {!isSelf && (
+          <button
+            type="button"
+            onClick={toggleLink}
+            className={`shrink-0 rounded-xl px-3 py-2.5 text-xs font-semibold ${linked ? 'bg-gray-100 text-gray-500' : 'bg-primary/10 text-primary'}`}
+          >
+            {linked ? 'Délier' : 'Lier'}
+          </button>
+        )}
       </div>
 
       {searching && (
@@ -140,9 +142,7 @@ function PlayerSlot({ index, isSelf, isOwnAccount, slot, member, candidates, onC
       )}
 
       {!searching && !linked && (
-        <p className="px-1 text-xs text-gray-400">
-          {isSelf ? 'Non lié à votre profil — ce score ne comptera pas pour vous' : 'Joueur invité, non comptabilisé dans les classements'}
-        </p>
+        <p className="px-1 text-xs text-gray-400">Joueur invité, non comptabilisé dans les classements</p>
       )}
     </div>
   )
