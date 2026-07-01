@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
@@ -8,6 +8,7 @@ import DifficultySetupStep from '../components/games/DifficultySetupStep'
 import TurnOrderWheel from '../components/games/TurnOrderWheel'
 import MemoryBoard from '../components/games/MemoryBoard'
 import GameResultsScreen from '../components/games/GameResultsScreen'
+import Avatar from '../components/shared/Avatar'
 
 const FLIP_BACK_DELAY = 900
 const MATCH_DELAY = 300
@@ -17,6 +18,7 @@ export default function MemoryGame() {
   const navigate = useNavigate()
   const { setHideChrome } = useUiChrome()
   const photoCount = membersWithPhoto(members).length
+  const memberById = useMemo(() => new Map(members.map(m => [m.id, m])), [members])
 
   const [step, setStep] = useState('players')
   const [players, setPlayers] = useState([])
@@ -166,28 +168,43 @@ export default function MemoryGame() {
   return (
     <div className="relative h-full bg-gray-50 overflow-hidden">
       <div className={`h-full flex flex-col transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
-        <div className="px-4 pt-12 pb-3 space-y-2 shrink-0">
-          <div className="rounded-2xl bg-white shadow-sm px-4 py-3 flex items-center gap-2">
-            <span className="text-sm text-gray-500">Au tour de</span>
-            <span className="flex-1 text-right text-sm font-bold text-primary truncate">{players[currentPlayer]?.name}</span>
-            <span className="shrink-0 text-xs font-mono text-gray-400">{formatDuration(elapsedSeconds)}</span>
+        <div className="px-4 pt-12 pb-3 shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-mono font-semibold text-gray-400 bg-white rounded-full px-3 py-1.5 shadow-sm">
+              ⏱ {formatDuration(elapsedSeconds)}
+            </span>
             <button
               onClick={() => setPaused(true)}
-              className="shrink-0 min-h-touch min-w-touch flex items-center justify-center text-gray-400 -mr-2.5"
+              className="shrink-0 min-h-touch min-w-touch flex items-center justify-center text-gray-400 bg-white rounded-full shadow-sm"
             >
               <DotsIcon />
             </button>
           </div>
+
           <div className="flex gap-2">
-            {players.map((p, i) => (
-              <div
-                key={p.name + i}
-                className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-center text-xs font-medium ${i === currentPlayer ? 'bg-primary text-white' : 'bg-white text-gray-500 shadow-sm'}`}
-              >
-                <span className={`h-2 w-2 rounded-full shrink-0 ${PLAYER_COLORS[i % PLAYER_COLORS.length].dot}`} />
-                {p.name}: {p.score}
-              </div>
-            ))}
+            {players.map((p, i) => {
+              const isActive = i === currentPlayer
+              const color = PLAYER_COLORS[i % PLAYER_COLORS.length]
+              return (
+                <div
+                  key={p.name + i}
+                  className={`flex-1 flex flex-col items-center gap-1 rounded-2xl py-2.5 px-1 transition-all duration-200 ${
+                    isActive ? 'bg-primary shadow-md scale-105' : 'bg-white shadow-sm'
+                  }`}
+                >
+                  <Avatar
+                    member={memberById.get(p.memberId)}
+                    name={p.name}
+                    size="sm"
+                    className={`ring-2 ${isActive ? 'ring-white' : color.ring}`}
+                  />
+                  <span className={`text-[11px] font-semibold truncate max-w-full ${isActive ? 'text-white' : 'text-gray-600'}`}>
+                    {p.name.split(' ')[0]}
+                  </span>
+                  <span className={`text-xs font-bold ${isActive ? 'text-white' : 'text-primary'}`}>{p.score}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
 
