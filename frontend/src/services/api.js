@@ -174,6 +174,7 @@ export const externalMediaApi = {
 export const gamesApi = {
   getResults: (gameType, limit = 10) => api.get('/games/results', { params: { gameType, limit } }),
   submitResult: (data) => api.post('/games/results', data),
+  getStats: (gameType) => api.get('/games/stats', { params: { gameType } }),
 }
 
 export const pushApi = {

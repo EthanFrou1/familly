@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
-import { familiesApi, settingsApi, relationsApi, activityLogsApi, photosApi } from '../services/api'
+import { familiesApi, settingsApi, relationsApi, activityLogsApi, photosApi, gamesApi } from '../services/api'
 import { usePageRefresh } from '../hooks/usePageRefresh'
 import Avatar from '../components/shared/Avatar'
 import BirthdayPopup from '../components/home/BirthdayPopup'
@@ -129,6 +129,7 @@ export default function Home() {
   const [relations, setRelations] = useState([])
   const [activityLogs, setActivityLogs] = useState([])
   const [recentPhotos, setRecentPhotos] = useState([])
+  const [gameStats, setGameStats] = useState(null)
   const [showExportSheet, setShowExportSheet] = useState(false)
   const { supported: pushSupported, subscribed, permission, subscribe } = usePushNotifications()
   const [pushBannerDismissed, setPushBannerDismissed] = useState(
@@ -159,6 +160,10 @@ export default function Home() {
     activityLogsApi.getAll(10).then(({ data }) => setActivityLogs(data)).catch(() => {})
     photosApi.getAll().then(({ data }) => setRecentPhotos(data.slice(0, 6))).catch(() => {})
   }, [members])
+
+  useEffect(() => {
+    gamesApi.getStats('memory').then(({ data }) => setGameStats(data)).catch(() => {})
+  }, [])
 
   usePageRefresh(() => {
     relationsApi.getAll().then(({ data }) => setRelations(data)).catch(() => {})
@@ -194,6 +199,21 @@ export default function Home() {
   }
 
   const funStats = useMemo(() => computeFunStats(members, relations), [members, relations])
+
+  const gameFunStats = useMemo(() => {
+    const list = []
+    if (gameStats?.topWinner) {
+      const { name, count, memberId } = gameStats.topWinner
+      list.push({ emoji: '🏆', label: 'Le boss du Memory', value: name, sub: `${count} victoire${count > 1 ? 's' : ''}`, memberId })
+    }
+    if (gameStats?.topLoser) {
+      const { name, count, memberId } = gameStats.topLoser
+      list.push({ emoji: '🏮', label: 'Lanterne rouge du Memory', value: name, sub: `${count} défaite${count > 1 ? 's' : ''}`, memberId })
+    }
+    return list
+  }, [gameStats])
+
+  const allFunStats = [...funStats, ...gameFunStats]
 
   const birthdays = getUpcomingBirthdays(members)
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000)
@@ -375,8 +395,8 @@ export default function Home() {
         )}
 
         {/* Stats fun */}
-        {funStats.length > 0 && (
-          <FunStatsSection stats={funStats} onNavigate={navigate} />
+        {allFunStats.length > 0 && (
+          <FunStatsSection stats={allFunStats} onNavigate={navigate} />
         )}
 
       </div>

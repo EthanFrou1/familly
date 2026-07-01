@@ -26,6 +26,46 @@ public class GamesController(AppDbContext db) : ControllerBase
         return Ok(results.Select(ToDto));
     }
 
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats([FromQuery] string gameType)
+    {
+        var results = await db.GameResults
+            .Where(r => r.GameType == gameType)
+            .ToListAsync();
+
+        var wins = new Dictionary<(Guid MemberId, string Name), int>();
+        var losses = new Dictionary<(Guid MemberId, string Name), int>();
+
+        foreach (var r in results)
+        {
+            var players = JsonSerializer.Deserialize<List<GamePlayerScoreDto>>(r.PlayersJson) ?? [];
+            var linked = players.Where(p => p.MemberId.HasValue && !p.IsGuest).ToList();
+            if (linked.Count < 2) continue;
+
+            var maxScore = linked.Max(p => p.Score);
+            var isTie = linked.Count(p => p.Score == maxScore) > 1;
+
+            foreach (var p in linked)
+            {
+                var key = (p.MemberId!.Value, p.Name);
+                if (!isTie && p.Score == maxScore) wins[key] = wins.GetValueOrDefault(key) + 1;
+                else losses[key] = losses.GetValueOrDefault(key) + 1;
+            }
+        }
+
+        return Ok(new
+        {
+            topWinner = TopEntry(wins),
+            topLoser = TopEntry(losses),
+        });
+    }
+
+    private static object? TopEntry(Dictionary<(Guid MemberId, string Name), int> counts) =>
+        counts.Count == 0 ? null : counts
+            .OrderByDescending(kv => kv.Value)
+            .Select(kv => new { memberId = kv.Key.MemberId, name = kv.Key.Name, count = kv.Value })
+            .First();
+
     [HttpPost("results")]
     public async Task<IActionResult> CreateResult(CreateGameResultDto dto)
     {
