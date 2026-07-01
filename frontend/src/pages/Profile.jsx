@@ -582,7 +582,7 @@ export default function Profile() {
               <div className="grid grid-cols-3 gap-2 text-center">
                 <StatBlock value={gameStats.gamesPlayed} label="Parties" />
                 <StatBlock value={gameStats.wins} label="Victoires" />
-                <StatBlock value={gameStats.pairsFound} label="Paires trouvées" />
+                <StatBlock value={gameStats.losses} label="Défaites" />
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
