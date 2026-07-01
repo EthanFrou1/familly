@@ -17,6 +17,8 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
     private const int MinPlayers = 2;
     private const int MaxPlayers = 4;
 
+    public Task<object> GetOpenRooms() => Task.FromResult(BuildOpenRoomsPayload());
+
     public async Task<object> CreateRoom(string gameType)
     {
         var (memberId, name, photo) = await ResolveCallerAsync();
@@ -33,6 +35,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         });
 
         await Groups.AddToGroupAsync(Context.ConnectionId, session.Code);
+        await BroadcastRoomsChangedAsync();
         return new { success = true, code = session.Code, players = ToPlayerDtos(session) };
     }
 
@@ -66,6 +69,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
 
         await Groups.AddToGroupAsync(Context.ConnectionId, session.Code);
         await Clients.Group(session.Code).SendAsync("PlayerJoined", playerDtos);
+        await BroadcastRoomsChangedAsync();
         return new { success = true, code = session.Code, players = playerDtos };
     }
 
@@ -116,10 +120,12 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         else if (sessionEmpty)
         {
             store.Remove(session.Code);
+            await BroadcastRoomsChangedAsync();
         }
         else if (remainingPlayers is not null)
         {
             await Clients.Group(session.Code).SendAsync("PlayerLeft", remainingPlayers);
+            await BroadcastRoomsChangedAsync();
         }
     }
 
@@ -170,6 +176,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         }
 
         await Clients.Group(session.Code).SendAsync("GameStarting", payload);
+        await BroadcastRoomsChangedAsync();
     }
 
     public async Task SpinWheel()
@@ -325,7 +332,21 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         }
 
         await Clients.Group(session.Code).SendAsync("BackToDifficulty");
+        await BroadcastRoomsChangedAsync();
     }
+
+    private object BuildOpenRoomsPayload() =>
+        store.GetOpenSessions().Select(s => new
+        {
+            code = s.Code,
+            gameType = s.GameType,
+            playerCount = s.Players.Count,
+            maxPlayers = MaxPlayers,
+            players = s.Players.Select(p => new { name = p.Name, profilePictureUrl = p.ProfilePictureUrl }),
+        });
+
+    private Task BroadcastRoomsChangedAsync() =>
+        Clients.All.SendAsync("RoomsChanged", BuildOpenRoomsPayload());
 
     private static List<PlayerDto> ToPlayerDtos(GameSession session) =>
         [.. session.Players.Select(p => new PlayerDto(p.MemberId, p.Name, p.ProfilePictureUrl, p.ColorIndex, p.IsHost, p.Score))];
