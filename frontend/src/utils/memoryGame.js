@@ -6,6 +6,13 @@ export const DIFFICULTY_PRESETS = [
 
 export const MIN_PAIRS_TO_UNLOCK = DIFFICULTY_PRESETS[0].pairsCount
 
+export const PLAYER_COLORS = [
+  { ring: 'ring-blue-400', dot: 'bg-blue-400' },
+  { ring: 'ring-rose-400', dot: 'bg-rose-400' },
+  { ring: 'ring-amber-400', dot: 'bg-amber-400' },
+  { ring: 'ring-violet-400', dot: 'bg-violet-400' },
+]
+
 function shuffle(array) {
   const result = [...array]
   for (let i = result.length - 1; i > 0; i--) {
