@@ -1,6 +1,6 @@
 namespace FamilyApp.API.DTOs;
 
-public record GamePlayerScoreDto(string Name, int Score);
+public record GamePlayerScoreDto(string Name, int Score, Guid? MemberId, bool IsGuest);
 
 public record CreateGameResultDto(
     string GameType,
