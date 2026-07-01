@@ -5,6 +5,7 @@ import { useUiChrome } from '../store/UiChromeContext'
 import { buildDeck, membersWithPhoto } from '../utils/memoryGame'
 import PlayerSetupStep from '../components/games/PlayerSetupStep'
 import DifficultySetupStep from '../components/games/DifficultySetupStep'
+import TurnOrderWheel from '../components/games/TurnOrderWheel'
 import MemoryBoard from '../components/games/MemoryBoard'
 import GameResultsScreen from '../components/games/GameResultsScreen'
 
@@ -37,6 +38,16 @@ export default function MemoryGame() {
   function handlePlayersChosen(chosenPlayers) {
     setPlayers(chosenPlayers.map(p => ({ ...p, score: 0 })))
     setStep('difficulty')
+  }
+
+  function chooseDifficulty(count) {
+    setPairsCount(count)
+    setStep('order')
+  }
+
+  function handleOrderReady(orderedPlayers) {
+    setPlayers(orderedPlayers)
+    startGame(pairsCount)
   }
 
   function startGame(count) {
@@ -105,7 +116,16 @@ export default function MemoryGame() {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
         <Header title="Memory" onBack={() => setStep('players')} />
-        <DifficultySetupStep photoCount={photoCount} onBack={() => setStep('players')} onStart={startGame} />
+        <DifficultySetupStep photoCount={photoCount} onBack={() => setStep('players')} onStart={chooseDifficulty} />
+      </div>
+    )
+  }
+
+  if (step === 'order') {
+    return (
+      <div className="overflow-y-auto h-full bg-gray-50 pb-24">
+        <Header title="Memory" onBack={() => setStep('difficulty')} />
+        <TurnOrderWheel players={players} onOrderReady={handleOrderReady} />
       </div>
     )
   }
