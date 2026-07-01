@@ -32,6 +32,22 @@ export default function MemoryGame() {
   const [gameDuration, setGameDuration] = useState(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const startTimeRef = useRef(null)
+  const pausedAtRef = useRef(null)
+  const pausedDurationRef = useRef(0)
+
+  function getElapsedSeconds() {
+    return Math.floor((Date.now() - startTimeRef.current - pausedDurationRef.current) / 1000)
+  }
+
+  function pauseGame() {
+    pausedAtRef.current = Date.now()
+    setPaused(true)
+  }
+
+  function resumeGame() {
+    pausedDurationRef.current += Date.now() - pausedAtRef.current
+    setPaused(false)
+  }
 
   useEffect(() => {
     setHideChrome(step === 'playing')
@@ -41,7 +57,7 @@ export default function MemoryGame() {
   useEffect(() => {
     if (step !== 'playing' || paused) return
     const interval = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000))
+      setElapsedSeconds(getElapsedSeconds())
     }, 1000)
     return () => clearInterval(interval)
   }, [step, paused])
@@ -71,6 +87,8 @@ export default function MemoryGame() {
     setLocked(false)
     setPaused(false)
     setElapsedSeconds(0)
+    pausedDurationRef.current = 0
+    pausedAtRef.current = null
     startTimeRef.current = Date.now()
     setStep('playing')
   }
@@ -89,7 +107,7 @@ export default function MemoryGame() {
   }
 
   const finishGame = useCallback(() => {
-    setGameDuration(Math.round((Date.now() - startTimeRef.current) / 1000))
+    setGameDuration(getElapsedSeconds())
     setStep('results')
   }, [])
 
@@ -174,7 +192,7 @@ export default function MemoryGame() {
               ⏱ {formatDuration(elapsedSeconds)}
             </span>
             <button
-              onClick={() => setPaused(true)}
+              onClick={pauseGame}
               className="shrink-0 min-h-touch min-w-touch flex items-center justify-center text-gray-400 bg-white rounded-full shadow-sm"
             >
               <DotsIcon />
@@ -223,7 +241,7 @@ export default function MemoryGame() {
         <div className="fixed inset-0 z-40 flex items-center justify-center px-10">
           <div className="w-full max-w-xs space-y-3">
             <button
-              onClick={() => setPaused(false)}
+              onClick={resumeGame}
               className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
             >
               Reprendre

@@ -8,7 +8,10 @@ import { loadSavedTheme } from './hooks/useTheme'
 loadSavedTheme()
 
 // Enregistre le SW et recharge automatiquement la page quand une nouvelle version est disponible
-registerSW({ immediate: true })
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh() { updateSW(true) },
+})
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
