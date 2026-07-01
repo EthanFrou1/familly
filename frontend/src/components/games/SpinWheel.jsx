@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const SPIN_DURATION = 3200
 const REVEAL_HOLD = 1100
@@ -18,19 +18,33 @@ function buildGradient(items) {
  * items = [{ id, label, color? }], onSpinEnd(item) est appelé une fois
  * l'animation (rotation + révélation) terminée. `color` est optionnel
  * (une couleur CSS valide) ; à défaut, les couleurs du thème alternent.
+ *
+ * Deux modes :
+ * - Autonome (par défaut) : le clic sur le bouton tire un gagnant au hasard
+ *   localement.
+ * - Contrôlé (multi à distance) : `onRequestSpin` remplace le tirage local
+ *   par un appel externe (ex. demande au serveur) ; l'animation démarre
+ *   ensuite quand `pendingWinnerId` reçoit l'id décidé côté serveur (le
+ *   parent doit le remettre à `null` après coup pour permettre un tour
+ *   suivant).
  */
-export default function SpinWheel({ items, onSpinEnd, size = 260, spinLabel = 'Tourner', disabled = false }) {
+export default function SpinWheel({
+  items,
+  onSpinEnd,
+  size = 260,
+  spinLabel = 'Tourner',
+  disabled = false,
+  pendingWinnerId = null,
+  onRequestSpin = null,
+  showButton = true,
+}) {
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
   const [winner, setWinner] = useState(null)
 
   const sliceAngle = 360 / items.length
 
-  function spin() {
-    if (spinning || winner || disabled || items.length < 2) return
-
-    const winnerIndex = Math.floor(Math.random() * items.length)
-    const picked = items[winnerIndex]
+  function animateTo(picked, winnerIndex) {
     const targetAngle = (360 - (winnerIndex * sliceAngle + sliceAngle / 2) + 360) % 360
 
     setSpinning(true)
@@ -49,6 +63,22 @@ export default function SpinWheel({ items, onSpinEnd, size = 260, spinLabel = 'T
       }, REVEAL_HOLD)
     }, SPIN_DURATION)
   }
+
+  function spin() {
+    if (spinning || winner || disabled || items.length < 2) return
+    if (onRequestSpin) { onRequestSpin(); return }
+
+    const winnerIndex = Math.floor(Math.random() * items.length)
+    animateTo(items[winnerIndex], winnerIndex)
+  }
+
+  useEffect(() => {
+    if (pendingWinnerId == null) return
+    const winnerIndex = items.findIndex(item => item.id === pendingWinnerId)
+    if (winnerIndex === -1) return
+    animateTo(items[winnerIndex], winnerIndex)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingWinnerId])
 
   return (
     <div className="flex flex-col items-center">
@@ -88,13 +118,15 @@ export default function SpinWheel({ items, onSpinEnd, size = 260, spinLabel = 'T
         )}
       </div>
 
-      <button
-        onClick={spin}
-        disabled={disabled || spinning || !!winner || items.length < 2}
-        className="mt-8 w-full max-w-xs rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark disabled:opacity-40"
-      >
-        {spinning ? 'Ça tourne…' : spinLabel}
-      </button>
+      {showButton && (
+        <button
+          onClick={spin}
+          disabled={disabled || spinning || !!winner || items.length < 2}
+          className="mt-8 w-full max-w-xs rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark disabled:opacity-40"
+        >
+          {spinning ? 'Ça tourne…' : spinLabel}
+        </button>
+      )}
     </div>
   )
 }

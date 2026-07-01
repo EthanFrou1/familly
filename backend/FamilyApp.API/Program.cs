@@ -1,5 +1,6 @@
 using System.Text;
 using FamilyApp.API.Data;
+using FamilyApp.API.Realtime;
 using FamilyApp.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -50,6 +51,8 @@ builder.Services.AddScoped<DuplicateDetectionService>();
 builder.Services.AddScoped<RelationValidationService>();
 builder.Services.AddHostedService<PhotoCleanupService>();
 builder.Services.AddHostedService<BirthdayNotificationService>();
+builder.Services.AddSingleton<GameSessionStore>();
+builder.Services.AddSignalR();
 
 // CORS
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -70,6 +73,7 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<GameHub>("/hubs/game");
 
 // Migrate at startup (all environments)
 {

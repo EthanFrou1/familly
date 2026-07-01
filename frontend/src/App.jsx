@@ -18,6 +18,7 @@ import Duplicates from './pages/Duplicates'
 import Timeline from './pages/Timeline'
 import GamesLobby from './pages/GamesLobby'
 import MemoryGame from './pages/MemoryGame'
+import MemoryGameRemote from './pages/MemoryGameRemote'
 import Leaderboard from './pages/Leaderboard'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
@@ -81,6 +82,7 @@ function ProtectedLayoutContent() {
           <Route path="/timeline" element={<Timeline />} />
           <Route path="/games" element={<GamesLobby />} />
           <Route path="/games/memory" element={<MemoryGame />} />
+          <Route path="/games/memory/remote" element={<MemoryGameRemote />} />
           <Route path="/games/leaderboard" element={<Leaderboard />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/duplicates" element={<Duplicates />} />

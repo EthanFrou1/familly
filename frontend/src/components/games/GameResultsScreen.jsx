@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react'
 import { gamesApi } from '../../services/api'
 import { formatDuration } from '../../utils/memoryGame'
 
-export default function GameResultsScreen({ players, pairsCount, durationSeconds, onReplay, onExit }) {
-  const submitted = useRef(false)
+export default function GameResultsScreen({ players, pairsCount, durationSeconds, onReplay, onExit, alreadySubmitted = false, canReplay = true }) {
+  const submitted = useRef(alreadySubmitted)
   const ranked = [...players].sort((a, b) => b.score - a.score)
   const topScore = ranked[0]?.score ?? 0
   const winners = ranked.filter(p => p.score === topScore)
@@ -47,9 +47,11 @@ export default function GameResultsScreen({ players, pairsCount, durationSeconds
       </div>
 
       <div className="space-y-2">
-        <button onClick={onReplay} className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white active:bg-primary-dark">
-          Rejouer
-        </button>
+        {canReplay && (
+          <button onClick={onReplay} className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white active:bg-primary-dark">
+            Rejouer
+          </button>
+        )}
         <button onClick={onExit} className="w-full rounded-xl border border-dark py-3 text-sm font-semibold text-gray-500">
           Retour aux jeux
         </button>

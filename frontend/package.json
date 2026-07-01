@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",
+    "@microsoft/signalr": "^10.0.0",
     "@xyflow/react": "^12.10.2",
     "axios": "^1.6.7",
     "browser-image-compression": "^2.0.2",

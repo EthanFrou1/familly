@@ -8,6 +8,7 @@ import DifficultySetupStep from '../components/games/DifficultySetupStep'
 import TurnOrderWheel from '../components/games/TurnOrderWheel'
 import MemoryBoard from '../components/games/MemoryBoard'
 import GameResultsScreen from '../components/games/GameResultsScreen'
+import GameHeader from '../components/games/GameHeader'
 import Avatar from '../components/shared/Avatar'
 
 const FLIP_BACK_DELAY = 900
@@ -20,7 +21,7 @@ export default function MemoryGame() {
   const photoCount = membersWithPhoto(members).length
   const memberById = useMemo(() => new Map(members.map(m => [m.id, m])), [members])
 
-  const [step, setStep] = useState('players')
+  const [step, setStep] = useState('mode')
   const [players, setPlayers] = useState([])
   const [pairsCount, setPairsCount] = useState(null)
   const [deck, setDeck] = useState([])
@@ -141,10 +142,40 @@ export default function MemoryGame() {
     }
   }, [paused, locked, flipped, matchedBy, deck, pairsCount, currentPlayer, players, finishGame])
 
+  if (step === 'mode') {
+    return (
+      <div className="overflow-y-auto h-full bg-gray-50 pb-24">
+        <GameHeader title="Memory" onBack={() => navigate('/games')} />
+        <div className="px-4 mt-6 space-y-3">
+          <button
+            onClick={() => setStep('players')}
+            className="w-full rounded-2xl bg-white shadow-sm p-4 flex items-center gap-4 active:opacity-70"
+          >
+            <div className="h-12 w-12 shrink-0 rounded-2xl bg-primary flex items-center justify-center text-xl">📱</div>
+            <div className="flex-1 text-left">
+              <h2 className="font-semibold text-gray-800">Jouer en local</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Passez-vous le téléphone à tour de rôle.</p>
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/games/memory/remote')}
+            className="w-full rounded-2xl bg-white shadow-sm p-4 flex items-center gap-4 active:opacity-70"
+          >
+            <div className="h-12 w-12 shrink-0 rounded-2xl bg-dark flex items-center justify-center text-xl">🌐</div>
+            <div className="flex-1 text-left">
+              <h2 className="font-semibold text-gray-800">Jouer à distance</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Chacun sur son téléphone, en temps réel.</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (step === 'players') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <Header title="Memory" onBack={() => navigate('/games')} />
+        <GameHeader title="Memory" onBack={() => setStep('mode')} />
         <PlayerSetupStep onContinue={handlePlayersChosen} />
       </div>
     )
@@ -153,7 +184,7 @@ export default function MemoryGame() {
   if (step === 'difficulty') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <Header title="Memory" onBack={() => setStep('players')} />
+        <GameHeader title="Memory" onBack={() => setStep('players')} />
         <DifficultySetupStep photoCount={photoCount} onBack={() => setStep('players')} onStart={chooseDifficulty} />
       </div>
     )
@@ -162,7 +193,7 @@ export default function MemoryGame() {
   if (step === 'order') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <Header title="Memory" onBack={() => setStep('difficulty')} />
+        <GameHeader title="Memory" onBack={() => setStep('difficulty')} />
         <TurnOrderWheel players={players} onOrderReady={handleOrderReady} />
       </div>
     )
@@ -171,7 +202,7 @@ export default function MemoryGame() {
   if (step === 'results') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <Header title="Résultats" onBack={() => navigate('/games')} />
+        <GameHeader title="Résultats" onBack={() => navigate('/games')} />
         <GameResultsScreen
           players={players}
           pairsCount={pairsCount}
@@ -263,19 +294,6 @@ export default function MemoryGame() {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function Header({ title, onBack }) {
-  return (
-    <div className="bg-dark px-5 pt-12 pb-4 flex items-center gap-3">
-      <button onClick={onBack} className="text-white/70">
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
-      <h1 className="text-xl font-bold text-white">{title}</h1>
     </div>
   )
 }
