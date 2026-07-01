@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './store/AuthContext'
 import { MembersProvider } from './store/MembersContext'
+import { UiChromeProvider, useUiChrome } from './store/UiChromeContext'
 import { useAuth } from './hooks/useAuth'
 import BottomNav from './components/layout/BottomNav'
 import OnboardingModal from './components/shared/OnboardingModal'
@@ -45,27 +46,9 @@ function ProtectedLayout() {
 
   return (
     <MembersProvider>
-      <div className="flex h-full flex-col bg-gray-50">
-        <main className="flex-1 overflow-y-auto">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/tree" element={<Tree />} />
-            <Route path="/map" element={<Map />} />
-            <Route path="/photos" element={<Photos />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/profile/:id" element={<Profile />} />
-            <Route path="/families" element={<Families />} />
-            <Route path="/members" element={<Members />} />
-            <Route path="/timeline" element={<Timeline />} />
-            <Route path="/games" element={<GamesLobby />} />
-            <Route path="/games/memory" element={<MemoryGame />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/admin/duplicates" element={<Duplicates />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
-        <BottomNav />
-      </div>
+      <UiChromeProvider>
+        <ProtectedLayoutContent />
+      </UiChromeProvider>
       {showOnboarding && (
         <OnboardingModal
           user={user}
@@ -76,6 +59,34 @@ function ProtectedLayout() {
         />
       )}
     </MembersProvider>
+  )
+}
+
+function ProtectedLayoutContent() {
+  const { hideChrome } = useUiChrome()
+
+  return (
+    <div className="flex h-full flex-col bg-gray-50">
+      <main className="flex-1 overflow-y-auto">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/tree" element={<Tree />} />
+          <Route path="/map" element={<Map />} />
+          <Route path="/photos" element={<Photos />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:id" element={<Profile />} />
+          <Route path="/families" element={<Families />} />
+          <Route path="/members" element={<Members />} />
+          <Route path="/timeline" element={<Timeline />} />
+          <Route path="/games" element={<GamesLobby />} />
+          <Route path="/games/memory" element={<MemoryGame />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/duplicates" element={<Duplicates />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+      {!hideChrome && <BottomNav />}
+    </div>
   )
 }
 
