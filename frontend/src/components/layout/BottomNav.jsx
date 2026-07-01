@@ -36,6 +36,11 @@ export default function BottomNav() {
 
   const allActions = [
     {
+      label: 'Jeux',
+      icon: GameIcon,
+      onClick: () => { setFabOpen(false); navigate('/games') }
+    },
+    {
       label: 'Histoire familiale',
       icon: TimelineIcon,
       onClick: () => { setFabOpen(false); navigate('/timeline') }
@@ -226,6 +231,18 @@ function ShieldIcon() {
 }
 function LogoutIcon() {
   return <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="h-full w-full"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+}
+function GameIcon() {
+  return (
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="h-full w-full">
+      <rect x="3" y="3" width="18" height="18" rx="4" />
+      <circle cx="8.5" cy="8.5" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="8.5" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="8.5" cy="15.5" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="15.5" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none" />
+    </svg>
+  )
 }
 function TimelineIcon() {
   return (

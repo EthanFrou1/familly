@@ -15,6 +15,8 @@ import Members from './pages/Members'
 import Admin from './pages/Admin'
 import Duplicates from './pages/Duplicates'
 import Timeline from './pages/Timeline'
+import GamesLobby from './pages/GamesLobby'
+import MemoryGame from './pages/MemoryGame'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
@@ -55,6 +57,8 @@ function ProtectedLayout() {
             <Route path="/families" element={<Families />} />
             <Route path="/members" element={<Members />} />
             <Route path="/timeline" element={<Timeline />} />
+            <Route path="/games" element={<GamesLobby />} />
+            <Route path="/games/memory" element={<MemoryGame />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/duplicates" element={<Duplicates />} />
             <Route path="*" element={<NotFound />} />

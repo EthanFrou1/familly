@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Album> Albums => Set<Album>();
     public DbSet<TimelineEvent> TimelineEvents => Set<TimelineEvent>();
     public DbSet<TimelineEventMember> TimelineEventMembers => Set<TimelineEventMember>();
+    public DbSet<GameResult> GameResults => Set<GameResult>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
