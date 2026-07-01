@@ -8,32 +8,30 @@ export default function PlayerSetupStep({ onContinue }) {
   const { user } = useAuth()
   const { members } = useMembers()
   const [count, setCount] = useState(2)
-  const [slots, setSlots] = useState([{ search: '', memberId: null }])
-
-  const currentMember = members.find(m => m.id === user?.memberId)
+  const [slots, setSlots] = useState(() => [
+    { mode: 'member', search: `${user.firstName} ${user.lastName}`, memberId: user.memberId },
+    { mode: 'guest', search: '', memberId: null },
+  ])
 
   function setCountAndSlots(n) {
     setCount(n)
-    setSlots(prev => Array.from({ length: n - 1 }, (_, i) => prev[i] ?? { search: '', memberId: null }))
+    setSlots(prev => Array.from({ length: n }, (_, i) => prev[i] ?? { mode: 'guest', search: '', memberId: null }))
   }
 
   function updateSlot(i, patch) {
     setSlots(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s))
   }
 
-  const takenMemberIds = new Set([user?.memberId, ...slots.map(s => s.memberId).filter(Boolean)])
+  const memberById = id => members.find(m => m.id === id)
 
   function handleContinue() {
-    const players = [
-      { name: `${user.firstName} ${user.lastName}`, memberId: user.memberId, isGuest: false },
-      ...slots.map((slot, i) => {
-        if (slot.memberId) {
-          const m = members.find(mm => mm.id === slot.memberId)
-          return { name: `${m.firstName} ${m.lastName}`, memberId: m.id, isGuest: false }
-        }
-        return { name: slot.search.trim() || `Joueur ${i + 2}`, memberId: null, isGuest: true }
-      }),
-    ]
+    const players = slots.map((slot, i) => {
+      if (slot.mode === 'member' && slot.memberId) {
+        const m = memberById(slot.memberId)
+        return { name: `${m.firstName} ${m.lastName}`, memberId: m.id, isGuest: false }
+      }
+      return { name: slot.search.trim() || `Joueur ${i + 1}`, memberId: null, isGuest: true }
+    })
     onContinue(players)
   }
 
@@ -56,21 +54,15 @@ export default function PlayerSetupStep({ onContinue }) {
 
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-500">Joueurs</h2>
-
-        <div className="flex items-center gap-3 rounded-xl bg-white shadow-sm px-4 py-2.5">
-          <Avatar member={currentMember} name={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`} size="sm" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-800">{user?.firstName} {user?.lastName}</p>
-            <p className="text-xs text-gray-400">Vous</p>
-          </div>
-        </div>
-
         {slots.map((slot, i) => (
           <PlayerSlot
             key={i}
             index={i}
+            isSelf={i === 0}
+            isOwnAccount={slot.memberId === user.memberId}
             slot={slot}
-            members={members.filter(m => !takenMemberIds.has(m.id))}
+            member={slot.memberId ? memberById(slot.memberId) : null}
+            candidates={members.filter(m => !slots.some((s, idx) => idx !== i && s.memberId === m.id))}
             onChange={patch => updateSlot(i, patch)}
           />
         ))}
@@ -86,43 +78,71 @@ export default function PlayerSetupStep({ onContinue }) {
   )
 }
 
-function PlayerSlot({ index, slot, members, onChange }) {
-  const filtered = slot.search.trim()
-    ? members.filter(m => matchesSearch(`${m.firstName} ${m.lastName}`, slot.search))
+function PlayerSlot({ index, isSelf, isOwnAccount, slot, member, candidates, onChange }) {
+  const linked = slot.mode === 'member' && !!slot.memberId
+  const searching = slot.mode === 'member' && !slot.memberId
+
+  const filtered = searching && slot.search.trim()
+    ? candidates.filter(m => matchesSearch(`${m.firstName} ${m.lastName}`, slot.search))
     : []
+
+  function toggleLink() {
+    onChange(linked ? { mode: 'guest', memberId: null } : { mode: 'member', memberId: null })
+  }
 
   return (
     <div className="space-y-1">
-      <div className="relative">
-        <input
-          value={slot.search}
-          onChange={e => onChange({ search: e.target.value, memberId: null })}
-          placeholder={`Joueur ${index + 2} — membre ou invité`}
-          className={`w-full rounded-xl bg-white shadow-sm px-4 py-2.5 text-sm focus:outline-none ${slot.memberId ? 'ring-2 ring-primary' : ''}`}
-        />
-        {slot.memberId && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-primary font-semibold">membre</span>
-        )}
+      <div className="flex items-center gap-2">
+        {linked && <Avatar member={member} name={slot.search} size="sm" />}
+        <div className="relative flex-1">
+          <input
+            value={slot.search}
+            disabled={linked}
+            onChange={e => onChange({ search: e.target.value, memberId: null })}
+            placeholder={isSelf ? 'Votre prénom' : `Joueur ${index + 1} — nom libre`}
+            className={`w-full rounded-xl bg-white shadow-sm px-4 py-2.5 text-sm focus:outline-none ${linked ? 'text-gray-500' : ''}`}
+          />
+          {linked && isOwnAccount && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Vous</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={toggleLink}
+          className={`shrink-0 rounded-xl px-3 py-2.5 text-xs font-semibold ${linked ? 'bg-gray-100 text-gray-500' : 'bg-primary/10 text-primary'}`}
+        >
+          {linked ? 'Délier' : 'Lier'}
+        </button>
       </div>
 
-      {slot.search.trim() && !slot.memberId && (
-        filtered.length > 0 ? (
-          <ul className="rounded-xl border border-gray-200 bg-white overflow-hidden max-h-40 overflow-y-auto">
-            {filtered.map(m => (
-              <li key={m.id}>
-                <button
-                  type="button"
-                  onClick={() => onChange({ memberId: m.id, search: `${m.firstName} ${m.lastName}` })}
-                  className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 active:bg-primary/10"
-                >
-                  {m.firstName} {m.lastName}
-                </button>
-              </li>
-            ))}
-          </ul>
+      {searching && (
+        slot.search.trim() ? (
+          filtered.length > 0 ? (
+            <ul className="rounded-xl border border-gray-200 bg-white overflow-hidden max-h-40 overflow-y-auto">
+              {filtered.map(m => (
+                <li key={m.id}>
+                  <button
+                    type="button"
+                    onClick={() => onChange({ memberId: m.id, search: `${m.firstName} ${m.lastName}` })}
+                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 active:bg-primary/10"
+                  >
+                    {m.firstName} {m.lastName}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-1 text-xs text-gray-400">Aucun membre trouvé</p>
+          )
         ) : (
-          <p className="px-1 text-xs text-gray-400">Aucun membre trouvé — sera ajouté comme invité « {slot.search.trim()} »</p>
+          <p className="px-1 text-xs text-gray-400">Tapez un nom pour rechercher un membre à lier</p>
         )
+      )}
+
+      {!searching && !linked && (
+        <p className="px-1 text-xs text-gray-400">
+          {isSelf ? 'Non lié à votre profil — ce score ne comptera pas pour vous' : 'Joueur invité, non comptabilisé dans les classements'}
+        </p>
       )}
     </div>
   )
