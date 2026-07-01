@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useMembers } from '../../store/MembersContext'
 import { useState } from 'react'
@@ -11,6 +11,7 @@ export default function BottomNav() {
   const { user, logout } = useAuth()
   const { refresh } = useMembers()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const isAdmin = user?.role === 'Admin'
   const [fabOpen, setFabOpen] = useState(false)
   const [showAddMember, setShowAddMember] = useState(false)
@@ -38,26 +39,31 @@ export default function BottomNav() {
     {
       label: 'Jeux',
       icon: GameIcon,
+      path: '/games',
       onClick: () => { setFabOpen(false); navigate('/games') }
     },
     {
       label: 'Histoire familiale',
       icon: TimelineIcon,
+      path: '/timeline',
       onClick: () => { setFabOpen(false); navigate('/timeline') }
     },
     {
       label: 'Photos',
       icon: PhotoIcon,
+      path: '/photos',
       onClick: () => { setFabOpen(false); navigate('/photos') }
     },
     {
       label: 'Les familles',
       icon: FamilyIcon,
+      path: '/families',
       onClick: () => { setFabOpen(false); navigate('/families') }
     },
     {
       label: 'Voir la carte',
       icon: MapIcon,
+      path: '/map',
       onClick: () => { setFabOpen(false); navigate('/map') }
     },
   ]
@@ -66,6 +72,7 @@ export default function BottomNav() {
     {
       label: 'Administration',
       icon: ShieldIcon,
+      path: '/admin',
       onClick: () => { setFabOpen(false); navigate('/admin') }
     },
     {
@@ -88,16 +95,18 @@ export default function BottomNav() {
             style={{ background: 'var(--c-dark-bg)', marginBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
             onClick={e => e.stopPropagation()}
           >
-            {isAdmin && adminOnlyActions.map(({ label, icon: Icon }, i) => (
+            {isAdmin && adminOnlyActions.map(({ label, icon: Icon, path }, i) => (
               <MenuItem key={label} icon={<Icon />} label={label}
                 onClick={adminOnlyActions[i].onClick}
+                active={path && pathname.startsWith(path)}
                 border
               />
             ))}
 
-            {allActions.map(({ label, icon: Icon }, i) => (
+            {allActions.map(({ label, icon: Icon, path }, i) => (
               <MenuItem key={label} icon={<Icon />} label={label}
                 onClick={allActions[i].onClick}
+                active={path && pathname.startsWith(path)}
                 border={i < allActions.length - 1}
               />
             ))}
@@ -177,14 +186,15 @@ export default function BottomNav() {
   )
 }
 
-function MenuItem({ icon, label, onClick, border = false, danger = false }) {
+function MenuItem({ icon, label, onClick, border = false, danger = false, active = false }) {
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-4 px-5 py-4 active:bg-white/5 transition-colors ${danger ? 'text-red-400' : 'text-white'}`}
+      className={`flex w-full items-center gap-4 px-5 py-4 active:bg-white/5 transition-colors ${danger ? 'text-red-400' : active ? 'text-primary' : 'text-white'}`}
     >
-      <span className={`h-5 w-5 shrink-0 ${danger ? 'text-red-400' : 'text-gray-300'}`}>{icon}</span>
+      <span className={`h-5 w-5 shrink-0 ${danger ? 'text-red-400' : active ? 'text-primary' : 'text-gray-300'}`}>{icon}</span>
       <span className="text-sm font-medium">{label}</span>
+      {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
     </button>
   )
 }
