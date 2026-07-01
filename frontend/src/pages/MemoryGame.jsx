@@ -128,17 +128,13 @@ export default function MemoryGame() {
   return (
     <div className="relative h-full bg-gray-50 overflow-y-auto">
       <div className={`transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
-        <div className="bg-dark px-4 pt-12 pb-3 flex items-center justify-between">
-          <h1 className="text-lg font-bold text-white">Memory</h1>
-          <button onClick={() => setPaused(true)} className="text-white/80 p-1.5 -mr-1.5">
-            <DotsIcon />
-          </button>
-        </div>
-
-        <div className="px-4 mt-4 mb-3 space-y-2">
-          <div className="rounded-2xl bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+        <div className="px-4 pt-12 mb-3 space-y-2">
+          <div className="rounded-2xl bg-white shadow-sm px-4 py-3 flex items-center gap-2">
             <span className="text-sm text-gray-500">Au tour de</span>
-            <span className="text-sm font-bold text-primary">{players[currentPlayer]?.name}</span>
+            <span className="flex-1 text-right text-sm font-bold text-primary truncate">{players[currentPlayer]?.name}</span>
+            <button onClick={() => setPaused(true)} className="shrink-0 text-gray-400 -mr-1 p-1">
+              <DotsIcon />
+            </button>
           </div>
           <div className="flex gap-2">
             {players.map((p, i) => (
