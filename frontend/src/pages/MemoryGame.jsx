@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
-import { buildDeck, membersWithPhoto } from '../utils/memoryGame'
+import { buildDeck, membersWithPhoto, PLAYER_COLORS } from '../utils/memoryGame'
 import PlayerSetupStep from '../components/games/PlayerSetupStep'
 import DifficultySetupStep from '../components/games/DifficultySetupStep'
 import TurnOrderWheel from '../components/games/TurnOrderWheel'
@@ -24,7 +24,7 @@ export default function MemoryGame() {
   const [deck, setDeck] = useState([])
   const [currentPlayer, setCurrentPlayer] = useState(0)
   const [flipped, setFlipped] = useState([])
-  const [matchedMemberIds, setMatchedMemberIds] = useState(new Set())
+  const [matchedBy, setMatchedBy] = useState(new Map())
   const [locked, setLocked] = useState(false)
   const [paused, setPaused] = useState(false)
   const [gameDuration, setGameDuration] = useState(null)
@@ -56,7 +56,7 @@ export default function MemoryGame() {
     setPlayers(prev => prev.map(p => ({ ...p, score: 0 })))
     setCurrentPlayer(0)
     setFlipped([])
-    setMatchedMemberIds(new Set())
+    setMatchedBy(new Map())
     setLocked(false)
     setPaused(false)
     startTimeRef.current = Date.now()
@@ -74,7 +74,7 @@ export default function MemoryGame() {
   }, [])
 
   const handleCardClick = useCallback((card) => {
-    if (paused || locked || flipped.includes(card.cardId) || matchedMemberIds.has(card.memberId)) return
+    if (paused || locked || flipped.includes(card.cardId) || matchedBy.has(card.memberId)) return
 
     const nextFlipped = [...flipped, card.cardId]
     setFlipped(nextFlipped)
@@ -86,9 +86,9 @@ export default function MemoryGame() {
 
     if (first.memberId === second.memberId) {
       setTimeout(() => {
-        const updatedMatches = new Set(matchedMemberIds)
-        updatedMatches.add(first.memberId)
-        setMatchedMemberIds(updatedMatches)
+        const updatedMatches = new Map(matchedBy)
+        updatedMatches.set(first.memberId, currentPlayer)
+        setMatchedBy(updatedMatches)
         setPlayers(prev => prev.map((p, i) => i === currentPlayer ? { ...p, score: p.score + 1 } : p))
         setFlipped([])
         setLocked(false)
@@ -101,7 +101,7 @@ export default function MemoryGame() {
         setCurrentPlayer(prev => (prev + 1) % players.length)
       }, FLIP_BACK_DELAY)
     }
-  }, [paused, locked, flipped, matchedMemberIds, deck, pairsCount, currentPlayer, players.length, finishGame])
+  }, [paused, locked, flipped, matchedBy, deck, pairsCount, currentPlayer, players.length, finishGame])
 
   if (step === 'players') {
     return (
@@ -160,8 +160,9 @@ export default function MemoryGame() {
             {players.map((p, i) => (
               <div
                 key={p.name + i}
-                className={`flex-1 rounded-xl px-2 py-1.5 text-center text-xs font-medium ${i === currentPlayer ? 'bg-primary text-white' : 'bg-white text-gray-500 shadow-sm'}`}
+                className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-center text-xs font-medium ${i === currentPlayer ? 'bg-primary text-white' : 'bg-white text-gray-500 shadow-sm'}`}
               >
+                <span className={`h-2 w-2 rounded-full shrink-0 ${PLAYER_COLORS[i % PLAYER_COLORS.length].dot}`} />
                 {p.name}: {p.score}
               </div>
             ))}
@@ -172,7 +173,7 @@ export default function MemoryGame() {
           <MemoryBoard
             deck={deck}
             flippedIds={flipped}
-            matchedMemberIds={matchedMemberIds}
+            matchedBy={matchedBy}
             onCardClick={handleCardClick}
             disabled={locked || paused}
           />

@@ -40,9 +40,12 @@ export default function GamesLobby() {
               <p className="text-sm text-gray-500 mt-0.5">
                 Retrouvez les paires de photos des membres de la famille, à 2 à 4 joueurs.
               </p>
+              <p className="text-xs text-gray-400 mt-2">
+                📷 {photoCount}/{members.length} membres ont une photo de profil
+              </p>
               {!unlocked && (
-                <p className="text-xs text-amber-600 mt-2">
-                  Ajoutez au moins {MIN_PAIRS_TO_UNLOCK} photos de profil pour débloquer ce jeu ({photoCount}/{MIN_PAIRS_TO_UNLOCK}).
+                <p className="text-xs text-amber-600 mt-1">
+                  Il en faut au moins {MIN_PAIRS_TO_UNLOCK} pour débloquer ce jeu.
                 </p>
               )}
             </div>
