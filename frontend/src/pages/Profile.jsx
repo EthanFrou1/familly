@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import imageCompression from 'browser-image-compression'
-import { membersApi, relationsApi, adminApi, settingsApi, familiesApi, pushApi, activityLogsApi, authApi } from '../services/api'
+import { membersApi, relationsApi, adminApi, settingsApi, familiesApi, pushApi, activityLogsApi, authApi, gamesApi } from '../services/api'
 import { getRelationshipLabel } from '../utils/relationshipUtils'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
@@ -55,6 +55,7 @@ export default function Profile() {
   const [logsLoading, setLogsLoading] = useState(false)
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false)
   const [exportingData, setExportingData] = useState(false)
+  const [gameStats, setGameStats] = useState(null)
 
   useEffect(() => {
     if (!memberId) { setError('Aucun profil associé à ce compte.'); setLoading(false); return }
@@ -92,6 +93,11 @@ export default function Profile() {
   useEffect(() => {
     if (!memberId) return
     relationsApi.getAll().then(({ data }) => setAllRelations(data)).catch(() => {})
+  }, [memberId])
+
+  useEffect(() => {
+    if (!memberId) return
+    gamesApi.getMemberStats(memberId, 'memory').then(({ data }) => setGameStats(data)).catch(() => {})
   }, [memberId])
 
   const suggestions = useMemo(
@@ -564,6 +570,29 @@ export default function Profile() {
                 {member.whatsappNumber && (
                   <SocialBtn href={whatsappHref} label="WhatsApp" color="bg-[#25D366]" icon={<WhatsappIcon />} />
                 )}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Jeux */}
+        {!isDeceased && (gameStats?.gamesPlayed > 0 || isOwnProfile) && (
+          <Card title="Jeux">
+            {gameStats?.gamesPlayed > 0 ? (
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <StatBlock value={gameStats.gamesPlayed} label="Parties" />
+                <StatBlock value={gameStats.wins} label="Victoires" />
+                <StatBlock value={gameStats.pairsFound} label="Paires trouvées" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-gray-400">Pas encore de partie de Memory jouée.</p>
+                <button
+                  onClick={() => navigate('/games')}
+                  className="shrink-0 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white active:bg-primary-dark"
+                >
+                  Jouer
+                </button>
               </div>
             )}
           </Card>
@@ -1260,6 +1289,15 @@ function SuggestionRow({ suggestion, onAccept }) {
           {loading ? '…' : 'Créer'}
         </button>
       )}
+    </div>
+  )
+}
+
+function StatBlock({ value, label }) {
+  return (
+    <div className="rounded-xl bg-gray-50 py-3">
+      <p className="text-lg font-bold text-gray-900">{value}</p>
+      <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">{label}</p>
     </div>
   )
 }
