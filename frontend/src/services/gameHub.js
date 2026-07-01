@@ -1,4 +1,5 @@
 import * as signalR from '@microsoft/signalr'
+import { getToken } from './api'
 
 const PROD_HUB_URL = 'https://familly-production.up.railway.app/hubs/game'
 const HUB_URL = import.meta.env.DEV
@@ -10,7 +11,10 @@ let connection = null
 function getConnection() {
   if (!connection) {
     connection = new signalR.HubConnectionBuilder()
-      .withUrl(HUB_URL, { withCredentials: true })
+      // Le hub tourne directement sur Railway (le proxy Vercel ne gère pas les
+      // WebSockets), donc le cookie posé côté mybigfamily.fr n'est jamais
+      // envoyé ici : on authentifie avec le JWT déjà stocké côté client.
+      .withUrl(HUB_URL, { accessTokenFactory: () => getToken() })
       .withAutomaticReconnect()
       .build()
   }
