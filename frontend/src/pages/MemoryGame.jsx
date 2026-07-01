@@ -169,7 +169,7 @@ export default function MemoryGame() {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 px-4 pb-4 grid place-items-center">
+        <div className="flex-1 min-h-0 px-4 pb-4">
           <MemoryBoard
             deck={deck}
             flippedIds={flipped}
