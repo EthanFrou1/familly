@@ -176,6 +176,8 @@ export const gamesApi = {
   submitResult: (data) => api.post('/games/results', data),
   getStats: (gameType) => api.get('/games/stats', { params: { gameType } }),
   getMemberStats: (memberId, gameType) => api.get(`/games/stats/member/${memberId}`, { params: { gameType } }),
+  getLeaderboard: (gameType) => api.get('/games/leaderboard', { params: { gameType } }),
+  getGlobalLeaderboard: () => api.get('/games/leaderboard/global'),
 }
 
 export const pushApi = {
