@@ -66,6 +66,35 @@ public class GamesController(AppDbContext db) : ControllerBase
             .Select(kv => new { memberId = kv.Key.MemberId, name = kv.Key.Name, count = kv.Value })
             .First();
 
+    [HttpGet("stats/member/{memberId:guid}")]
+    public async Task<IActionResult> GetMemberStats(Guid memberId, [FromQuery] string gameType)
+    {
+        var results = await db.GameResults
+            .Where(r => r.GameType == gameType)
+            .ToListAsync();
+
+        int gamesPlayed = 0, wins = 0, losses = 0, pairsFound = 0, bestScore = 0;
+
+        foreach (var r in results)
+        {
+            var players = JsonSerializer.Deserialize<List<GamePlayerScoreDto>>(r.PlayersJson) ?? [];
+            var linked = players.Where(p => p.MemberId.HasValue && !p.IsGuest).ToList();
+            var me = linked.FirstOrDefault(p => p.MemberId == memberId);
+            if (me is null || linked.Count < 2) continue;
+
+            gamesPlayed++;
+            pairsFound += me.Score;
+            bestScore = Math.Max(bestScore, me.Score);
+
+            var maxScore = linked.Max(p => p.Score);
+            var isTie = linked.Count(p => p.Score == maxScore) > 1;
+            if (!isTie && me.Score == maxScore) wins++;
+            else losses++;
+        }
+
+        return Ok(new { gamesPlayed, wins, losses, pairsFound, bestScore });
+    }
+
     [HttpPost("results")]
     public async Task<IActionResult> CreateResult(CreateGameResultDto dto)
     {
