@@ -36,3 +36,11 @@ export function buildDeck(members, pairsCount) {
     ])
   )
 }
+
+export function preloadDeckImages(deck) {
+  const uniqueUrls = [...new Set(deck.map(card => card.photoUrl))]
+  uniqueUrls.forEach(url => {
+    const img = new Image()
+    img.src = url
+  })
+}

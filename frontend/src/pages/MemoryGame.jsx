@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
-import { buildDeck, membersWithPhoto, PLAYER_COLORS } from '../utils/memoryGame'
+import { buildDeck, preloadDeckImages, membersWithPhoto, PLAYER_COLORS } from '../utils/memoryGame'
 import PlayerSetupStep from '../components/games/PlayerSetupStep'
 import DifficultySetupStep from '../components/games/DifficultySetupStep'
 import TurnOrderWheel from '../components/games/TurnOrderWheel'
@@ -42,18 +42,18 @@ export default function MemoryGame() {
 
   function chooseDifficulty(count) {
     setPairsCount(count)
+    const newDeck = buildDeck(members, count)
+    setDeck(newDeck)
+    preloadDeckImages(newDeck)
     setStep('order')
   }
 
   function handleOrderReady(orderedPlayers) {
-    setPlayers(orderedPlayers)
-    startGame(pairsCount)
+    setPlayers(orderedPlayers.map(p => ({ ...p, score: 0 })))
+    beginPlay()
   }
 
-  function startGame(count) {
-    setPairsCount(count)
-    setDeck(buildDeck(members, count))
-    setPlayers(prev => prev.map(p => ({ ...p, score: 0 })))
+  function beginPlay() {
     setCurrentPlayer(0)
     setFlipped([])
     setMatchedBy(new Map())
@@ -61,6 +61,14 @@ export default function MemoryGame() {
     setPaused(false)
     startTimeRef.current = Date.now()
     setStep('playing')
+  }
+
+  function restartRound() {
+    const newDeck = buildDeck(members, pairsCount)
+    setDeck(newDeck)
+    preloadDeckImages(newDeck)
+    setPlayers(prev => prev.map(p => ({ ...p, score: 0 })))
+    beginPlay()
   }
 
   function quitGame() {
@@ -190,7 +198,7 @@ export default function MemoryGame() {
               Reprendre
             </button>
             <button
-              onClick={() => startGame(pairsCount)}
+              onClick={restartRound}
               className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-gray-700 shadow-lg active:bg-gray-50"
             >
               Recommencer
