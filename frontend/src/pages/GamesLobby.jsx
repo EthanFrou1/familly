@@ -12,12 +12,13 @@ export default function GamesLobby() {
   const { members } = useMembers()
   const navigate = useNavigate()
   const [recentResults, setRecentResults] = useState([])
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const photoCount = membersWithPhoto(members).length
   const unlocked = photoCount >= MIN_PAIRS_TO_UNLOCK
 
   useEffect(() => {
-    gamesApi.getResults('memory', 5)
+    gamesApi.getResults('memory', 10)
       .then(({ data }) => setRecentResults(data))
       .catch(() => {})
   }, [])
@@ -61,28 +62,39 @@ export default function GamesLobby() {
 
         {recentResults.length > 0 && (
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
-            <div className="px-4 pt-4 pb-3 border-b border-gray-50">
+            <button
+              onClick={() => setHistoryOpen(o => !o)}
+              className={`w-full px-4 pt-4 pb-3 flex items-center justify-between ${historyOpen ? 'border-b border-gray-50' : ''}`}
+            >
               <h2 className="text-sm font-semibold text-gray-500">Dernières parties</h2>
-            </div>
-            <div className="divide-y divide-gray-50">
-              {recentResults.map(r => {
-                const ranked = [...r.players].sort((a, b) => b.score - a.score)
-                return (
-                  <div key={r.id} className="px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-700">
-                        {r.winnerName ? `🏆 ${r.winnerName}` : 'Égalité'}
+              <svg
+                className={`h-4 w-4 text-gray-400 transition-transform ${historyOpen ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {historyOpen && (
+              <div className="divide-y divide-gray-50">
+                {recentResults.map(r => {
+                  const ranked = [...r.players].sort((a, b) => b.score - a.score)
+                  return (
+                    <div key={r.id} className="px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-gray-700">
+                          {r.winnerName ? `🏆 ${r.winnerName}` : 'Égalité'}
+                        </p>
+                        <span className="text-xs text-gray-400">{formatDate(r.createdAt)}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">{r.pairsCount} paires · {r.playerCount} joueurs</p>
+                      <p className="text-xs text-gray-500 mt-1.5">
+                        {ranked.map((p, i) => `${i + 1}. ${p.name} (${p.score})`).join(' · ')}
                       </p>
-                      <span className="text-xs text-gray-400">{formatDate(r.createdAt)}</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">{r.pairsCount} paires · {r.playerCount} joueurs</p>
-                    <p className="text-xs text-gray-500 mt-1.5">
-                      {ranked.map((p, i) => `${i + 1}. ${p.name} (${p.score})`).join(' · ')}
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
