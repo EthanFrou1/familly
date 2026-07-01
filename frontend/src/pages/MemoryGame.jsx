@@ -125,7 +125,7 @@ export default function MemoryGame() {
     if (first.memberId === second.memberId) {
       setTimeout(() => {
         const updatedMatches = new Map(matchedBy)
-        updatedMatches.set(first.memberId, currentPlayer)
+        updatedMatches.set(first.memberId, players[currentPlayer].colorIndex)
         setMatchedBy(updatedMatches)
         setPlayers(prev => prev.map((p, i) => i === currentPlayer ? { ...p, score: p.score + 1 } : p))
         setFlipped([])
@@ -139,7 +139,7 @@ export default function MemoryGame() {
         setCurrentPlayer(prev => (prev + 1) % players.length)
       }, FLIP_BACK_DELAY)
     }
-  }, [paused, locked, flipped, matchedBy, deck, pairsCount, currentPlayer, players.length, finishGame])
+  }, [paused, locked, flipped, matchedBy, deck, pairsCount, currentPlayer, players, finishGame])
 
   if (step === 'players') {
     return (
@@ -186,9 +186,9 @@ export default function MemoryGame() {
   return (
     <div className="relative h-full bg-gray-50 overflow-hidden">
       <div className={`h-full flex flex-col transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
-        <div className="px-4 pt-12 pb-3 shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-mono font-semibold text-gray-400 bg-white rounded-full px-3 py-1.5 shadow-sm">
+        <div className="px-4 pt-10 pb-2 shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-mono font-semibold text-gray-400 bg-white rounded-full px-3 py-1 shadow-sm">
               ⏱ {formatDuration(elapsedSeconds)}
             </span>
             <button
@@ -202,24 +202,26 @@ export default function MemoryGame() {
           <div className="flex gap-2">
             {players.map((p, i) => {
               const isActive = i === currentPlayer
-              const color = PLAYER_COLORS[i % PLAYER_COLORS.length]
+              const color = PLAYER_COLORS[p.colorIndex % PLAYER_COLORS.length]
               return (
                 <div
                   key={p.name + i}
-                  className={`flex-1 flex flex-col items-center gap-1 rounded-2xl py-2.5 px-1 transition-all duration-200 ${
+                  className={`flex-1 flex items-center gap-2 rounded-2xl py-1.5 px-2 transition-all duration-200 ${
                     isActive ? 'bg-primary shadow-md scale-105' : 'bg-white shadow-sm'
                   }`}
                 >
                   <Avatar
                     member={memberById.get(p.memberId)}
                     name={p.name}
-                    size="sm"
-                    className={`ring-2 ${isActive ? 'ring-white' : color.ring}`}
+                    size="xs"
+                    className={`ring-2 shrink-0 ${isActive ? 'ring-white' : color.ring}`}
                   />
-                  <span className={`text-[11px] font-semibold truncate max-w-full ${isActive ? 'text-white' : 'text-gray-600'}`}>
-                    {p.name.split(' ')[0]}
-                  </span>
-                  <span className={`text-xs font-bold ${isActive ? 'text-white' : 'text-primary'}`}>{p.score}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[11px] font-semibold truncate ${isActive ? 'text-white' : 'text-gray-600'}`}>
+                      {p.name.split(' ')[0]}
+                    </p>
+                    <p className={`text-xs font-bold ${isActive ? 'text-white' : color.text}`}>{p.score}</p>
+                  </div>
                 </div>
               )
             })}

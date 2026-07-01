@@ -28,9 +28,9 @@ export default function PlayerSetupStep({ onContinue }) {
     const players = slots.map((slot, i) => {
       if (slot.mode === 'member' && slot.memberId) {
         const m = memberById(slot.memberId)
-        return { name: `${m.firstName} ${m.lastName}`, memberId: m.id, isGuest: false }
+        return { name: `${m.firstName} ${m.lastName}`, memberId: m.id, isGuest: false, colorIndex: i }
       }
-      return { name: slot.search.trim() || `Joueur ${i + 1}`, memberId: null, isGuest: true }
+      return { name: slot.search.trim() || `Joueur ${i + 1}`, memberId: null, isGuest: true, colorIndex: i }
     })
     onContinue(players)
   }
