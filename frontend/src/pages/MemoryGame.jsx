@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
-import { buildDeck, preloadDeckImages, membersWithPhoto, PLAYER_COLORS } from '../utils/memoryGame'
+import { buildDeck, preloadDeckImages, membersWithPhoto, formatDuration, PLAYER_COLORS } from '../utils/memoryGame'
 import PlayerSetupStep from '../components/games/PlayerSetupStep'
 import DifficultySetupStep from '../components/games/DifficultySetupStep'
 import TurnOrderWheel from '../components/games/TurnOrderWheel'
@@ -28,12 +28,21 @@ export default function MemoryGame() {
   const [locked, setLocked] = useState(false)
   const [paused, setPaused] = useState(false)
   const [gameDuration, setGameDuration] = useState(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const startTimeRef = useRef(null)
 
   useEffect(() => {
     setHideChrome(step === 'playing')
     return () => setHideChrome(false)
   }, [step, setHideChrome])
+
+  useEffect(() => {
+    if (step !== 'playing' || paused) return
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [step, paused])
 
   function handlePlayersChosen(chosenPlayers) {
     setPlayers(chosenPlayers.map(p => ({ ...p, score: 0 })))
@@ -59,6 +68,7 @@ export default function MemoryGame() {
     setMatchedBy(new Map())
     setLocked(false)
     setPaused(false)
+    setElapsedSeconds(0)
     startTimeRef.current = Date.now()
     setStep('playing')
   }
@@ -160,7 +170,11 @@ export default function MemoryGame() {
           <div className="rounded-2xl bg-white shadow-sm px-4 py-3 flex items-center gap-2">
             <span className="text-sm text-gray-500">Au tour de</span>
             <span className="flex-1 text-right text-sm font-bold text-primary truncate">{players[currentPlayer]?.name}</span>
-            <button onClick={() => setPaused(true)} className="shrink-0 text-gray-400 -mr-1 p-1">
+            <span className="shrink-0 text-xs font-mono text-gray-400">{formatDuration(elapsedSeconds)}</span>
+            <button
+              onClick={() => setPaused(true)}
+              className="shrink-0 min-h-touch min-w-touch flex items-center justify-center text-gray-400 -mr-2.5"
+            >
               <DotsIcon />
             </button>
           </div>

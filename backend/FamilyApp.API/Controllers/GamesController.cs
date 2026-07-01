@@ -74,6 +74,7 @@ public class GamesController(AppDbContext db) : ControllerBase
             .ToListAsync();
 
         int gamesPlayed = 0, wins = 0, losses = 0, pairsFound = 0, bestScore = 0;
+        int? bestDurationSeconds = null;
 
         foreach (var r in results)
         {
@@ -85,6 +86,8 @@ public class GamesController(AppDbContext db) : ControllerBase
             gamesPlayed++;
             pairsFound += me.Score;
             bestScore = Math.Max(bestScore, me.Score);
+            if (r.DurationSeconds.HasValue)
+                bestDurationSeconds = Math.Min(bestDurationSeconds ?? int.MaxValue, r.DurationSeconds.Value);
 
             var maxScore = linked.Max(p => p.Score);
             var isTie = linked.Count(p => p.Score == maxScore) > 1;
@@ -92,7 +95,7 @@ public class GamesController(AppDbContext db) : ControllerBase
             else losses++;
         }
 
-        return Ok(new { gamesPlayed, wins, losses, pairsFound, bestScore });
+        return Ok(new { gamesPlayed, wins, losses, pairsFound, bestScore, bestDurationSeconds });
     }
 
     [HttpPost("results")]

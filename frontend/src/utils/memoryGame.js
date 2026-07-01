@@ -37,6 +37,12 @@ export function buildDeck(members, pairsCount) {
   )
 }
 
+export function formatDuration(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 export function preloadDeckImages(deck) {
   const uniqueUrls = [...new Set(deck.map(card => card.photoUrl))]
   uniqueUrls.forEach(url => {

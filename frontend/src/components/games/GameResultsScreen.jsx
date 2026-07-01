@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { gamesApi } from '../../services/api'
+import { formatDuration } from '../../utils/memoryGame'
 
 export default function GameResultsScreen({ players, pairsCount, durationSeconds, onReplay, onExit }) {
   const submitted = useRef(false)
@@ -28,6 +29,9 @@ export default function GameResultsScreen({ players, pairsCount, durationSeconds
         <h2 className="text-lg font-bold text-gray-800 mt-2">
           {winnerName ? `${winnerName} gagne !` : 'Égalité !'}
         </h2>
+        {durationSeconds != null && (
+          <p className="text-xs text-gray-400 mt-1">Terminé en {formatDuration(durationSeconds)}</p>
+        )}
       </div>
 
       <div className="rounded-2xl bg-white shadow-sm divide-y divide-gray-50 overflow-hidden">
