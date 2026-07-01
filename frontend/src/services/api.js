@@ -171,6 +171,11 @@ export const externalMediaApi = {
   delete: (id) => api.delete(`/external-media/${id}`),
 }
 
+export const gamesApi = {
+  getResults: (gameType, limit = 10) => api.get('/games/results', { params: { gameType, limit } }),
+  submitResult: (data) => api.post('/games/results', data),
+}
+
 export const pushApi = {
   getVapidPublicKey: () => api.get('/push/vapid-public-key'),
   subscribe: (endpoint, p256dh, auth) => api.post('/push/subscribe', { endpoint, p256dh, auth }),
