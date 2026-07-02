@@ -218,7 +218,7 @@ export default function WhoIsItGame() {
 
 function PhotoPrompt({ url }) {
   return (
-    <div className="rounded-3xl overflow-hidden shadow-lg shadow-black/10 bg-white p-2 max-h-full aspect-square">
+    <div className="rounded-3xl overflow-hidden shadow-lg shadow-black/10 bg-white p-2 max-h-[42vh] aspect-square">
       <img src={url} alt="Qui est-ce ?" className="h-full w-full rounded-2xl object-cover" />
     </div>
   )
