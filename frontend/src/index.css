@@ -91,6 +91,13 @@ input:-webkit-autofill:active {
   .pb-safe-lg {
     padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
   }
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* En paysage sur iPhone, le notch/Dynamic Island est sur le côté :

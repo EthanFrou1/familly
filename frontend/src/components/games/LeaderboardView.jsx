@@ -71,7 +71,9 @@ export default function LeaderboardView() {
             </p>
           )}
 
-          <Podium entries={podiumEntries} memberById={memberById} />
+          <div className="rounded-3xl bg-white shadow-sm pt-5 px-3.5 overflow-hidden">
+            <Podium entries={podiumEntries} memberById={memberById} showRankInBar />
+          </div>
 
           {rest.length > 0 && (
             <div className="mt-8 rounded-2xl bg-white shadow-sm divide-y divide-gray-50 overflow-hidden">
