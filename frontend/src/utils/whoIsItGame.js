@@ -1,14 +1,11 @@
 import { shuffle } from './shuffle'
 import { membersWithPhoto } from './memoryGame'
+import { buildQuestionCountPresets } from './quizPresets'
 
 const OPTIONS_PER_QUESTION = 4
 export const MIN_MEMBERS_TO_UNLOCK = OPTIONS_PER_QUESTION
 
-export const QUESTION_COUNT_PRESETS = [
-  { label: 'Court', value: 8, emoji: '🌱', minRequired: MIN_MEMBERS_TO_UNLOCK },
-  { label: 'Moyen', value: 12, emoji: '🌳', minRequired: MIN_MEMBERS_TO_UNLOCK },
-  { label: 'Long', value: 16, emoji: '🔥', minRequired: MIN_MEMBERS_TO_UNLOCK },
-]
+export const QUESTION_COUNT_PRESETS = buildQuestionCountPresets(MIN_MEMBERS_TO_UNLOCK)
 
 export function buildWhoIsItRounds(members, questionCount) {
   const pool = membersWithPhoto(members)
