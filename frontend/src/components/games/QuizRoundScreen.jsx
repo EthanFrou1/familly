@@ -9,10 +9,10 @@ export default function QuizRoundScreen({ prompt, correctKey, options, selectedK
   }
 
   return (
-    <div className="flex-1 min-h-0 px-4 pb-4 flex flex-col">
+    <div className="flex-1 min-h-0 px-4 pb-6 safe-bottom flex flex-col">
       <div className="flex-1 min-h-0 flex items-center justify-center">{prompt}</div>
 
-      <div className="grid grid-cols-2 gap-2.5 shrink-0">
+      <div className="grid grid-cols-2 gap-2.5 shrink-0 mt-4">
         {options.map(option => (
           <button
             key={option.key}
