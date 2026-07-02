@@ -54,6 +54,9 @@ export default function Podium({ entries, memberById, showRankInBar = false }) {
             )}
             <p className="text-xs font-semibold text-gray-700 mt-2 truncate max-w-[80px]">{entry.name.split(' ')[0]}</p>
             {entry.statLabel && <p className="text-[11px] text-gray-400">{entry.statLabel}</p>}
+            {entry.isYou && (
+              <span className="mt-1 rounded-full bg-dark/10 px-2 py-0.5 text-[10px] font-bold text-dark">Vous</span>
+            )}
             <div className={`w-full rounded-t-xl mt-2 ${style.barHeight} ${style.barColor} ${showRankInBar ? 'flex items-start justify-center pt-2 text-white font-black text-xl' : ''}`}>
               {showRankInBar && rank}
             </div>
