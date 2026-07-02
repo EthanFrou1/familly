@@ -42,6 +42,7 @@ export default function MemoryGameRemote() {
   const [pendingWinnerId, setPendingWinnerId] = useState(null)
   const [finalPlayers, setFinalPlayers] = useState([])
   const [gameDuration, setGameDuration] = useState(null)
+  const [movesCount, setMovesCount] = useState(0)
   const pendingFinalOrderRef = useRef(null)
 
   const me = players.find(p => p.memberId === user?.memberId)
@@ -84,6 +85,7 @@ export default function MemoryGameRemote() {
         setPairsCount(payload.pairsCount)
         setFlipped([])
         setMatchedBy(new Map())
+        setMovesCount(0)
         setRemainingColorIndexes(payload.players.map(p => p.colorIndex))
         setStep('order')
       }),
@@ -100,6 +102,7 @@ export default function MemoryGameRemote() {
         setFlipped(prev => prev.includes(cardId) ? prev : [...prev, cardId])
       }),
       onHubEvent('TurnResolved', ({ matched, cardIds, scorerColorIndex, nextPlayerColorIndex }) => {
+        setMovesCount(m => m + 1)
         setTimeout(() => {
           if (matched) {
             const memberId = deckRef.current.find(c => c.cardId === cardIds[0])?.memberId
@@ -281,6 +284,7 @@ export default function MemoryGameRemote() {
           players={finalPlayers.map(p => ({ name: p.name, score: p.score, memberId: p.memberId, isGuest: false }))}
           pairsCount={pairsCount}
           durationSeconds={gameDuration}
+          movesCount={movesCount}
           alreadySubmitted
           canReplay={isHost}
           onReplay={() => gameHub.playAgain().catch(() => {})}

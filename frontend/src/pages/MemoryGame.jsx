@@ -31,6 +31,7 @@ export default function MemoryGame() {
   const [locked, setLocked] = useState(false)
   const [paused, setPaused] = useState(false)
   const [gameDuration, setGameDuration] = useState(null)
+  const [movesCount, setMovesCount] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const startTimeRef = useRef(null)
   const pausedAtRef = useRef(null)
@@ -84,6 +85,7 @@ export default function MemoryGame() {
     setLocked(false)
     setPaused(false)
     setElapsedSeconds(0)
+    setMovesCount(0)
     pausedDurationRef.current = 0
     pausedAtRef.current = null
     startTimeRef.current = Date.now()
@@ -115,6 +117,7 @@ export default function MemoryGame() {
     setFlipped(nextFlipped)
     if (nextFlipped.length < 2) return
 
+    setMovesCount(m => m + 1)
     setLocked(true)
     const first = deck.find(c => c.cardId === nextFlipped[0])
     const second = deck.find(c => c.cardId === nextFlipped[1])
@@ -203,6 +206,7 @@ export default function MemoryGame() {
           players={players}
           pairsCount={pairsCount}
           durationSeconds={gameDuration}
+          movesCount={movesCount}
           onReplay={restartRound}
           onExit={() => navigate('/games')}
         />
