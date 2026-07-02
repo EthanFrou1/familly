@@ -127,44 +127,13 @@ export default function GamesLobby() {
                     </button>
                   )}
                 </div>
-                <div className="px-4 pb-4 flex items-center gap-3">
-                  <Avatar
-                    member={latestResult.winnerName ? memberById.get([...latestResult.players].sort((a, b) => b.score - a.score)[0]?.memberId) : null}
-                    name={latestResult.winnerName ?? undefined}
-                    size="md"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-800 truncate">
-                      {latestResult.winnerName ? `🏆 ${latestResult.winnerName} a gagné` : 'Égalité'}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {latestResult.pairsCount} paires · {latestResult.playerCount} joueurs · {formatDate(latestResult.createdAt)}
-                    </p>
-                  </div>
-                  <span className="text-lg font-black text-primary shrink-0">
-                    {[...latestResult.players].sort((a, b) => b.score - a.score)[0]?.score}
-                  </span>
-                </div>
+                <ResultRow result={latestResult} memberById={memberById} className="px-4 pb-4" />
 
                 {historyOpen && olderResults.length > 0 && (
                   <div className="divide-y divide-gray-50 border-t border-gray-50">
-                    {olderResults.map(r => {
-                      const ranked = [...r.players].sort((a, b) => b.score - a.score)
-                      return (
-                        <div key={r.id} className="px-4 py-3">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium text-gray-700">
-                              {r.winnerName ? `🏆 ${r.winnerName}` : 'Égalité'}
-                            </p>
-                            <span className="text-xs text-gray-400">{formatDate(r.createdAt)}</span>
-                          </div>
-                          <p className="text-xs text-gray-400 mt-0.5">{r.pairsCount} paires · {r.playerCount} joueurs</p>
-                          <p className="text-xs text-gray-500 mt-1.5">
-                            {ranked.map((p, i) => `${i + 1}. ${p.name} (${p.score})`).join(' · ')}
-                          </p>
-                        </div>
-                      )
-                    })}
+                    {olderResults.map(r => (
+                      <ResultRow key={r.id} result={r} memberById={memberById} className="px-4 py-3" />
+                    ))}
                   </div>
                 )}
               </div>
@@ -176,6 +145,30 @@ export default function GamesLobby() {
 
         {tab === 'leaderboard' && <LeaderboardView />}
       </div>
+    </div>
+  )
+}
+
+function ResultRow({ result, memberById, className }) {
+  const ranked = [...result.players].sort((a, b) => b.score - a.score)
+  const winner = ranked[0]
+
+  return (
+    <div className={`flex items-center gap-3 ${className}`}>
+      <Avatar
+        member={result.winnerName ? memberById.get(winner?.memberId) : null}
+        name={result.winnerName ?? undefined}
+        size="md"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-gray-800 truncate">
+          {result.winnerName ? `🏆 ${result.winnerName} a gagné` : 'Égalité'}
+        </p>
+        <p className="text-xs text-gray-400 mt-0.5">
+          {result.pairsCount} paires · {result.playerCount} joueurs · {formatDate(result.createdAt)}
+        </p>
+      </div>
+      <span className="text-lg font-black text-primary shrink-0">{winner?.score}</span>
     </div>
   )
 }
