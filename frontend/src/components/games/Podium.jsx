@@ -43,7 +43,7 @@ export default function Podium({ entries, memberById, showRankInBar = false }) {
                 size={style.avatarSize}
                 className={`ring-4 ${style.ring}`}
               />
-              {!isSoleFirst && !hasBadge && (
+              {!isSoleFirst && !hasBadge && !showRankInBar && (
                 <span className="absolute -bottom-1 -right-1 text-lg">{style.badge}</span>
               )}
             </div>
