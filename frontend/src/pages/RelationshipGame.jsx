@@ -5,6 +5,7 @@ import { useUiChrome } from '../store/UiChromeContext'
 import { relationsApi } from '../services/api'
 import { formatDuration } from '../utils/memoryGame'
 import { QUESTION_COUNT_PRESETS, buildRelationshipRounds } from '../utils/relationshipGame'
+import GameModeScreen from '../components/games/GameModeScreen'
 import GameConfigScreen from '../components/games/GameConfigScreen'
 import TurnOrderWheel from '../components/games/TurnOrderWheel'
 import QuizRoundScreen from '../components/games/QuizRoundScreen'
@@ -26,7 +27,7 @@ export default function RelationshipGame() {
 
   const [relations, setRelations] = useState(null)
 
-  const [step, setStep] = useState('setup')
+  const [step, setStep] = useState('mode')
   const [players, setPlayers] = useState([])
   const [questionCount, setQuestionCount] = useState(null)
   const [rounds, setRounds] = useState([])
@@ -151,10 +152,19 @@ export default function RelationshipGame() {
     resolveRound(false)
   }
 
+  if (step === 'mode') {
+    return (
+      <div className="overflow-y-auto h-full bg-gray-50 pb-24">
+        <GameHeader title="Quel est le lien ?" onBack={() => navigate('/games')} />
+        <GameModeScreen onLocal={() => setStep('setup')} onRemote={() => navigate('/games/relationship/remote')} />
+      </div>
+    )
+  }
+
   if (step === 'setup') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <GameHeader title="Prêts ? 🎯" subtitle="Quel est le lien ?" onBack={() => navigate('/games')} />
+        <GameHeader title="Prêts ? 🎯" subtitle="Quel est le lien ?" onBack={() => setStep('mode')} />
         {relations == null ? (
           <div className="flex justify-center py-10">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

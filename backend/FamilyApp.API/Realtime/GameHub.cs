@@ -327,11 +327,25 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         {
             var membersWithPhoto = await db.Members
                 .Where(m => m.ProfilePictureUrl != null)
-                .Select(m => new QuizQuestionGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.ProfilePictureUrl, m.Gender))
+                .Select(m => new QuizQuestionGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.ProfilePictureUrl, m.Gender, m.FamilyId))
                 .ToListAsync();
 
             if (membersWithPhoto.Count < 4) return;
             questions = QuizQuestionGenerator.BuildWhoIsItQuestions(membersWithPhoto, questionCount, excludeIds);
+        }
+        else if (session.GameType == "relationship")
+        {
+            var members = await db.Members
+                .Select(m => new QuizQuestionGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.ProfilePictureUrl, m.Gender, m.FamilyId))
+                .ToListAsync();
+
+            if (members.Count < 4) return;
+
+            var relations = await db.Relations
+                .Select(r => new RelationshipLabelService.RelationInfo(r.MemberAId, r.MemberBId, r.Type))
+                .ToListAsync();
+
+            questions = QuizQuestionGenerator.BuildRelationshipQuestions(members, relations, questionCount);
         }
         else
         {
