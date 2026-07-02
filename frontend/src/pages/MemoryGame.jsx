@@ -8,6 +8,7 @@ import TurnOrderWheel from '../components/games/TurnOrderWheel'
 import MemoryBoard from '../components/games/MemoryBoard'
 import GameResultsScreen from '../components/games/GameResultsScreen'
 import GameHeader from '../components/games/GameHeader'
+import DotsIcon from '../components/games/DotsIcon'
 import Avatar from '../components/shared/Avatar'
 
 const FLIP_BACK_DELAY = 900
@@ -144,23 +145,33 @@ export default function MemoryGame() {
         <div className="px-4 mt-6 space-y-3">
           <button
             onClick={() => setStep('setup')}
-            className="w-full rounded-2xl bg-white shadow-sm p-4 flex items-center gap-4 active:opacity-70"
+            className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-4 shadow-sm active:scale-[0.99] transition-transform"
           >
-            <div className="h-12 w-12 shrink-0 rounded-2xl bg-primary flex items-center justify-center text-xl">📱</div>
-            <div className="flex-1 text-left">
-              <h2 className="font-semibold text-gray-800">Jouer en local</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Passez-vous le téléphone à tour de rôle.</p>
+            <div className="flex items-center gap-4">
+              <span className="h-12 w-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">📱</span>
+              <div className="text-left">
+                <h2 className="font-extrabold text-gray-800">Jouer en local</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Passez-vous le téléphone à tour de rôle.</p>
+              </div>
             </div>
+            <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
           </button>
           <button
             onClick={() => navigate('/games/memory/remote')}
-            className="w-full rounded-2xl bg-white shadow-sm p-4 flex items-center gap-4 active:opacity-70"
+            className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-4 shadow-sm active:scale-[0.99] transition-transform"
           >
-            <div className="h-12 w-12 shrink-0 rounded-2xl bg-dark flex items-center justify-center text-xl">🌐</div>
-            <div className="flex-1 text-left">
-              <h2 className="font-semibold text-gray-800">Jouer à distance</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Chacun sur son téléphone, en temps réel.</p>
+            <div className="flex items-center gap-4">
+              <span className="h-12 w-12 shrink-0 rounded-2xl bg-dark/10 flex items-center justify-center text-2xl">🌐</span>
+              <div className="text-left">
+                <h2 className="font-extrabold text-gray-800">Jouer à distance</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Chacun sur son téléphone, en temps réel.</p>
+              </div>
             </div>
+            <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </div>
@@ -280,15 +291,5 @@ export default function MemoryGame() {
         </div>
       )}
     </div>
-  )
-}
-
-function DotsIcon() {
-  return (
-    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-      <circle cx="12" cy="5" r="2" />
-      <circle cx="12" cy="12" r="2" />
-      <circle cx="12" cy="19" r="2" />
-    </svg>
   )
 }
