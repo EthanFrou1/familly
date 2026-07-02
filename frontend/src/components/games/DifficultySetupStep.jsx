@@ -1,12 +1,12 @@
 import { DIFFICULTY_PRESETS } from '../../utils/memoryGame'
 
-export default function DifficultySetupStep({ photoCount, onStart }) {
+export default function DifficultySetupStep({ photoCount, onStart, presets = DIFFICULTY_PRESETS, unitLabel = 'paires', sectionLabel = 'Difficulté' }) {
   return (
     <div className="px-4 mt-5">
-      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2.5">Difficulté</h2>
+      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2.5">{sectionLabel}</h2>
       <div className="flex gap-2.5">
-        {DIFFICULTY_PRESETS.map(preset => {
-          const disabled = photoCount < preset.value
+        {presets.map(preset => {
+          const disabled = photoCount < (preset.minRequired ?? preset.value)
           return (
             <button
               key={preset.value}
@@ -16,7 +16,7 @@ export default function DifficultySetupStep({ photoCount, onStart }) {
             >
               <div className="text-2xl">{preset.emoji}</div>
               <p className="mt-1.5 font-extrabold text-sm text-gray-800">{preset.label}</p>
-              <p className="mt-0.5 text-[11px] font-bold text-gray-400">{preset.value} paires</p>
+              <p className="mt-0.5 text-[11px] font-bold text-gray-400">{preset.value} {unitLabel}</p>
             </button>
           )
         })}

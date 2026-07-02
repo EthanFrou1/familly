@@ -50,4 +50,6 @@ export const gameHub = {
   spinWheel: () => getConnection().invoke('SpinWheel'),
   flipCard: (cardId) => getConnection().invoke('FlipCard', cardId),
   playAgain: () => getConnection().invoke('PlayAgain'),
+  startQuiz: (questionCount) => getConnection().invoke('StartQuiz', questionCount),
+  answerQuestion: (key) => getConnection().invoke('AnswerQuestion', key),
 }

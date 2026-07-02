@@ -312,6 +312,138 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
     }
 
+    public async Task StartQuiz(int questionCount)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || session.Started) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost || session.Players.Count < MinPlayers) return;
+
+        var excludeIds = session.Players.Select(p => p.MemberId);
+
+        List<QuizQuestion> questions;
+        if (session.GameType == "quiwho")
+        {
+            var membersWithPhoto = await db.Members
+                .Where(m => m.ProfilePictureUrl != null)
+                .Select(m => new QuizQuestionGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.ProfilePictureUrl, m.Gender))
+                .ToListAsync();
+
+            if (membersWithPhoto.Count < 4) return;
+            questions = QuizQuestionGenerator.BuildWhoIsItQuestions(membersWithPhoto, questionCount, excludeIds);
+        }
+        else
+        {
+            return;
+        }
+
+        if (questions.Count == 0) return;
+
+        object payload;
+        lock (session)
+        {
+            session.QuizQuestions = questions;
+            session.QuizQuestionIndex = 0;
+            session.PairsCount = questions.Count;
+            session.Started = true;
+            session.StartedAt = DateTime.UtcNow;
+            session.RemainingColorIndexesForWheel = session.Players.Select(p => p.ColorIndex).ToList();
+            session.TurnOrderColorIndexes = [];
+            foreach (var p in session.Players) p.Score = 0;
+
+            payload = new
+            {
+                players = ToPlayerDtos(session),
+                questionCount = questions.Count,
+                firstQuestion = ToPublicQuestion(questions[0]),
+            };
+        }
+
+        await Clients.Group(session.Code).SendAsync("QuizStarting", payload);
+        await BroadcastRoomsChangedAsync();
+    }
+
+    public async Task AnswerQuestion(string? selectedKey)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null) return;
+
+        object? resolvedPayload = null;
+        object? finishedPayload = null;
+        GameResult? resultToSave = null;
+
+        lock (session)
+        {
+            if (session.TurnOrderColorIndexes.Count == 0) return;
+            var currentColorIndex = session.TurnOrderColorIndexes[session.CurrentPlayerIndex];
+            if (caller.ColorIndex != currentColorIndex) return;
+            if (session.QuizQuestionIndex >= session.QuizQuestions.Count) return;
+
+            var question = session.QuizQuestions[session.QuizQuestionIndex];
+            var correct = selectedKey is not null && selectedKey == question.CorrectKey;
+
+            if (correct)
+            {
+                session.Players.First(p => p.ColorIndex == currentColorIndex).Score++;
+            }
+
+            var nextPlayerIndex = (session.CurrentPlayerIndex + 1) % session.TurnOrderColorIndexes.Count;
+            session.CurrentPlayerIndex = nextPlayerIndex;
+            session.QuizQuestionIndex++;
+
+            var isLast = session.QuizQuestionIndex >= session.QuizQuestions.Count;
+
+            resolvedPayload = new
+            {
+                correctKey = question.CorrectKey,
+                scorerColorIndex = correct ? currentColorIndex : (int?)null,
+                nextPlayerColorIndex = session.TurnOrderColorIndexes[nextPlayerIndex],
+                nextQuestion = isLast ? null : ToPublicQuestion(session.QuizQuestions[session.QuizQuestionIndex]),
+            };
+
+            if (isLast)
+            {
+                var durationSeconds = session.StartedAt is null ? 0 : (int)(DateTime.UtcNow - session.StartedAt.Value).TotalSeconds;
+                var topScore = session.Players.Max(p => p.Score);
+                var winners = session.Players.Where(p => p.Score == topScore).ToList();
+                var winnerName = winners.Count == 1 ? winners[0].Name : null;
+
+                var playersJson = JsonSerializer.Serialize(session.Players
+                    .Select(p => new GamePlayerScoreDto(p.Name, p.Score, p.MemberId, false)));
+
+                resultToSave = new GameResult
+                {
+                    GameType = session.GameType,
+                    PairsCount = session.PairsCount,
+                    PlayerCount = session.Players.Count,
+                    PlayersJson = playersJson,
+                    WinnerName = winnerName,
+                    DurationSeconds = durationSeconds,
+                    PlayedByUserId = Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!),
+                };
+
+                finishedPayload = new
+                {
+                    players = session.Players.Select(p => new { memberId = p.MemberId, name = p.Name, score = p.Score, colorIndex = p.ColorIndex }),
+                    durationSeconds,
+                };
+            }
+        }
+
+        if (resolvedPayload is not null) await Clients.Group(session.Code).SendAsync("AnswerResolved", resolvedPayload);
+
+        if (resultToSave is not null)
+        {
+            db.GameResults.Add(resultToSave);
+            await db.SaveChangesAsync();
+        }
+        if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
+    }
+
     public async Task PlayAgain()
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
@@ -328,12 +460,23 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             session.MatchedBy.Clear();
             session.TurnOrderColorIndexes = [];
             session.RemainingColorIndexesForWheel = [];
+            session.QuizQuestions = [];
+            session.QuizQuestionIndex = 0;
             foreach (var p in session.Players) p.Score = 0;
         }
 
         await Clients.Group(session.Code).SendAsync("BackToDifficulty");
         await BroadcastRoomsChangedAsync();
     }
+
+    private static object ToPublicQuestion(QuizQuestion q) => new
+    {
+        id = q.Id,
+        photoUrl = q.PhotoUrl,
+        memberAId = q.MemberAId,
+        memberBId = q.MemberBId,
+        options = q.Options.Select(o => new { key = o.Key, label = o.Label }),
+    };
 
     private object BuildOpenRoomsPayload() =>
         store.GetOpenSessions().Select(s => new

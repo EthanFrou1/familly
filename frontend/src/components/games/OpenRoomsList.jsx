@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { connectHub, gameHub, onHubEvent } from '../../services/gameHub'
+import { GAME_LABELS } from '../../utils/gameRegistry'
 import Avatar from '../shared/Avatar'
 
 export default function OpenRoomsList() {
@@ -21,8 +22,8 @@ export default function OpenRoomsList() {
     return () => { cancelled = true; off() }
   }, [])
 
-  function handleJoin(code) {
-    navigate('/games/memory/remote', { state: { autoJoinCode: code } })
+  function handleJoin(code, gameType) {
+    navigate(`/games/${gameType}/remote`, { state: { autoJoinCode: code } })
   }
 
   if (loading) {
@@ -57,10 +58,12 @@ export default function OpenRoomsList() {
               <p className="text-sm font-semibold text-gray-800 truncate">
                 {room.players[0]?.name}{room.players.length > 1 ? ` + ${room.players.length - 1}` : ''}
               </p>
-              <p className="text-xs text-gray-400">{room.playerCount}/{room.maxPlayers} joueurs · Memory</p>
+              <p className="text-xs text-gray-400">
+                {room.playerCount}/{room.maxPlayers} joueurs · {GAME_LABELS[room.gameType] ?? room.gameType}
+              </p>
             </div>
             <button
-              onClick={() => handleJoin(room.code)}
+              onClick={() => handleJoin(room.code, room.gameType)}
               disabled={full}
               className="shrink-0 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white active:bg-primary-dark disabled:opacity-40"
             >

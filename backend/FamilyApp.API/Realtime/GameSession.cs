@@ -18,6 +18,25 @@ public class DeckCard
     public required string PhotoUrl { get; set; }
 }
 
+public class QuizOption
+{
+    public required string Key { get; set; }
+    public required string Label { get; set; }
+}
+
+// Représente une question de quiz (Qui est-ce / Quel est le lien). CorrectKey ne doit jamais
+// être envoyé au client avant que la question soit résolue (sinon la réponse est visible dans
+// l'onglet réseau du navigateur).
+public class QuizQuestion
+{
+    public required string Id { get; set; }
+    public required string CorrectKey { get; set; }
+    public required List<QuizOption> Options { get; set; }
+    public string? PhotoUrl { get; set; }
+    public Guid? MemberAId { get; set; }
+    public Guid? MemberBId { get; set; }
+}
+
 public class GameSession
 {
     public required string Code { get; set; }
@@ -33,4 +52,7 @@ public class GameSession
 
     public List<int> RemainingColorIndexesForWheel { get; set; } = [];
     public List<int> TurnOrderColorIndexes { get; set; } = [];
+
+    public List<QuizQuestion> QuizQuestions { get; set; } = [];
+    public int QuizQuestionIndex { get; set; }
 }

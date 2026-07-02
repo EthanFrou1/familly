@@ -4,6 +4,7 @@ import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
 import { membersWithPhoto, formatDuration } from '../utils/memoryGame'
 import { QUESTION_COUNT_PRESETS, buildWhoIsItRounds } from '../utils/whoIsItGame'
+import GameModeScreen from '../components/games/GameModeScreen'
 import GameConfigScreen from '../components/games/GameConfigScreen'
 import TurnOrderWheel from '../components/games/TurnOrderWheel'
 import QuizRoundScreen from '../components/games/QuizRoundScreen'
@@ -23,7 +24,7 @@ export default function WhoIsItGame() {
   const photoCount = membersWithPhoto(members).length
   const memberById = useMemo(() => new Map(members.map(m => [m.id, m])), [members])
 
-  const [step, setStep] = useState('setup')
+  const [step, setStep] = useState('mode')
   const [players, setPlayers] = useState([])
   const [questionCount, setQuestionCount] = useState(null)
   const [rounds, setRounds] = useState([])
@@ -144,10 +145,19 @@ export default function WhoIsItGame() {
     resolveRound(false)
   }
 
+  if (step === 'mode') {
+    return (
+      <div className="overflow-y-auto h-full bg-gray-50 pb-24">
+        <GameHeader title="Qui est-ce ?" onBack={() => navigate('/games')} />
+        <GameModeScreen onLocal={() => setStep('setup')} onRemote={() => navigate('/games/quiwho/remote')} />
+      </div>
+    )
+  }
+
   if (step === 'setup') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <GameHeader title="Prêts ? 🎯" subtitle="Qui est-ce ?" onBack={() => navigate('/games')} />
+        <GameHeader title="Prêts ? 🎯" subtitle="Qui est-ce ?" onBack={() => setStep('mode')} />
         <GameConfigScreen
           photoCount={photoCount}
           onStart={handleConfigReady}
