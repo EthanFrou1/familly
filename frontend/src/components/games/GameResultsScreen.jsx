@@ -30,6 +30,7 @@ export default function GameResultsScreen({ players, pairsCount, durationSeconds
   const podiumEntries = ranked.slice(0, 3).map(p => ({
     memberId: p.memberId,
     name: p.name,
+    score: p.score,
     badge: p.score,
   }))
 

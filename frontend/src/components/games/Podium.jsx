@@ -6,25 +6,44 @@ const RANK_STYLE = {
   3: { order: 'order-3', barHeight: 'h-10', barColor: 'bg-amber-700', ring: 'ring-amber-700', avatarSize: 'md', badge: '🥉' },
 }
 
+// entries doivent déjà être triées du meilleur au moins bon. Si un `score`
+// numérique est fourni sur chaque entrée, les ex-æquo partagent le même
+// rang (ex: 1, 1, 3) au lieu d'être départagés arbitrairement par leur
+// position — sinon le podium ferait croire à une victoire qui n'existe pas.
+function computeRanks(entries) {
+  const hasScores = entries.every(e => typeof e.score === 'number')
+  if (!hasScores) return entries.map((_, i) => i + 1)
+
+  const ranks = []
+  entries.forEach((e, i) => {
+    ranks.push(i > 0 && e.score === entries[i - 1].score ? ranks[i - 1] : i + 1)
+  })
+  return ranks
+}
+
 export default function Podium({ entries, memberById, showRankInBar = false }) {
+  const ranks = computeRanks(entries)
+  const hasTie = new Set(ranks).size !== ranks.length
+  const soleFirst = ranks.filter(r => r === 1).length === 1
+
   return (
     <div className="flex items-end justify-center gap-3">
       {entries.map((entry, i) => {
-        const rank = i + 1
-        const style = RANK_STYLE[rank]
-        const isFirst = rank === 1
+        const rank = ranks[i]
+        const style = RANK_STYLE[Math.min(rank, 3)]
+        const isSoleFirst = rank === 1 && soleFirst
         const hasBadge = entry.badge != null
         return (
-          <div key={entry.memberId ?? entry.name} className={`flex-1 flex flex-col items-center ${style.order}`}>
+          <div key={entry.memberId ?? entry.name} className={`flex-1 flex flex-col items-center ${hasTie ? '' : style.order}`}>
             <div className="relative">
-              {isFirst && <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-2xl">👑</span>}
+              {isSoleFirst && <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-2xl">👑</span>}
               <Avatar
                 member={memberById.get(entry.memberId)}
                 name={entry.name}
                 size={style.avatarSize}
                 className={`ring-4 ${style.ring}`}
               />
-              {!isFirst && !hasBadge && (
+              {!isSoleFirst && !hasBadge && (
                 <span className="absolute -bottom-1 -right-1 text-lg">{style.badge}</span>
               )}
             </div>
