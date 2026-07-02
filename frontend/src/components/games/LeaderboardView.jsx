@@ -1,15 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMembers } from '../../store/MembersContext'
 import { gamesApi } from '../../services/api'
+import { GAMES } from '../../utils/gameRegistry'
 import Avatar from '../shared/Avatar'
 import Podium from './Podium'
 
-const TABS = [
-  { key: 'global', label: 'Global' },
-  { key: 'memory', label: 'Memory' },
-  { key: 'quiwho', label: 'Qui est-ce' },
-  { key: 'relationship', label: 'Lien de parenté' },
-]
+const TABS = [{ key: 'global', label: 'Global' }, ...GAMES]
 
 export default function LeaderboardView() {
   const { members } = useMembers()
@@ -37,12 +33,12 @@ export default function LeaderboardView() {
 
   return (
     <div>
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-none -mx-4 px-4">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors ${
+            className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === t.key ? 'bg-primary text-white' : 'bg-white text-gray-600 shadow-sm'
             }`}
           >

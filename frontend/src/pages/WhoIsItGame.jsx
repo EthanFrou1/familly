@@ -164,9 +164,14 @@ export default function WhoIsItGame() {
       <div className={`h-full flex flex-col transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
         <div className="px-4 pt-10 pb-2 shrink-0">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-mono font-semibold text-gray-400 bg-white rounded-full px-3 py-1 shadow-sm">
-              ⏱ {formatDuration(elapsedSeconds)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-semibold text-gray-400 bg-white rounded-full px-3 py-1 shadow-sm">
+                ⏱ {formatDuration(elapsedSeconds)}
+              </span>
+              <span className="text-xs font-bold text-primary bg-white rounded-full px-3 py-1 shadow-sm">
+                {roundIndex + 1}/{rounds.length}
+              </span>
+            </div>
             <button
               onClick={pauseGame}
               className="shrink-0 min-h-touch min-w-touch flex items-center justify-center text-gray-400 bg-white rounded-full shadow-sm"
