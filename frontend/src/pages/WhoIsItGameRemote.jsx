@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
 import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
-import { membersWithPhoto, PLAYER_COLORS } from '../utils/memoryGame'
+import { membersWithPhoto, PLAYER_COLORS, formatDuration } from '../utils/memoryGame'
 import { QUESTION_COUNT_PRESETS } from '../utils/whoIsItGame'
 import GameHeader from '../components/games/GameHeader'
 import DifficultySetupStep from '../components/games/DifficultySetupStep'
@@ -44,8 +44,10 @@ export default function WhoIsItGameRemote() {
   const [pendingWinnerId, setPendingWinnerId] = useState(null)
   const [finalPlayers, setFinalPlayers] = useState([])
   const [gameDuration, setGameDuration] = useState(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const pendingFinalOrderRef = useRef(null)
   const myPickRef = useRef(null)
+  const startTimeRef = useRef(null)
 
   const me = players.find(p => p.memberId === user?.memberId)
   const myColorIndex = me?.colorIndex
@@ -72,6 +74,14 @@ export default function WhoIsItGameRemote() {
     if (step !== 'playing') return
     setTimeLeft(ANSWER_TIME_LIMIT)
   }, [step, questionIndex])
+
+  useEffect(() => {
+    if (step !== 'playing') return
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [step])
 
   useEffect(() => {
     if (step !== 'playing' || paused || revealKey != null) return
@@ -101,6 +111,8 @@ export default function WhoIsItGameRemote() {
         setCorrectKey(null)
         setRevealKey(null)
         myPickRef.current = null
+        setElapsedSeconds(0)
+        startTimeRef.current = Date.now()
         setRemainingColorIndexes(payload.players.map(p => p.colorIndex))
         setStep('order')
       }),
@@ -335,6 +347,9 @@ export default function WhoIsItGameRemote() {
                 {questionIndex + 1}/{questionCount}
               </span>
             </div>
+            <span className="shrink-0 text-xs font-mono font-semibold text-gray-400 bg-white rounded-full px-2.5 py-1 shadow-sm">
+              ⏱ {formatDuration(elapsedSeconds)}
+            </span>
             <button
               onClick={() => setPaused(true)}
               className="shrink-0 min-h-touch min-w-touch flex items-center justify-center text-gray-400 bg-white rounded-full shadow-sm"

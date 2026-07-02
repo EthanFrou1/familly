@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
 import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
-import { membersWithPhoto, PLAYER_COLORS } from '../utils/memoryGame'
+import { membersWithPhoto, PLAYER_COLORS, formatDuration } from '../utils/memoryGame'
 import GameHeader from '../components/games/GameHeader'
 import DifficultySetupStep from '../components/games/DifficultySetupStep'
 import SpinWheel from '../components/games/SpinWheel'
@@ -44,7 +44,9 @@ export default function MemoryGameRemote() {
   const [finalPlayers, setFinalPlayers] = useState([])
   const [gameDuration, setGameDuration] = useState(null)
   const [movesCount, setMovesCount] = useState(0)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const pendingFinalOrderRef = useRef(null)
+  const startTimeRef = useRef(null)
 
   const me = players.find(p => p.memberId === user?.memberId)
   const myColorIndex = me?.colorIndex
@@ -58,6 +60,14 @@ export default function MemoryGameRemote() {
   useEffect(() => {
     if (flipped.length >= 2) setLocked(true)
   }, [flipped])
+
+  useEffect(() => {
+    if (step !== 'playing') return
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [step])
 
   useEffect(() => {
     connectHub().catch(() => setError('Connexion impossible.'))
@@ -87,6 +97,8 @@ export default function MemoryGameRemote() {
         setFlipped([])
         setMatchedBy(new Map())
         setMovesCount(0)
+        setElapsedSeconds(0)
+        startTimeRef.current = Date.now()
         setRemainingColorIndexes(payload.players.map(p => p.colorIndex))
         setStep('order')
       }),
@@ -301,9 +313,12 @@ export default function MemoryGameRemote() {
     <div className="relative h-full bg-gray-50 overflow-hidden">
       <div className={`h-full flex flex-col transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
         <div className="px-4 pt-10 pb-2 shrink-0">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-xs font-mono font-semibold text-gray-400 bg-white rounded-full px-3 py-1 shadow-sm truncate">
               {currentColorIndex === myColorIndex ? 'À vous de jouer !' : `Au tour de ${activePlayer?.name ?? ''}`}
+            </span>
+            <span className="shrink-0 text-xs font-mono font-semibold text-gray-400 bg-white rounded-full px-2.5 py-1 shadow-sm">
+              ⏱ {formatDuration(elapsedSeconds)}
             </span>
             <button
               onClick={() => setPaused(true)}
