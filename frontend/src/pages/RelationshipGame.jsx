@@ -15,6 +15,8 @@ import PlayerScoreBar from '../components/games/PlayerScoreBar'
 import Avatar from '../components/shared/Avatar'
 
 const REVEAL_DELAY = 1100
+const ANSWER_TIME_LIMIT = 15
+const TIMEOUT_KEY = '__timeout__'
 
 export default function RelationshipGame() {
   const { members } = useMembers()
@@ -31,6 +33,7 @@ export default function RelationshipGame() {
   const [roundIndex, setRoundIndex] = useState(0)
   const [currentPlayer, setCurrentPlayer] = useState(0)
   const [selectedKey, setSelectedKey] = useState(null)
+  const [timeLeft, setTimeLeft] = useState(ANSWER_TIME_LIMIT)
   const [paused, setPaused] = useState(false)
   const [gameDuration, setGameDuration] = useState(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -67,6 +70,23 @@ export default function RelationshipGame() {
     return () => clearInterval(interval)
   }, [step, paused])
 
+  useEffect(() => {
+    if (step !== 'playing') return
+    setTimeLeft(ANSWER_TIME_LIMIT)
+  }, [step, roundIndex])
+
+  useEffect(() => {
+    if (step !== 'playing' || paused || selectedKey != null) return
+    const interval = setInterval(() => setTimeLeft(t => Math.max(0, t - 0.1)), 100)
+    return () => clearInterval(interval)
+  }, [step, paused, selectedKey, roundIndex])
+
+  useEffect(() => {
+    if (step !== 'playing' || paused || selectedKey != null) return
+    if (timeLeft <= 0) handleTimeout()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft])
+
   function handleConfigReady(chosenPlayers, count) {
     setPlayers(chosenPlayers.map(p => ({ ...p, score: 0 })))
     setQuestionCount(count)
@@ -101,10 +121,7 @@ export default function RelationshipGame() {
     navigate('/games')
   }
 
-  function handleAnswer(key) {
-    if (paused || selectedKey != null) return
-    setSelectedKey(key)
-    const correct = key === rounds[roundIndex].correctTerm
+  function resolveRound(correct) {
     const answeringPlayer = currentPlayer
     if (correct) {
       setPlayers(prev => prev.map((p, i) => i === answeringPlayer ? { ...p, score: p.score + 1 } : p))
@@ -120,6 +137,18 @@ export default function RelationshipGame() {
         setCurrentPlayer(p => (p + 1) % players.length)
       }
     }, REVEAL_DELAY)
+  }
+
+  function handleAnswer(key) {
+    if (paused || selectedKey != null) return
+    setSelectedKey(key)
+    resolveRound(key === rounds[roundIndex].correctTerm)
+  }
+
+  function handleTimeout() {
+    if (paused || selectedKey != null) return
+    setSelectedKey(TIMEOUT_KEY)
+    resolveRound(false)
   }
 
   if (step === 'setup') {
@@ -203,6 +232,8 @@ export default function RelationshipGame() {
           selectedKey={selectedKey}
           onAnswer={handleAnswer}
           disabled={paused}
+          timeLeft={timeLeft}
+          timeLimit={ANSWER_TIME_LIMIT}
         />
       </div>
 
