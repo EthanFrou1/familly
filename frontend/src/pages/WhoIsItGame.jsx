@@ -13,6 +13,8 @@ import DotsIcon from '../components/games/DotsIcon'
 import PlayerScoreBar from '../components/games/PlayerScoreBar'
 
 const REVEAL_DELAY = 1100
+const ANSWER_TIME_LIMIT = 15
+const TIMEOUT_KEY = '__timeout__'
 
 export default function WhoIsItGame() {
   const { members } = useMembers()
@@ -28,6 +30,7 @@ export default function WhoIsItGame() {
   const [roundIndex, setRoundIndex] = useState(0)
   const [currentPlayer, setCurrentPlayer] = useState(0)
   const [selectedMemberId, setSelectedMemberId] = useState(null)
+  const [timeLeft, setTimeLeft] = useState(ANSWER_TIME_LIMIT)
   const [paused, setPaused] = useState(false)
   const [gameDuration, setGameDuration] = useState(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -59,6 +62,23 @@ export default function WhoIsItGame() {
     const interval = setInterval(() => setElapsedSeconds(getElapsedSeconds()), 1000)
     return () => clearInterval(interval)
   }, [step, paused])
+
+  useEffect(() => {
+    if (step !== 'playing') return
+    setTimeLeft(ANSWER_TIME_LIMIT)
+  }, [step, roundIndex])
+
+  useEffect(() => {
+    if (step !== 'playing' || paused || selectedMemberId != null) return
+    const interval = setInterval(() => setTimeLeft(t => Math.max(0, t - 0.1)), 100)
+    return () => clearInterval(interval)
+  }, [step, paused, selectedMemberId, roundIndex])
+
+  useEffect(() => {
+    if (step !== 'playing' || paused || selectedMemberId != null) return
+    if (timeLeft <= 0) handleTimeout()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft])
 
   function handleConfigReady(chosenPlayers, count) {
     setPlayers(chosenPlayers.map(p => ({ ...p, score: 0 })))
@@ -94,10 +114,7 @@ export default function WhoIsItGame() {
     navigate('/games')
   }
 
-  function handleAnswer(memberId) {
-    if (paused || selectedMemberId != null) return
-    setSelectedMemberId(memberId)
-    const correct = memberId === rounds[roundIndex].targetMemberId
+  function resolveRound(correct) {
     const answeringPlayer = currentPlayer
     if (correct) {
       setPlayers(prev => prev.map((p, i) => i === answeringPlayer ? { ...p, score: p.score + 1 } : p))
@@ -113,6 +130,18 @@ export default function WhoIsItGame() {
         setCurrentPlayer(p => (p + 1) % players.length)
       }
     }, REVEAL_DELAY)
+  }
+
+  function handleAnswer(memberId) {
+    if (paused || selectedMemberId != null) return
+    setSelectedMemberId(memberId)
+    resolveRound(memberId === rounds[roundIndex].targetMemberId)
+  }
+
+  function handleTimeout() {
+    if (paused || selectedMemberId != null) return
+    setSelectedMemberId(TIMEOUT_KEY)
+    resolveRound(false)
   }
 
   if (step === 'setup') {
@@ -190,6 +219,8 @@ export default function WhoIsItGame() {
           selectedKey={selectedMemberId}
           onAnswer={handleAnswer}
           disabled={paused}
+          timeLeft={timeLeft}
+          timeLimit={ANSWER_TIME_LIMIT}
         />
       </div>
 
