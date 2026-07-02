@@ -188,7 +188,7 @@ export default function RelationshipGame() {
             </button>
           </div>
 
-          <PlayerScoreBar players={players} isActive={(_, i) => i === currentPlayer} />
+          <PlayerScoreBar players={players} isActive={(_, i) => i === currentPlayer} memberById={memberById} />
         </div>
 
         <QuizRoundScreen

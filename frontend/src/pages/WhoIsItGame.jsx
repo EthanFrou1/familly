@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
@@ -19,6 +19,7 @@ export default function WhoIsItGame() {
   const navigate = useNavigate()
   const { setHideChrome } = useUiChrome()
   const photoCount = membersWithPhoto(members).length
+  const memberById = useMemo(() => new Map(members.map(m => [m.id, m])), [members])
 
   const [step, setStep] = useState('setup')
   const [players, setPlayers] = useState([])
@@ -71,7 +72,7 @@ export default function WhoIsItGame() {
   }
 
   function beginPlay() {
-    setRounds(buildWhoIsItRounds(members, questionCount))
+    setRounds(buildWhoIsItRounds(members, questionCount, players.map(p => p.memberId)))
     setRoundIndex(0)
     setCurrentPlayer(0)
     setSelectedMemberId(null)
@@ -174,7 +175,7 @@ export default function WhoIsItGame() {
             </button>
           </div>
 
-          <PlayerScoreBar players={players} isActive={(_, i) => i === currentPlayer} />
+          <PlayerScoreBar players={players} isActive={(_, i) => i === currentPlayer} memberById={memberById} />
         </div>
 
         <QuizRoundScreen
