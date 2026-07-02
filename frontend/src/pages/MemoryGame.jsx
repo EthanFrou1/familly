@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
 import { buildDeck, preloadDeckImages, membersWithPhoto, formatDuration, PLAYER_COLORS } from '../utils/memoryGame'
-import PlayerSetupStep from '../components/games/PlayerSetupStep'
-import DifficultySetupStep from '../components/games/DifficultySetupStep'
+import GameConfigScreen from '../components/games/GameConfigScreen'
 import TurnOrderWheel from '../components/games/TurnOrderWheel'
 import MemoryBoard from '../components/games/MemoryBoard'
 import GameResultsScreen from '../components/games/GameResultsScreen'
@@ -63,12 +62,8 @@ export default function MemoryGame() {
     return () => clearInterval(interval)
   }, [step, paused])
 
-  function handlePlayersChosen(chosenPlayers) {
+  function handleConfigReady(chosenPlayers, count) {
     setPlayers(chosenPlayers.map(p => ({ ...p, score: 0 })))
-    setStep('difficulty')
-  }
-
-  function chooseDifficulty(count) {
     setPairsCount(count)
     const newDeck = buildDeck(members, count)
     setDeck(newDeck)
@@ -148,7 +143,7 @@ export default function MemoryGame() {
         <GameHeader title="Memory" onBack={() => navigate('/games')} />
         <div className="px-4 mt-6 space-y-3">
           <button
-            onClick={() => setStep('players')}
+            onClick={() => setStep('setup')}
             className="w-full rounded-2xl bg-white shadow-sm p-4 flex items-center gap-4 active:opacity-70"
           >
             <div className="h-12 w-12 shrink-0 rounded-2xl bg-primary flex items-center justify-center text-xl">📱</div>
@@ -172,20 +167,11 @@ export default function MemoryGame() {
     )
   }
 
-  if (step === 'players') {
+  if (step === 'setup') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <GameHeader title="Memory" onBack={() => setStep('mode')} />
-        <PlayerSetupStep onContinue={handlePlayersChosen} />
-      </div>
-    )
-  }
-
-  if (step === 'difficulty') {
-    return (
-      <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <GameHeader title="Memory" onBack={() => setStep('players')} />
-        <DifficultySetupStep photoCount={photoCount} onBack={() => setStep('players')} onStart={chooseDifficulty} />
+        <GameHeader title="Prêts ? 🎯" subtitle="Memory des photos" onBack={() => setStep('mode')} />
+        <GameConfigScreen photoCount={photoCount} onStart={handleConfigReady} />
       </div>
     )
   }
@@ -193,7 +179,7 @@ export default function MemoryGame() {
   if (step === 'order') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <GameHeader title="Memory" onBack={() => setStep('difficulty')} />
+        <GameHeader title="Memory" onBack={() => setStep('setup')} />
         <TurnOrderWheel players={players} onOrderReady={handleOrderReady} />
       </div>
     )
@@ -202,12 +188,11 @@ export default function MemoryGame() {
   if (step === 'results') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <GameHeader title="Résultats" onBack={() => navigate('/games')} />
         <GameResultsScreen
           players={players}
           pairsCount={pairsCount}
           durationSeconds={gameDuration}
-          onReplay={() => setStep('difficulty')}
+          onReplay={restartRound}
           onExit={() => navigate('/games')}
         />
       </div>
