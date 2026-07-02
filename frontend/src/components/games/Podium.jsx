@@ -6,13 +6,14 @@ const RANK_STYLE = {
   3: { order: 'order-3', barHeight: 'h-10', barColor: 'bg-amber-700', ring: 'ring-amber-700', avatarSize: 'md', badge: '🥉' },
 }
 
-export default function Podium({ entries, memberById }) {
+export default function Podium({ entries, memberById, showRankInBar = false }) {
   return (
     <div className="flex items-end justify-center gap-3">
       {entries.map((entry, i) => {
         const rank = i + 1
         const style = RANK_STYLE[rank]
         const isFirst = rank === 1
+        const hasBadge = entry.badge != null
         return (
           <div key={entry.memberId ?? entry.name} className={`flex-1 flex flex-col items-center ${style.order}`}>
             <div className="relative">
@@ -23,13 +24,20 @@ export default function Podium({ entries, memberById }) {
                 size={style.avatarSize}
                 className={`ring-4 ${style.ring}`}
               />
-              {!isFirst && (
+              {!isFirst && !hasBadge && (
                 <span className="absolute -bottom-1 -right-1 text-lg">{style.badge}</span>
               )}
             </div>
+            {hasBadge && (
+              <span className={`-mt-3 z-10 flex h-8 w-8 items-center justify-center rounded-full ${style.barColor} text-white text-sm font-black ring-2 ring-white`}>
+                {entry.badge}
+              </span>
+            )}
             <p className="text-xs font-semibold text-gray-700 mt-2 truncate max-w-[80px]">{entry.name.split(' ')[0]}</p>
-            <p className="text-[11px] text-gray-400">{entry.statLabel}</p>
-            <div className={`w-full rounded-t-xl mt-2 ${style.barHeight} ${style.barColor}`} />
+            {entry.statLabel && <p className="text-[11px] text-gray-400">{entry.statLabel}</p>}
+            <div className={`w-full rounded-t-xl mt-2 ${style.barHeight} ${style.barColor} ${showRankInBar ? 'flex items-start justify-center pt-2 text-white font-black text-xl' : ''}`}>
+              {showRankInBar && rank}
+            </div>
           </div>
         )
       })}
