@@ -5,6 +5,7 @@ import { gamesApi } from '../services/api'
 import { membersWithPhoto, MIN_PAIRS_TO_UNLOCK } from '../utils/memoryGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_WHOISIT } from '../utils/whoIsItGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_RELATIONSHIP } from '../utils/relationshipGame'
+import { GAMES, GAME_LABELS, GAME_UNIT_LABELS } from '../utils/gameRegistry'
 import OpenRoomsList from '../components/games/OpenRoomsList'
 import LeaderboardView from '../components/games/LeaderboardView'
 import Avatar from '../components/shared/Avatar'
@@ -14,8 +15,6 @@ const TABS = [
   { key: 'open', label: 'Parties ouvertes' },
   { key: 'leaderboard', label: 'Classement' },
 ]
-
-const UNIT_LABELS = { memory: 'paires', quiwho: 'questions', relationship: 'questions' }
 
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
@@ -36,13 +35,9 @@ export default function GamesLobby() {
   const memberById = new Map(members.map(m => [m.id, m]))
 
   useEffect(() => {
-    Promise.all([
-      gamesApi.getResults('memory', 10),
-      gamesApi.getResults('quiwho', 10),
-      gamesApi.getResults('relationship', 10),
-    ])
-      .then(([memoryRes, quizRes, relationshipRes]) => {
-        const merged = [...memoryRes.data, ...quizRes.data, ...relationshipRes.data]
+    Promise.all(GAMES.map(g => gamesApi.getResults(g.key, 10)))
+      .then(responses => {
+        const merged = responses.flatMap(r => r.data)
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         setRecentResults(merged)
       })
@@ -205,7 +200,8 @@ function GameCard({ emoji, title, description, unlocked, lockedHint, onPlay }) {
 function ResultRow({ result, memberById, className }) {
   const ranked = [...result.players].sort((a, b) => b.score - a.score)
   const winner = ranked[0]
-  const unitLabel = UNIT_LABELS[result.gameType] ?? 'paires'
+  const gameLabel = GAME_LABELS[result.gameType] ?? result.gameType
+  const unitLabel = GAME_UNIT_LABELS[result.gameType] ?? 'paires'
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
@@ -219,7 +215,7 @@ function ResultRow({ result, memberById, className }) {
           {result.winnerName ? `🏆 ${result.winnerName} a gagné` : 'Égalité'}
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
-          {result.pairsCount} {unitLabel} · {result.playerCount} joueurs · {formatDate(result.createdAt)}
+          {gameLabel} · {result.pairsCount} {unitLabel} · {result.playerCount} joueurs · {formatDate(result.createdAt)}
         </p>
       </div>
       <span className="text-lg font-black text-primary shrink-0">{winner?.score}</span>
