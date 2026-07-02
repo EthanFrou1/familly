@@ -51,9 +51,7 @@ PWA mobile-first privée pour une famille (~100 membres), accès sur invitation 
 
 - [ ] **Devine l'âge** — à partir d'une photo, deviner l'âge/l'année de naissance, classement au plus proche (3ᵉ idée de jeu évoquée, pas encore construite)
 - [ ] Reconnexion en partie à distance (aujourd'hui : une déconnexion annule la partie pour tout le monde)
-- [ ] Pause en partie à distance (retirée pour la v1, seul le mode local a un menu pause)
-- [ ] Brancher le sélecteur de thème (`ThemePicker.jsx` existe dans le code mais n'est affiché sur aucune page actuellement — 6 presets de couleurs prêts à l'emploi)
-- [ ] Chrono en direct pour les jeux de quiz (Qui est-ce / Quel est le lien) — seul Memory l'a pour l'instant
+- [ ] Temps total de partie affiché en direct sur les jeux de quiz (Qui est-ce / Quel est le lien) — ils ont déjà un compte à rebours de 15s par question, mais pas de chrono cumulé mm:ss depuis le début de la partie comme sur Memory
 
 ## 💡 Idées en vrac / à creuser
 
@@ -67,4 +65,4 @@ PWA mobile-first privée pour une famille (~100 membres), accès sur invitation 
 - **`VITE_API_URL` doit rester vide** en prod pour que les appels REST utilisent des URLs relatives via le proxy Vercel (sinon CORS cassé — cf. incident déjà rencontré).
 - **`db.Database.Migrate()`** tourne dans tous les environnements au démarrage (pas seulement en dev).
 - **État de partie en mémoire** : si le process backend redémarre (déploiement Railway), toutes les parties à distance en cours sont perdues (pas de persistance intermédiaire, seul le résultat final compte).
-- **Palette de couleurs** : ne jamais coder une couleur en dur pour les éléments de marque (header, boutons) — utiliser les classes Tailwind sémantiques (`bg-primary`, `bg-dark`, etc.) qui suivent le thème actif de l'utilisateur (`useTheme.js`).
+- **Palette de couleurs** : figée dans `index.css` (palette "Automne" : primary doré `#C49A36`, dark vert `#2D7A42`). Le système de thèmes multiples (`useTheme.js`, `ThemePicker.jsx`) a été retiré — utiliser les classes Tailwind sémantiques (`bg-primary`, `bg-dark`, etc.) plutôt qu'une couleur en dur, mais il n'y a plus qu'une seule palette possible.

@@ -5,17 +5,17 @@
 /* ─── Charte graphique — modifier uniquement ce bloc pour rethemer l'app ─── */
 :root {
   /* Valeurs RGB séparées par des espaces (format Tailwind avec opacité) */
-  --color-primary:      36 92 51;
-  --color-primary-dark: 25 62 35;
-  --color-dark:         196 154 54;
-  --color-surface:      245 248 242;
+  --color-primary:      196 154 54;
+  --color-primary-dark: 160 120 40;
+  --color-dark:         45 122 66;
+  --color-surface:      251 246 236;
 
   /* Hex pour les styles inline React et les templates HTML (ex: Google Maps) */
-  --c-primary:      #245C33;
-  --c-primary-dark: #193E23;
-  --c-dark:         #C49A36;
-  --c-dark-bg:      #0D2415;
-  --c-surface:      #F5F8F2;
+  --c-primary:      #C49A36;
+  --c-primary-dark: #A07828;
+  --c-dark:         #2D7A42;
+  --c-dark-bg:      #3C2810;
+  --c-surface:      #FBF6EC;
 }
 /* ─────────────────────────────────────────────────────────────────────────── */
 
