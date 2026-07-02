@@ -88,18 +88,23 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
 
     private async Task HandleLeaveAsync(GameSession session, string connectionId)
     {
-        bool wasStarted;
+        bool cancelGame = false;
         List<PlayerDto>? remainingPlayers = null;
         bool sessionEmpty = false;
 
         lock (session)
         {
             var player = session.Players.FirstOrDefault(p => p.ConnectionId == connectionId);
-            if (player is null) { wasStarted = false; }
-            else
+            if (player is not null)
             {
-                wasStarted = session.Started;
-                if (!wasStarted)
+                // Une partie en cours (démarrée mais pas encore terminée) doit être annulée
+                // si quelqu'un part — mais un départ depuis l'écran de résultats est normal,
+                // la partie est déjà finie, pas besoin de prévenir les autres joueurs.
+                if (session.Started && !session.Finished)
+                {
+                    cancelGame = true;
+                }
+                else
                 {
                     session.Players.Remove(player);
                     if (session.Players.Count == 0) sessionEmpty = true;
@@ -112,7 +117,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             }
         }
 
-        if (wasStarted)
+        if (cancelGame)
         {
             await Clients.Group(session.Code).SendAsync("GameCancelled");
             store.Remove(session.Code);
@@ -273,6 +278,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
 
                 if (session.MatchedBy.Count == session.PairsCount)
                 {
+                    session.Finished = true;
                     var durationSeconds = session.StartedAt is null ? 0 : (int)(DateTime.UtcNow - session.StartedAt.Value).TotalSeconds;
                     var topScore = session.Players.Max(p => p.Score);
                     var winners = session.Players.Where(p => p.Score == topScore).ToList();
@@ -421,6 +427,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
 
             if (isLast)
             {
+                session.Finished = true;
                 var durationSeconds = session.StartedAt is null ? 0 : (int)(DateTime.UtcNow - session.StartedAt.Value).TotalSeconds;
                 var topScore = session.Players.Max(p => p.Score);
                 var winners = session.Players.Where(p => p.Score == topScore).ToList();
@@ -469,6 +476,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         lock (session)
         {
             session.Started = false;
+            session.Finished = false;
             session.Deck = [];
             session.FlippedCardIds.Clear();
             session.MatchedBy.Clear();
