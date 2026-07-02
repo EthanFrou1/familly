@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
 import { gamesApi } from '../services/api'
 import { membersWithPhoto, MIN_PAIRS_TO_UNLOCK } from '../utils/memoryGame'
+import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_WHOISIT } from '../utils/whoIsItGame'
 import OpenRoomsList from '../components/games/OpenRoomsList'
 import LeaderboardView from '../components/games/LeaderboardView'
 import Avatar from '../components/shared/Avatar'
@@ -12,6 +13,8 @@ const TABS = [
   { key: 'open', label: 'Parties ouvertes' },
   { key: 'leaderboard', label: 'Classement' },
 ]
+
+const UNIT_LABELS = { memory: 'paires', quiwho: 'questions' }
 
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
@@ -26,12 +29,20 @@ export default function GamesLobby() {
 
   const photoCount = membersWithPhoto(members).length
   const unlocked = photoCount >= MIN_PAIRS_TO_UNLOCK
+  const whoIsItUnlocked = photoCount >= MIN_MEMBERS_FOR_WHOISIT
   const fanMembers = membersWithPhoto(members).slice(0, 3)
   const memberById = new Map(members.map(m => [m.id, m]))
 
   useEffect(() => {
-    gamesApi.getResults('memory', 10)
-      .then(({ data }) => setRecentResults(data))
+    Promise.all([
+      gamesApi.getResults('memory', 10),
+      gamesApi.getResults('quiwho', 10),
+    ])
+      .then(([memoryRes, quizRes]) => {
+        const merged = [...memoryRes.data, ...quizRes.data]
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        setRecentResults(merged)
+      })
       .catch(() => {})
   }, [])
 
@@ -112,6 +123,15 @@ export default function GamesLobby() {
               </button>
             </div>
 
+            <GameCard
+              emoji="🕵️"
+              title="Qui est-ce ?"
+              description="Devinez qui se cache derrière chaque photo de profil."
+              unlocked={whoIsItUnlocked}
+              lockedHint={`${MIN_MEMBERS_FOR_WHOISIT} membres avec photo min. pour débloquer`}
+              onPlay={() => navigate('/games/quiwho')}
+            />
+
             {latestResult && (
               <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
                 <div className="px-4 pt-4 pb-3 flex items-center justify-between">
@@ -149,9 +169,31 @@ export default function GamesLobby() {
   )
 }
 
+function GameCard({ emoji, title, description, unlocked, lockedHint, onPlay }) {
+  return (
+    <button
+      onClick={onPlay}
+      disabled={!unlocked}
+      className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-4 shadow-sm active:scale-[0.99] transition-transform disabled:opacity-60"
+    >
+      <div className="flex items-center gap-4 text-left">
+        <span className="h-12 w-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">{emoji}</span>
+        <div>
+          <h2 className="font-extrabold text-gray-800">{title}</h2>
+          <p className="text-sm text-gray-500 mt-0.5">{unlocked ? description : lockedHint}</p>
+        </div>
+      </div>
+      <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </button>
+  )
+}
+
 function ResultRow({ result, memberById, className }) {
   const ranked = [...result.players].sort((a, b) => b.score - a.score)
   const winner = ranked[0]
+  const unitLabel = UNIT_LABELS[result.gameType] ?? 'paires'
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
@@ -165,7 +207,7 @@ function ResultRow({ result, memberById, className }) {
           {result.winnerName ? `🏆 ${result.winnerName} a gagné` : 'Égalité'}
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
-          {result.pairsCount} paires · {result.playerCount} joueurs · {formatDate(result.createdAt)}
+          {result.pairsCount} {unitLabel} · {result.playerCount} joueurs · {formatDate(result.createdAt)}
         </p>
       </div>
       <span className="text-lg font-black text-primary shrink-0">{winner?.score}</span>

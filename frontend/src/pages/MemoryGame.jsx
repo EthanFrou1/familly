@@ -2,14 +2,14 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
-import { buildDeck, preloadDeckImages, membersWithPhoto, formatDuration, PLAYER_COLORS } from '../utils/memoryGame'
+import { buildDeck, preloadDeckImages, membersWithPhoto, formatDuration } from '../utils/memoryGame'
 import GameConfigScreen from '../components/games/GameConfigScreen'
 import TurnOrderWheel from '../components/games/TurnOrderWheel'
 import MemoryBoard from '../components/games/MemoryBoard'
 import GameResultsScreen from '../components/games/GameResultsScreen'
 import GameHeader from '../components/games/GameHeader'
 import DotsIcon from '../components/games/DotsIcon'
-import Avatar from '../components/shared/Avatar'
+import PlayerScoreBar from '../components/games/PlayerScoreBar'
 
 const FLIP_BACK_DELAY = 900
 const MATCH_DELAY = 300
@@ -230,33 +230,7 @@ export default function MemoryGame() {
             </button>
           </div>
 
-          <div className="flex gap-2">
-            {players.map((p, i) => {
-              const isActive = i === currentPlayer
-              const color = PLAYER_COLORS[p.colorIndex % PLAYER_COLORS.length]
-              return (
-                <div
-                  key={p.name + i}
-                  className={`flex-1 flex items-center gap-2 rounded-2xl py-1.5 px-2 transition-all duration-200 ${
-                    isActive ? 'bg-primary shadow-md scale-105' : 'bg-white shadow-sm'
-                  }`}
-                >
-                  <Avatar
-                    member={memberById.get(p.memberId)}
-                    name={p.name}
-                    size="xs"
-                    className={`ring-2 shrink-0 ${isActive ? 'ring-white' : color.ring}`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-[11px] font-semibold truncate ${isActive ? 'text-white' : 'text-gray-600'}`}>
-                      {p.name.split(' ')[0]}
-                    </p>
-                    <p className={`text-xs font-bold ${isActive ? 'text-white' : color.text}`}>{p.score}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <PlayerScoreBar players={players} isActive={(_, i) => i === currentPlayer} memberById={memberById} />
         </div>
 
         <div className="flex-1 min-h-0 px-4 pb-4">

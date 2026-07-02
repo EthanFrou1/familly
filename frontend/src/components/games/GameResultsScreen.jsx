@@ -5,7 +5,20 @@ import { formatDuration } from '../../utils/memoryGame'
 import Avatar from '../shared/Avatar'
 import Podium from './Podium'
 
-export default function GameResultsScreen({ players, pairsCount, durationSeconds, movesCount, onReplay, onExit, alreadySubmitted = false, canReplay = true }) {
+export default function GameResultsScreen({
+  players,
+  pairsCount,
+  durationSeconds,
+  movesCount,
+  onReplay,
+  onExit,
+  alreadySubmitted = false,
+  canReplay = true,
+  gameType = 'memory',
+  gameLabel = 'Memory',
+  unitLabel = 'paires',
+  countLabel = 'Paires',
+}) {
   const { members } = useMembers()
   const memberById = useMemo(() => new Map(members.map(m => [m.id, m])), [members])
   const submitted = useRef(alreadySubmitted)
@@ -18,7 +31,7 @@ export default function GameResultsScreen({ players, pairsCount, durationSeconds
     if (submitted.current) return
     submitted.current = true
     gamesApi.submitResult({
-      gameType: 'memory',
+      gameType,
       pairsCount,
       players: players.map(p => ({ name: p.name, score: p.score, memberId: p.memberId ?? null, isGuest: !!p.isGuest })),
       winnerName,
@@ -42,7 +55,7 @@ export default function GameResultsScreen({ players, pairsCount, durationSeconds
           {winnerName ? `${winnerName} gagne !` : 'Égalité !'}
         </h2>
         <p className="text-xs font-semibold text-white/70 mt-1">
-          Memory · {pairsCount} paires{durationSeconds != null ? ` · ${formatDuration(durationSeconds)}` : ''}
+          {gameLabel} · {pairsCount} {unitLabel}{durationSeconds != null ? ` · ${formatDuration(durationSeconds)}` : ''}
         </p>
       </div>
 
@@ -54,7 +67,7 @@ export default function GameResultsScreen({ players, pairsCount, durationSeconds
         <div className="rounded-2xl bg-white shadow-sm p-4 flex items-center justify-around">
           {durationSeconds != null && <ResultStat value={formatDuration(durationSeconds)} label="Durée" color="text-primary" />}
           {durationSeconds != null && <div className="h-8 w-px bg-gray-100" />}
-          <ResultStat value={pairsCount} label="Paires" color="text-dark" />
+          <ResultStat value={pairsCount} label={countLabel} color="text-dark" />
           {movesCount != null && <div className="h-8 w-px bg-gray-100" />}
           {movesCount != null && <ResultStat value={movesCount} label="Coups" color="text-violet-500" />}
         </div>
