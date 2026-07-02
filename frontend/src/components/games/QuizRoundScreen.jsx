@@ -12,9 +12,9 @@ export default function QuizRoundScreen({ prompt, correctKey, options, selectedK
     <div className="flex-1 min-h-0 px-4 pb-safe-lg flex flex-col">
       {timeLimit != null && <AnswerTimer timeLeft={timeLeft} timeLimit={timeLimit} frozen={revealed} />}
 
-      <div className="flex-1 min-h-0 flex items-center justify-center">{prompt}</div>
+      <div className="shrink-0 mt-3 flex justify-center">{prompt}</div>
 
-      <div className="grid grid-cols-2 gap-2.5 shrink-0 mt-6">
+      <div className="grid grid-cols-2 gap-2.5 shrink-0 mt-3">
         {options.map(option => (
           <button
             key={option.key}
@@ -26,6 +26,8 @@ export default function QuizRoundScreen({ prompt, correctKey, options, selectedK
           </button>
         ))}
       </div>
+
+      <div className="flex-1 min-h-0" />
     </div>
   )
 }
