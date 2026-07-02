@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
-import { membersWithPhoto, formatDuration } from '../utils/memoryGame'
-import { QUESTION_COUNT_PRESETS, buildWhoIsItRounds } from '../utils/whoIsItGame'
+import { relationsApi } from '../services/api'
+import { formatDuration } from '../utils/memoryGame'
+import { QUESTION_COUNT_PRESETS, buildRelationshipRounds } from '../utils/relationshipGame'
 import GameConfigScreen from '../components/games/GameConfigScreen'
 import TurnOrderWheel from '../components/games/TurnOrderWheel'
 import QuizRoundScreen from '../components/games/QuizRoundScreen'
@@ -11,14 +12,17 @@ import GameResultsScreen from '../components/games/GameResultsScreen'
 import GameHeader from '../components/games/GameHeader'
 import DotsIcon from '../components/games/DotsIcon'
 import PlayerScoreBar from '../components/games/PlayerScoreBar'
+import Avatar from '../components/shared/Avatar'
 
 const REVEAL_DELAY = 1100
 
-export default function WhoIsItGame() {
+export default function RelationshipGame() {
   const { members } = useMembers()
   const navigate = useNavigate()
   const { setHideChrome } = useUiChrome()
-  const photoCount = membersWithPhoto(members).length
+  const memberById = useMemo(() => new Map(members.map(m => [m.id, m])), [members])
+
+  const [relations, setRelations] = useState(null)
 
   const [step, setStep] = useState('setup')
   const [players, setPlayers] = useState([])
@@ -26,13 +30,17 @@ export default function WhoIsItGame() {
   const [rounds, setRounds] = useState([])
   const [roundIndex, setRoundIndex] = useState(0)
   const [currentPlayer, setCurrentPlayer] = useState(0)
-  const [selectedMemberId, setSelectedMemberId] = useState(null)
+  const [selectedKey, setSelectedKey] = useState(null)
   const [paused, setPaused] = useState(false)
   const [gameDuration, setGameDuration] = useState(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const startTimeRef = useRef(null)
   const pausedAtRef = useRef(null)
   const pausedDurationRef = useRef(0)
+
+  useEffect(() => {
+    relationsApi.getAll().then(({ data }) => setRelations(data)).catch(() => setRelations([]))
+  }, [])
 
   function getElapsedSeconds() {
     return Math.floor((Date.now() - startTimeRef.current - pausedDurationRef.current) / 1000)
@@ -71,10 +79,10 @@ export default function WhoIsItGame() {
   }
 
   function beginPlay() {
-    setRounds(buildWhoIsItRounds(members, questionCount))
+    setRounds(buildRelationshipRounds(members, relations, questionCount))
     setRoundIndex(0)
     setCurrentPlayer(0)
-    setSelectedMemberId(null)
+    setSelectedKey(null)
     setPaused(false)
     setElapsedSeconds(0)
     pausedDurationRef.current = 0
@@ -93,17 +101,17 @@ export default function WhoIsItGame() {
     navigate('/games')
   }
 
-  function handleAnswer(memberId) {
-    if (paused || selectedMemberId != null) return
-    setSelectedMemberId(memberId)
-    const correct = memberId === rounds[roundIndex].targetMemberId
+  function handleAnswer(key) {
+    if (paused || selectedKey != null) return
+    setSelectedKey(key)
+    const correct = key === rounds[roundIndex].correctTerm
     const answeringPlayer = currentPlayer
     if (correct) {
       setPlayers(prev => prev.map((p, i) => i === answeringPlayer ? { ...p, score: p.score + 1 } : p))
     }
 
     setTimeout(() => {
-      setSelectedMemberId(null)
+      setSelectedKey(null)
       if (roundIndex + 1 >= rounds.length) {
         setGameDuration(getElapsedSeconds())
         setStep('results')
@@ -117,14 +125,20 @@ export default function WhoIsItGame() {
   if (step === 'setup') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <GameHeader title="Prêts ? 🎯" subtitle="Qui est-ce ?" onBack={() => navigate('/games')} />
-        <GameConfigScreen
-          photoCount={photoCount}
-          onStart={handleConfigReady}
-          presets={QUESTION_COUNT_PRESETS}
-          sectionLabel="Nombre de questions"
-          unitLabel="questions"
-        />
+        <GameHeader title="Prêts ? 🎯" subtitle="Quel est le lien ?" onBack={() => navigate('/games')} />
+        {relations == null ? (
+          <div className="flex justify-center py-10">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          </div>
+        ) : (
+          <GameConfigScreen
+            photoCount={members.length}
+            onStart={handleConfigReady}
+            presets={QUESTION_COUNT_PRESETS}
+            sectionLabel="Nombre de questions"
+            unitLabel="questions"
+          />
+        )}
       </div>
     )
   }
@@ -132,7 +146,7 @@ export default function WhoIsItGame() {
   if (step === 'order') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <GameHeader title="Qui est-ce ?" onBack={() => setStep('setup')} />
+        <GameHeader title="Quel est le lien ?" onBack={() => setStep('setup')} />
         <TurnOrderWheel players={players} onOrderReady={handleOrderReady} />
       </div>
     )
@@ -147,8 +161,8 @@ export default function WhoIsItGame() {
           durationSeconds={gameDuration}
           onReplay={restartRound}
           onExit={() => navigate('/games')}
-          gameType="quiwho"
-          gameLabel="Qui est-ce"
+          gameType="relationship"
+          gameLabel="Quel est le lien"
           unitLabel="questions"
           countLabel="Questions"
         />
@@ -178,10 +192,10 @@ export default function WhoIsItGame() {
         </div>
 
         <QuizRoundScreen
-          prompt={<PhotoPrompt url={round.photoUrl} />}
-          correctKey={round.targetMemberId}
-          options={round.options.map(o => ({ key: o.memberId, label: o.name }))}
-          selectedKey={selectedMemberId}
+          prompt={<RelationshipPrompt round={round} memberById={memberById} />}
+          correctKey={round.correctTerm}
+          options={round.options}
+          selectedKey={selectedKey}
           onAnswer={handleAnswer}
           disabled={paused}
         />
@@ -215,10 +229,24 @@ export default function WhoIsItGame() {
   )
 }
 
-function PhotoPrompt({ url }) {
+function RelationshipPrompt({ round, memberById }) {
+  const a = memberById.get(round.memberAId)
+  const b = memberById.get(round.memberBId)
+
   return (
-    <div className="rounded-3xl overflow-hidden shadow-lg shadow-black/10 bg-white p-2 max-h-full aspect-square">
-      <img src={url} alt="Qui est-ce ?" className="h-full w-full rounded-2xl object-cover" />
+    <div className="flex flex-col items-center gap-6">
+      <p className="text-sm font-bold text-gray-500">Quel est leur lien de parenté ?</p>
+      <div className="flex items-center gap-5">
+        <div className="flex flex-col items-center gap-2">
+          <Avatar member={a} size="xl" className="ring-4 ring-primary/30" />
+          <p className="font-extrabold text-gray-800 text-sm">{a?.firstName}</p>
+        </div>
+        <span className="text-2xl">🤔</span>
+        <div className="flex flex-col items-center gap-2">
+          <Avatar member={b} size="xl" className="ring-4 ring-dark/30" />
+          <p className="font-extrabold text-gray-800 text-sm">{b?.firstName}</p>
+        </div>
+      </div>
     </div>
   )
 }

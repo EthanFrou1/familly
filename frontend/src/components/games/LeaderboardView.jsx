@@ -8,6 +8,7 @@ const TABS = [
   { key: 'global', label: 'Global' },
   { key: 'memory', label: 'Memory' },
   { key: 'quiwho', label: 'Qui est-ce' },
+  { key: 'relationship', label: 'Lien de parenté' },
 ]
 
 export default function LeaderboardView() {

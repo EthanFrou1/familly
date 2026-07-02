@@ -4,6 +4,7 @@ import { useMembers } from '../store/MembersContext'
 import { gamesApi } from '../services/api'
 import { membersWithPhoto, MIN_PAIRS_TO_UNLOCK } from '../utils/memoryGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_WHOISIT } from '../utils/whoIsItGame'
+import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_RELATIONSHIP } from '../utils/relationshipGame'
 import OpenRoomsList from '../components/games/OpenRoomsList'
 import LeaderboardView from '../components/games/LeaderboardView'
 import Avatar from '../components/shared/Avatar'
@@ -14,7 +15,7 @@ const TABS = [
   { key: 'leaderboard', label: 'Classement' },
 ]
 
-const UNIT_LABELS = { memory: 'paires', quiwho: 'questions' }
+const UNIT_LABELS = { memory: 'paires', quiwho: 'questions', relationship: 'questions' }
 
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
@@ -30,6 +31,7 @@ export default function GamesLobby() {
   const photoCount = membersWithPhoto(members).length
   const unlocked = photoCount >= MIN_PAIRS_TO_UNLOCK
   const whoIsItUnlocked = photoCount >= MIN_MEMBERS_FOR_WHOISIT
+  const relationshipUnlocked = members.length >= MIN_MEMBERS_FOR_RELATIONSHIP
   const fanMembers = membersWithPhoto(members).slice(0, 3)
   const memberById = new Map(members.map(m => [m.id, m]))
 
@@ -37,9 +39,10 @@ export default function GamesLobby() {
     Promise.all([
       gamesApi.getResults('memory', 10),
       gamesApi.getResults('quiwho', 10),
+      gamesApi.getResults('relationship', 10),
     ])
-      .then(([memoryRes, quizRes]) => {
-        const merged = [...memoryRes.data, ...quizRes.data]
+      .then(([memoryRes, quizRes, relationshipRes]) => {
+        const merged = [...memoryRes.data, ...quizRes.data, ...relationshipRes.data]
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         setRecentResults(merged)
       })
@@ -130,6 +133,15 @@ export default function GamesLobby() {
               unlocked={whoIsItUnlocked}
               lockedHint={`${MIN_MEMBERS_FOR_WHOISIT} membres avec photo min. pour débloquer`}
               onPlay={() => navigate('/games/quiwho')}
+            />
+
+            <GameCard
+              emoji="🌳"
+              title="Quel est le lien ?"
+              description="Devinez le lien de parenté entre deux membres de l'arbre."
+              unlocked={relationshipUnlocked}
+              lockedHint={`${MIN_MEMBERS_FOR_RELATIONSHIP} membres min. pour débloquer`}
+              onPlay={() => navigate('/games/relationship')}
             />
 
             {latestResult && (
