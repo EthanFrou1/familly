@@ -85,6 +85,12 @@ input:-webkit-autofill:active {
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+  /* Contrairement à .safe-bottom, s'additionne à un padding existant au lieu
+     de lui faire concurrence sur la même propriété (l'ordre de cascade entre
+     utilitaires Tailwind et cette classe custom n'est pas garanti). */
+  .pb-safe-lg {
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* En paysage sur iPhone, le notch/Dynamic Island est sur le côté :
