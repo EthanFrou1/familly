@@ -272,7 +272,7 @@ export default function MemoryGameRemote() {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
         <GameHeader title="Memory à distance" onBack={() => setStep('lobby')} />
-        <DifficultySetupStep photoCount={photoCount} onBack={() => setStep('lobby')} onStart={handleChooseDifficulty} />
+        <DifficultySetupStep photoCount={photoCount} onStart={handleChooseDifficulty} />
       </div>
     )
   }
@@ -304,7 +304,6 @@ export default function MemoryGameRemote() {
   if (step === 'results') {
     return (
       <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <GameHeader title="Résultats" onBack={handleExit} />
         <GameResultsScreen
           players={finalPlayers.map(p => ({ name: p.name, score: p.score, memberId: p.memberId, isGuest: false }))}
           pairsCount={pairsCount}
