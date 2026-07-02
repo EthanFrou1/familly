@@ -7,6 +7,7 @@ import Podium from './Podium'
 const TABS = [
   { key: 'global', label: 'Global' },
   { key: 'memory', label: 'Memory' },
+  { key: 'quiwho', label: 'Qui est-ce' },
 ]
 
 export default function LeaderboardView() {

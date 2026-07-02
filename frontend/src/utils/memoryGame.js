@@ -1,10 +1,12 @@
+import { shuffle } from './shuffle'
+
 export const DIFFICULTY_PRESETS = [
-  { label: 'Facile', pairsCount: 6, emoji: '🌱' },
-  { label: 'Moyen', pairsCount: 8, emoji: '🌳' },
-  { label: 'Difficile', pairsCount: 12, emoji: '🔥' },
+  { label: 'Facile', value: 6, emoji: '🌱' },
+  { label: 'Moyen', value: 8, emoji: '🌳' },
+  { label: 'Difficile', value: 12, emoji: '🔥' },
 ]
 
-export const MIN_PAIRS_TO_UNLOCK = DIFFICULTY_PRESETS[0].pairsCount
+export const MIN_PAIRS_TO_UNLOCK = DIFFICULTY_PRESETS[0].value
 
 export const PLAYER_COLORS = [
   { ring: 'ring-blue-400', border: 'border-blue-400', dot: 'bg-blue-400', text: 'text-blue-500', hex: '#60a5fa' },
@@ -12,15 +14,6 @@ export const PLAYER_COLORS = [
   { ring: 'ring-amber-400', border: 'border-amber-400', dot: 'bg-amber-400', text: 'text-amber-500', hex: '#fbbf24' },
   { ring: 'ring-violet-400', border: 'border-violet-400', dot: 'bg-violet-400', text: 'text-violet-500', hex: '#a78bfa' },
 ]
-
-function shuffle(array) {
-  const result = [...array]
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[result[i], result[j]] = [result[j], result[i]]
-  }
-  return result
-}
 
 export function membersWithPhoto(members) {
   return members.filter(m => m.profilePictureUrl)

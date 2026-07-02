@@ -11,6 +11,7 @@ import SpinWheel from '../components/games/SpinWheel'
 import MemoryBoard from '../components/games/MemoryBoard'
 import GameResultsScreen from '../components/games/GameResultsScreen'
 import DotsIcon from '../components/games/DotsIcon'
+import PlayerScoreBar from '../components/games/PlayerScoreBar'
 import Avatar from '../components/shared/Avatar'
 
 const FLIP_BACK_DELAY = 900
@@ -311,33 +312,7 @@ export default function MemoryGameRemote() {
               <DotsIcon />
             </button>
           </div>
-          <div className="flex gap-2">
-            {players.map(p => {
-              const isActive = p.colorIndex === currentColorIndex
-              const color = PLAYER_COLORS[p.colorIndex % PLAYER_COLORS.length]
-              return (
-                <div
-                  key={p.memberId}
-                  className={`flex-1 flex items-center gap-2 rounded-2xl py-1.5 px-2 transition-all duration-200 ${
-                    isActive ? 'bg-primary shadow-md scale-105' : 'bg-white shadow-sm'
-                  }`}
-                >
-                  <Avatar
-                    src={p.profilePictureUrl}
-                    name={p.name}
-                    size="xs"
-                    className={`ring-2 shrink-0 ${isActive ? 'ring-white' : color.ring}`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-[11px] font-semibold truncate ${isActive ? 'text-white' : 'text-gray-600'}`}>
-                      {p.name.split(' ')[0]}
-                    </p>
-                    <p className={`text-xs font-bold ${isActive ? 'text-white' : color.text}`}>{p.score}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <PlayerScoreBar players={players} isActive={p => p.colorIndex === currentColorIndex} />
         </div>
 
         <div className="flex-1 min-h-0 px-4 pb-4">

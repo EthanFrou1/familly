@@ -5,7 +5,13 @@ import { matchesSearch } from '../../utils/normalize'
 import { DIFFICULTY_PRESETS, PLAYER_COLORS } from '../../utils/memoryGame'
 import Avatar from '../shared/Avatar'
 
-export default function GameConfigScreen({ photoCount, onStart }) {
+export default function GameConfigScreen({
+  photoCount,
+  onStart,
+  presets = DIFFICULTY_PRESETS,
+  sectionLabel = 'Difficulté',
+  unitLabel = 'paires',
+}) {
   const { user } = useAuth()
   const { members } = useMembers()
   const [count, setCount] = useState(2)
@@ -13,9 +19,10 @@ export default function GameConfigScreen({ photoCount, onStart }) {
     { mode: 'member', search: `${user.firstName} ${user.lastName}`, memberId: user.memberId },
     { mode: 'guest', search: '', memberId: null },
   ])
-  const [pairsCount, setPairsCount] = useState(() => {
-    const preferred = DIFFICULTY_PRESETS.find(p => p.pairsCount === 8 && photoCount >= p.pairsCount)
-    return preferred?.pairsCount ?? DIFFICULTY_PRESETS.find(p => photoCount >= p.pairsCount)?.pairsCount ?? null
+  const [selectedValue, setSelectedValue] = useState(() => {
+    const isAvailable = p => photoCount >= (p.minRequired ?? p.value)
+    const preferred = presets.find(p => p.value === 8 && isAvailable(p))
+    return preferred?.value ?? presets.find(isAvailable)?.value ?? null
   })
 
   function setCountAndSlots(n) {
@@ -30,7 +37,7 @@ export default function GameConfigScreen({ photoCount, onStart }) {
   const memberById = id => members.find(m => m.id === id)
 
   function handleStart() {
-    if (!pairsCount) return
+    if (!selectedValue) return
     const players = slots.map((slot, i) => {
       if (slot.mode === 'member' && slot.memberId) {
         const m = memberById(slot.memberId)
@@ -38,7 +45,7 @@ export default function GameConfigScreen({ photoCount, onStart }) {
       }
       return { name: slot.search.trim() || `Joueur ${i + 1}`, memberId: null, isGuest: true, colorIndex: i }
     })
-    onStart(players, pairsCount)
+    onStart(players, selectedValue)
   }
 
   return (
@@ -75,23 +82,23 @@ export default function GameConfigScreen({ photoCount, onStart }) {
       </div>
 
       <div>
-        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2.5">Difficulté</h2>
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2.5">{sectionLabel}</h2>
         <div className="flex gap-2.5">
-          {DIFFICULTY_PRESETS.map(preset => {
-            const disabled = photoCount < preset.pairsCount
-            const selected = pairsCount === preset.pairsCount
+          {presets.map(preset => {
+            const disabled = photoCount < (preset.minRequired ?? preset.value)
+            const selected = selectedValue === preset.value
             return (
               <button
-                key={preset.pairsCount}
+                key={preset.value}
                 disabled={disabled}
-                onClick={() => setPairsCount(preset.pairsCount)}
+                onClick={() => setSelectedValue(preset.value)}
                 className={`flex-1 rounded-2xl p-4 text-center transition-all disabled:opacity-40 ${
                   selected ? 'bg-primary shadow-lg shadow-primary/30 scale-[1.06]' : 'bg-white shadow-sm'
                 }`}
               >
                 <div className="text-2xl">{preset.emoji}</div>
                 <p className={`mt-1.5 font-extrabold text-sm ${selected ? 'text-white' : 'text-gray-800'}`}>{preset.label}</p>
-                <p className={`mt-0.5 text-[11px] font-bold ${selected ? 'text-white/75' : 'text-gray-400'}`}>{preset.pairsCount} paires</p>
+                <p className={`mt-0.5 text-[11px] font-bold ${selected ? 'text-white/75' : 'text-gray-400'}`}>{preset.value} {unitLabel}</p>
               </button>
             )
           })}
@@ -100,7 +107,7 @@ export default function GameConfigScreen({ photoCount, onStart }) {
 
       <button
         onClick={handleStart}
-        disabled={!pairsCount}
+        disabled={!selectedValue}
         className="w-full rounded-2xl bg-dark py-4 text-base font-black text-white shadow-lg shadow-dark/30 active:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
       >
         C'est parti !
