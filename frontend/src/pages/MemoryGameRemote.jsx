@@ -10,6 +10,7 @@ import DifficultySetupStep from '../components/games/DifficultySetupStep'
 import SpinWheel from '../components/games/SpinWheel'
 import MemoryBoard from '../components/games/MemoryBoard'
 import GameResultsScreen from '../components/games/GameResultsScreen'
+import DotsIcon from '../components/games/DotsIcon'
 import Avatar from '../components/shared/Avatar'
 
 const FLIP_BACK_DELAY = 900
@@ -26,7 +27,6 @@ export default function MemoryGameRemote() {
   const deckRef = useRef([])
 
   const [step, setStep] = useState('menu')
-  const [joinCodeInput, setJoinCodeInput] = useState('')
   const [error, setError] = useState('')
   const [connecting, setConnecting] = useState(false)
 
@@ -38,11 +38,13 @@ export default function MemoryGameRemote() {
   const [matchedBy, setMatchedBy] = useState(new Map())
   const [currentColorIndex, setCurrentColorIndex] = useState(0)
   const [locked, setLocked] = useState(false)
+  const [paused, setPaused] = useState(false)
   const [remainingColorIndexes, setRemainingColorIndexes] = useState([])
   const [pendingWinnerId, setPendingWinnerId] = useState(null)
   const [finalPlayers, setFinalPlayers] = useState([])
   const [gameDuration, setGameDuration] = useState(null)
   const [codeCopied, setCodeCopied] = useState(false)
+  const pendingFinalOrderRef = useRef(null)
 
   const me = players.find(p => p.memberId === user?.memberId)
   const myColorIndex = me?.colorIndex
@@ -91,9 +93,10 @@ export default function MemoryGameRemote() {
         setPendingWinnerId(winnerColorIndex)
       }),
       onHubEvent('TurnOrderReady', ({ orderedColorIndexes }) => {
-        setRemainingColorIndexes([])
-        setCurrentColorIndex(orderedColorIndexes[0])
-        setTimeout(() => setStep('playing'), 900)
+        // Ne pas basculer sur 'playing' tout de suite : la roue doit finir
+        // son animation (voir handleWheelSpinEnd), sinon le dernier tirage
+        // est coupé (visible surtout à 2 joueurs, où tout se décide en un spin).
+        pendingFinalOrderRef.current = orderedColorIndexes
       }),
       onHubEvent('CardFlipped', ({ cardId }) => {
         setFlipped(prev => prev.includes(cardId) ? prev : [...prev, cardId])
@@ -137,8 +140,8 @@ export default function MemoryGameRemote() {
     }
   }
 
-  async function handleJoinRoom(codeOverride) {
-    const codeToJoin = (codeOverride ?? joinCodeInput).trim()
+  async function handleJoinRoom(joinCode) {
+    const codeToJoin = joinCode.trim()
     if (!codeToJoin) return
     setConnecting(true)
     setError('')
@@ -163,6 +166,12 @@ export default function MemoryGameRemote() {
   function handleWheelSpinEnd(item) {
     setRemainingColorIndexes(prev => prev.filter(ci => ci !== item.id))
     setPendingWinnerId(null)
+    if (pendingFinalOrderRef.current) {
+      const order = pendingFinalOrderRef.current
+      pendingFinalOrderRef.current = null
+      setCurrentColorIndex(order[0])
+      setStep('playing')
+    }
   }
 
   function handleCardClick(card) {
@@ -197,23 +206,9 @@ export default function MemoryGameRemote() {
             Créer une partie
           </button>
 
-          <div className="rounded-2xl bg-white shadow-sm p-4 space-y-3">
-            <p className="text-sm font-semibold text-gray-600">Rejoindre avec un code</p>
-            <input
-              value={joinCodeInput}
-              onChange={e => setJoinCodeInput(e.target.value.toUpperCase())}
-              placeholder="ABCDE"
-              maxLength={5}
-              className="w-full rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-center text-lg font-bold tracking-[0.3em] uppercase focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <button
-              onClick={() => handleJoinRoom()}
-              disabled={connecting || !joinCodeInput.trim()}
-              className="w-full rounded-xl bg-primary/10 py-3 text-sm font-semibold text-primary active:bg-primary/20 disabled:opacity-50"
-            >
-              Rejoindre
-            </button>
-          </div>
+          <p className="text-center text-xs text-gray-400">
+            Pour rejoindre une partie d'un proche, retrouve-la dans l'onglet <span className="font-semibold text-gray-500">Parties ouvertes</span>.
+          </p>
         </div>
       </div>
     )
@@ -320,49 +315,78 @@ export default function MemoryGameRemote() {
   // step === 'playing'
   const activePlayer = players.find(p => p.colorIndex === currentColorIndex)
   return (
-    <div className="h-full bg-gray-50 overflow-hidden flex flex-col">
-      <div className="px-4 pt-10 pb-2 shrink-0">
-        <p className="text-center text-sm font-semibold text-gray-500 mb-2">
-          {currentColorIndex === myColorIndex ? 'À vous de jouer !' : `Au tour de ${activePlayer?.name ?? ''}`}
-        </p>
-        <div className="flex gap-2">
-          {players.map(p => {
-            const isActive = p.colorIndex === currentColorIndex
-            const color = PLAYER_COLORS[p.colorIndex % PLAYER_COLORS.length]
-            return (
-              <div
-                key={p.memberId}
-                className={`flex-1 flex items-center gap-2 rounded-2xl py-1.5 px-2 transition-all duration-200 ${
-                  isActive ? 'bg-primary shadow-md scale-105' : 'bg-white shadow-sm'
-                }`}
-              >
-                <Avatar
-                  src={p.profilePictureUrl}
-                  name={p.name}
-                  size="xs"
-                  className={`ring-2 shrink-0 ${isActive ? 'ring-white' : color.ring}`}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className={`text-[11px] font-semibold truncate ${isActive ? 'text-white' : 'text-gray-600'}`}>
-                    {p.name.split(' ')[0]}
-                  </p>
-                  <p className={`text-xs font-bold ${isActive ? 'text-white' : color.text}`}>{p.score}</p>
+    <div className="relative h-full bg-gray-50 overflow-hidden">
+      <div className={`h-full flex flex-col transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
+        <div className="px-4 pt-10 pb-2 shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-mono font-semibold text-gray-400 bg-white rounded-full px-3 py-1 shadow-sm truncate">
+              {currentColorIndex === myColorIndex ? 'À vous de jouer !' : `Au tour de ${activePlayer?.name ?? ''}`}
+            </span>
+            <button
+              onClick={() => setPaused(true)}
+              className="shrink-0 min-h-touch min-w-touch flex items-center justify-center text-gray-400 bg-white rounded-full shadow-sm"
+            >
+              <DotsIcon />
+            </button>
+          </div>
+          <div className="flex gap-2">
+            {players.map(p => {
+              const isActive = p.colorIndex === currentColorIndex
+              const color = PLAYER_COLORS[p.colorIndex % PLAYER_COLORS.length]
+              return (
+                <div
+                  key={p.memberId}
+                  className={`flex-1 flex items-center gap-2 rounded-2xl py-1.5 px-2 transition-all duration-200 ${
+                    isActive ? 'bg-primary shadow-md scale-105' : 'bg-white shadow-sm'
+                  }`}
+                >
+                  <Avatar
+                    src={p.profilePictureUrl}
+                    name={p.name}
+                    size="xs"
+                    className={`ring-2 shrink-0 ${isActive ? 'ring-white' : color.ring}`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[11px] font-semibold truncate ${isActive ? 'text-white' : 'text-gray-600'}`}>
+                      {p.name.split(' ')[0]}
+                    </p>
+                    <p className={`text-xs font-bold ${isActive ? 'text-white' : color.text}`}>{p.score}</p>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 px-4 pb-4">
+          <MemoryBoard
+            deck={deck}
+            flippedIds={flipped}
+            matchedBy={matchedBy}
+            onCardClick={handleCardClick}
+            disabled={locked || paused || currentColorIndex !== myColorIndex}
+          />
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 px-4 pb-4">
-        <MemoryBoard
-          deck={deck}
-          flippedIds={flipped}
-          matchedBy={matchedBy}
-          onCardClick={handleCardClick}
-          disabled={locked || currentColorIndex !== myColorIndex}
-        />
-      </div>
+      {paused && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center px-10">
+          <div className="w-full max-w-xs space-y-3">
+            <button
+              onClick={() => setPaused(false)}
+              className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
+            >
+              Reprendre
+            </button>
+            <button
+              onClick={handleExit}
+              className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-red-500 shadow-lg active:bg-gray-50"
+            >
+              Quitter la partie
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
