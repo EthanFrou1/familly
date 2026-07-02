@@ -40,6 +40,7 @@ PWA mobile-first privée pour une famille (~100 membres), accès sur invitation 
   - [x] Onglet "Parties ouvertes" : liste live des salons en attente, rejoignables en un tap
   - [x] Roue de tirage au sort de l'ordre de jeu (composant générique réutilisable)
   - [x] Annulation de la partie si un joueur se déconnecte (pas de reconnexion en v1)
+  - [x] Chrono en direct pendant la partie (mm:ss, aligné sur le temps final sauvegardé)
 - [x] Classements : par jeu + classement global (moyenne des taux de victoire), podium (couronne 1er, médailles 2e/3e), tag "Vous"
 - [x] Historique des parties (Jeux → dernière partie + historique dépliable)
 - [x] Stats sur le profil membre (parties jouées, victoires, défaites, meilleur temps sur Memory)
@@ -51,7 +52,6 @@ PWA mobile-first privée pour une famille (~100 membres), accès sur invitation 
 
 - [ ] **Devine l'âge** — à partir d'une photo, deviner l'âge/l'année de naissance, classement au plus proche (3ᵉ idée de jeu évoquée, pas encore construite)
 - [ ] Reconnexion en partie à distance (aujourd'hui : une déconnexion annule la partie pour tout le monde)
-- [ ] Temps total de partie affiché en direct sur les jeux de quiz (Qui est-ce / Quel est le lien) — ils ont déjà un compte à rebours de 15s par question, mais pas de chrono cumulé mm:ss depuis le début de la partie comme sur Memory
 
 ## 💡 Idées en vrac / à creuser
 

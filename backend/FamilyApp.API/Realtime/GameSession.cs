@@ -48,6 +48,7 @@ public class GameSession
     public List<string> FlippedCardIds { get; set; } = [];
     public Dictionary<Guid, int> MatchedBy { get; set; } = [];
     public bool Started { get; set; }
+    public bool Finished { get; set; }
     public DateTime? StartedAt { get; set; }
 
     public List<int> RemainingColorIndexesForWheel { get; set; } = [];
