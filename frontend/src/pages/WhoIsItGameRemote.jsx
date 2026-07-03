@@ -124,9 +124,12 @@ export default function WhoIsItGameRemote() {
         // (voir handleWheelSpinEnd), même bug déjà rencontré et corrigé sur le Memory.
         pendingFinalOrderRef.current = orderedColorIndexes
       }),
-      onHubEvent('AnswerResolved', ({ correctKey: revealed, nextPlayerColorIndex, nextQuestion }) => {
+      onHubEvent('AnswerResolved', ({ correctKey: revealed, scorerColorIndex, nextPlayerColorIndex, nextQuestion }) => {
         setCorrectKey(revealed)
         setRevealKey(myPickRef.current ?? revealed)
+        if (scorerColorIndex != null) {
+          setPlayers(prev => prev.map(p => p.colorIndex === scorerColorIndex ? { ...p, score: p.score + 1 } : p))
+        }
         setTimeout(() => {
           myPickRef.current = null
           setRevealKey(null)
