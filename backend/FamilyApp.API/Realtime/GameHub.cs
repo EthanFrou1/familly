@@ -184,10 +184,45 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         await BroadcastRoomsChangedAsync();
     }
 
-    public async Task SpinWheel()
+    public async Task PauseGame()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Finished) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null) return;
+
+        lock (session)
+        {
+            if (session.Paused) return;
+            session.Paused = true;
+            session.PausedAt = DateTime.UtcNow;
+        }
+
+        await Clients.Group(session.Code).SendAsync("GamePaused", new { byColorIndex = caller.ColorIndex, byName = caller.Name });
+    }
+
+    public async Task ResumeGame()
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
         if (session is null || !session.Started) return;
+
+        lock (session)
+        {
+            if (!session.Paused) return;
+            if (session.PausedAt is not null)
+                session.PausedSeconds += (DateTime.UtcNow - session.PausedAt.Value).TotalSeconds;
+            session.Paused = false;
+            session.PausedAt = null;
+        }
+
+        await Clients.Group(session.Code).SendAsync("GameResumed");
+    }
+
+    public async Task SpinWheel()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused) return;
 
         var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
         if (caller is null || !caller.IsHost) return;
@@ -227,7 +262,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
     public async Task FlipCard(string cardId)
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
-        if (session is null || !session.Started) return;
+        if (session is null || !session.Started || session.Paused) return;
 
         var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
         if (caller is null) return;
@@ -279,7 +314,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
                 if (session.MatchedBy.Count == session.PairsCount)
                 {
                     session.Finished = true;
-                    var durationSeconds = session.StartedAt is null ? 0 : (int)(DateTime.UtcNow - session.StartedAt.Value).TotalSeconds;
+                    var durationSeconds = session.StartedAt is null ? 0 : (int)((DateTime.UtcNow - session.StartedAt.Value).TotalSeconds - session.PausedSeconds);
                     var topScore = session.Players.Max(p => p.Score);
                     var winners = session.Players.Where(p => p.Score == topScore).ToList();
                     var winnerName = winners.Count == 1 ? winners[0].Name : null;
@@ -387,7 +422,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
     public async Task AnswerQuestion(string? selectedKey)
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
-        if (session is null || !session.Started) return;
+        if (session is null || !session.Started || session.Paused) return;
 
         var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
         if (caller is null) return;
@@ -428,7 +463,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             if (isLast)
             {
                 session.Finished = true;
-                var durationSeconds = session.StartedAt is null ? 0 : (int)(DateTime.UtcNow - session.StartedAt.Value).TotalSeconds;
+                var durationSeconds = session.StartedAt is null ? 0 : (int)((DateTime.UtcNow - session.StartedAt.Value).TotalSeconds - session.PausedSeconds);
                 var topScore = session.Players.Max(p => p.Score);
                 var winners = session.Players.Where(p => p.Score == topScore).ToList();
                 var winnerName = winners.Count == 1 ? winners[0].Name : null;
@@ -484,6 +519,9 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             session.RemainingColorIndexesForWheel = [];
             session.QuizQuestions = [];
             session.QuizQuestionIndex = 0;
+            session.Paused = false;
+            session.PausedAt = null;
+            session.PausedSeconds = 0;
             foreach (var p in session.Players) p.Score = 0;
         }
 
