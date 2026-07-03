@@ -359,8 +359,9 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
     }
 
-    // Appelé par le client du joueur actif quand son délai de 15s pour retourner une
-    // première carte est écoulé sans qu'il ait joué : passe la main sans révéler de carte.
+    // Appelé par le client du joueur actif quand son délai de 15s pour retourner ses
+    // deux cartes est écoulé sans qu'il ait terminé son tour : passe la main, en
+    // recouvrant une éventuelle carte déjà retournée mais pas encore appariée.
     public async Task SkipTurn()
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
@@ -376,8 +377,9 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             if (session.TurnOrderColorIndexes.Count == 0) return;
             var currentColorIndex = session.TurnOrderColorIndexes[session.CurrentPlayerIndex];
             if (caller.ColorIndex != currentColorIndex) return;
-            if (session.FlippedCardIds.Count > 0) return;
+            if (session.FlippedCardIds.Count >= 2) return;
 
+            session.FlippedCardIds.Clear();
             var nextPlayerIndex = (session.CurrentPlayerIndex + 1) % session.TurnOrderColorIndexes.Count;
             session.CurrentPlayerIndex = nextPlayerIndex;
             payload = new { nextPlayerColorIndex = session.TurnOrderColorIndexes[nextPlayerIndex] };

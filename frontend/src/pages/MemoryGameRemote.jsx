@@ -76,18 +76,18 @@ export default function MemoryGameRemote() {
   }, [step, paused])
 
   useEffect(() => {
-    if (step !== 'playing') return
+    if (step !== 'playing' || flipped.length > 0) return
     setTimeLeft(TURN_TIME_LIMIT)
-  }, [step, currentColorIndex])
+  }, [step, flipped.length])
 
   useEffect(() => {
-    if (step !== 'playing' || paused || flipped.length > 0) return
+    if (step !== 'playing' || paused) return
     const interval = setInterval(() => setTimeLeft(t => Math.max(0, t - 0.1)), 100)
     return () => clearInterval(interval)
-  }, [step, paused, flipped.length, currentColorIndex])
+  }, [step, paused])
 
   useEffect(() => {
-    if (step !== 'playing' || paused || flipped.length > 0) return
+    if (step !== 'playing' || paused || flipped.length >= 2) return
     if (timeLeft <= 0 && currentColorIndex === myColorIndex) handleSkipTurn()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft])
@@ -171,6 +171,8 @@ export default function MemoryGameRemote() {
         }, matched ? MATCH_DELAY : FLIP_BACK_DELAY)
       }),
       onHubEvent('TurnSkipped', ({ nextPlayerColorIndex }) => {
+        setFlipped([])
+        setLocked(false)
         setCurrentColorIndex(nextPlayerColorIndex)
       }),
       onHubEvent('GameFinished', ({ players: finished, durationSeconds }) => {
@@ -239,7 +241,7 @@ export default function MemoryGameRemote() {
   }
 
   function handleSkipTurn() {
-    if (paused || flipped.length > 0 || currentColorIndex !== myColorIndex) return
+    if (paused || flipped.length >= 2 || currentColorIndex !== myColorIndex) return
     gameHub.skipTurn().catch(() => {})
   }
 
@@ -379,17 +381,15 @@ export default function MemoryGameRemote() {
             </button>
           </div>
           <PlayerScoreBar players={players} isActive={p => p.colorIndex === currentColorIndex} />
-          {flipped.length === 0 && (
-            <div className="h-1 w-full rounded-full bg-gray-200 overflow-hidden mt-2">
-              <div
-                className={`h-full rounded-full ${timeLeft <= TURN_TIME_LIMIT * 0.3 ? 'bg-red-500 animate-pulse' : 'bg-primary'}`}
-                style={{
-                  width: `${Math.max(0, Math.min(100, (timeLeft / TURN_TIME_LIMIT) * 100))}%`,
-                  transition: 'width 100ms linear, background-color 200ms',
-                }}
-              />
-            </div>
-          )}
+          <div className="h-1 w-full rounded-full bg-gray-200 overflow-hidden mt-2">
+            <div
+              className={`h-full rounded-full ${timeLeft <= TURN_TIME_LIMIT * 0.3 ? 'bg-red-500 animate-pulse' : 'bg-primary'}`}
+              style={{
+                width: `${Math.max(0, Math.min(100, (timeLeft / TURN_TIME_LIMIT) * 100))}%`,
+                transition: 'width 100ms linear, background-color 200ms',
+              }}
+            />
+          </div>
         </div>
 
         <div className="flex-1 min-h-0 px-4 pb-4">
