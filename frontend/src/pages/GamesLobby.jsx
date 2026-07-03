@@ -61,8 +61,7 @@ export default function GamesLobby() {
   const latestResult = recentResults[0]
   const olderResults = recentResults.slice(1)
 
-  const joinableCount = (gameType) =>
-    openRooms.filter(r => r.gameType === gameType && r.playerCount < r.maxPlayers).length
+  const joinableRoomsCount = openRooms.filter(r => r.playerCount < r.maxPlayers).length
 
   return (
     <div className="overflow-y-auto h-full bg-gray-50 pb-24">
@@ -77,11 +76,16 @@ export default function GamesLobby() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex-1 rounded-xl py-2.5 text-xs font-bold transition-colors ${
+              className={`relative flex-1 rounded-xl py-2.5 text-xs font-bold transition-colors ${
                 tab === t.key ? 'bg-white text-primary shadow-sm' : 'text-gray-500'
               }`}
             >
               {t.label}
+              {t.key === 'open' && joinableRoomsCount > 0 && (
+                <span className="absolute -top-1.5 -right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                  {joinableRoomsCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -92,11 +96,6 @@ export default function GamesLobby() {
               <span className="absolute top-4 right-4 rounded-full bg-primary/90 text-white text-[10px] font-extrabold tracking-wide px-2.5 py-1">
                 POPULAIRE
               </span>
-              {joinableCount('memory') > 0 && (
-                <span className="absolute top-4 left-4 h-6 min-w-6 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center ring-2 ring-dark">
-                  {joinableCount('memory')}
-                </span>
-              )}
 
               <div className="relative h-24 mb-1">
                 {fanMembers.map((m, i) => {
@@ -150,7 +149,6 @@ export default function GamesLobby() {
               unlocked={whoIsItUnlocked}
               lockedHint={`${MIN_MEMBERS_FOR_WHOISIT} membres avec photo min. pour débloquer`}
               onPlay={() => navigate('/games/quiwho')}
-              openCount={joinableCount('quiwho')}
             />
 
             <GameCard
@@ -160,7 +158,6 @@ export default function GamesLobby() {
               unlocked={relationshipUnlocked}
               lockedHint={`${MIN_MEMBERS_FOR_RELATIONSHIP} membres min. pour débloquer`}
               onPlay={() => navigate('/games/relationship')}
-              openCount={joinableCount('relationship')}
             />
 
             {latestResult && (
@@ -200,7 +197,7 @@ export default function GamesLobby() {
   )
 }
 
-function GameCard({ emoji, title, description, unlocked, lockedHint, onPlay, openCount = 0 }) {
+function GameCard({ emoji, title, description, unlocked, lockedHint, onPlay }) {
   return (
     <button
       onClick={onPlay}
@@ -208,14 +205,7 @@ function GameCard({ emoji, title, description, unlocked, lockedHint, onPlay, ope
       className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-4 shadow-sm active:scale-[0.99] transition-transform disabled:opacity-60"
     >
       <div className="flex items-center gap-4 text-left">
-        <span className="relative h-12 w-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">
-          {emoji}
-          {unlocked && openCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
-              {openCount}
-            </span>
-          )}
-        </span>
+        <span className="h-12 w-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">{emoji}</span>
         <div>
           <h2 className="font-extrabold text-gray-800">{title}</h2>
           <p className="text-sm text-gray-500 mt-0.5">{unlocked ? description : lockedHint}</p>
