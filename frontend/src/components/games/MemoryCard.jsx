@@ -12,7 +12,7 @@ export default function MemoryCard({ card, isFlipped, isMatched, matchedRingClas
         className="absolute inset-0 rounded-xl overflow-hidden shadow-sm bg-primary flex items-center justify-center transition-all duration-300"
         style={{ opacity: revealed ? 0 : 1, transform: revealed ? 'scale(0.85)' : 'scale(1)' }}
       >
-        <img src="/icons/icon-192x192.png" alt="" className="h-2/5 w-2/5 object-contain rounded-lg" />
+        <img src="/icons/icon-192x192.png" alt="" className="h-1/4 w-1/4 object-contain rounded-lg" />
       </div>
 
       {/* Photo du membre */}
