@@ -9,10 +9,10 @@ export default function MemoryCard({ card, isFlipped, isMatched, matchedRingClas
     >
       {/* Dos de la carte */}
       <div
-        className="absolute inset-0 rounded-xl overflow-hidden shadow-sm bg-primary flex items-center justify-center text-white text-2xl transition-all duration-300"
+        className="absolute inset-0 rounded-xl overflow-hidden shadow-sm bg-primary flex items-center justify-center transition-all duration-300"
         style={{ opacity: revealed ? 0 : 1, transform: revealed ? 'scale(0.85)' : 'scale(1)' }}
       >
-        🌳
+        <img src="/icons/icon-192x192.png" alt="" className="h-2/3 w-2/3 object-contain rounded-lg" />
       </div>
 
       {/* Photo du membre */}

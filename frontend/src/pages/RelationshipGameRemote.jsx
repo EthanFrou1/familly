@@ -451,6 +451,9 @@ function RelationshipPrompt({ question, memberById }) {
           <p className="font-extrabold text-gray-800 text-sm">{b?.firstName}</p>
         </div>
       </div>
+      <p className="text-sm font-bold text-gray-500">
+        {b?.firstName} est le/la <span className="text-primary">…</span> de {a?.firstName} ?
+      </p>
     </div>
   )
 }
