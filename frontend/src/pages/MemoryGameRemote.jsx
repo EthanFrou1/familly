@@ -39,6 +39,7 @@ export default function MemoryGameRemote() {
   const [currentColorIndex, setCurrentColorIndex] = useState(0)
   const [locked, setLocked] = useState(false)
   const [paused, setPaused] = useState(false)
+  const [pausedByName, setPausedByName] = useState(null)
   const [remainingColorIndexes, setRemainingColorIndexes] = useState([])
   const [pendingWinnerId, setPendingWinnerId] = useState(null)
   const [finalPlayers, setFinalPlayers] = useState([])
@@ -47,6 +48,8 @@ export default function MemoryGameRemote() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const pendingFinalOrderRef = useRef(null)
   const startTimeRef = useRef(null)
+  const pausedAtRef = useRef(null)
+  const pausedDurationRef = useRef(0)
 
   const me = players.find(p => p.memberId === user?.memberId)
   const myColorIndex = me?.colorIndex
@@ -62,12 +65,12 @@ export default function MemoryGameRemote() {
   }, [flipped])
 
   useEffect(() => {
-    if (step !== 'playing') return
+    if (step !== 'playing' || paused) return
     const interval = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000))
+      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current - pausedDurationRef.current) / 1000))
     }, 1000)
     return () => clearInterval(interval)
-  }, [step])
+  }, [step, paused])
 
   useEffect(() => {
     connectHub().catch(() => setError('Connexion impossible.'))
@@ -99,8 +102,25 @@ export default function MemoryGameRemote() {
         setMovesCount(0)
         setElapsedSeconds(0)
         startTimeRef.current = Date.now()
+        pausedAtRef.current = null
+        pausedDurationRef.current = 0
+        setPaused(false)
+        setPausedByName(null)
         setRemainingColorIndexes(payload.players.map(p => p.colorIndex))
         setStep('order')
+      }),
+      onHubEvent('GamePaused', ({ byName }) => {
+        pausedAtRef.current = Date.now()
+        setPausedByName(byName ?? null)
+        setPaused(true)
+      }),
+      onHubEvent('GameResumed', () => {
+        if (pausedAtRef.current) {
+          pausedDurationRef.current += Date.now() - pausedAtRef.current
+          pausedAtRef.current = null
+        }
+        setPausedByName(null)
+        setPaused(false)
       }),
       onHubEvent('WheelSpun', ({ winnerColorIndex }) => {
         setPendingWinnerId(winnerColorIndex)
@@ -321,7 +341,7 @@ export default function MemoryGameRemote() {
               ⏱ {formatDuration(elapsedSeconds)}
             </span>
             <button
-              onClick={() => setPaused(true)}
+              onClick={() => gameHub.pauseGame().catch(() => {})}
               className="shrink-0 min-h-touch min-w-touch flex items-center justify-center text-gray-400 bg-white rounded-full shadow-sm"
             >
               <DotsIcon />
@@ -344,8 +364,12 @@ export default function MemoryGameRemote() {
       {paused && (
         <div className="fixed inset-0 z-40 flex items-center justify-center px-10">
           <div className="w-full max-w-xs space-y-3">
+            <div className="rounded-2xl bg-white shadow-lg px-5 py-4 text-center">
+              <p className="text-sm font-bold text-gray-800">⏸ Partie mise en pause</p>
+              {pausedByName && <p className="text-xs text-gray-400 mt-1">par {pausedByName}</p>}
+            </div>
             <button
-              onClick={() => setPaused(false)}
+              onClick={() => gameHub.resumeGame().catch(() => {})}
               className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
             >
               Reprendre
