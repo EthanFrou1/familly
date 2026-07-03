@@ -16,6 +16,7 @@ import Avatar from '../components/shared/Avatar'
 
 const FLIP_BACK_DELAY = 900
 const MATCH_DELAY = 300
+const TURN_TIME_LIMIT = 15
 
 export default function MemoryGameRemote() {
   const navigate = useNavigate()
@@ -40,12 +41,14 @@ export default function MemoryGameRemote() {
   const [locked, setLocked] = useState(false)
   const [paused, setPaused] = useState(false)
   const [pausedByName, setPausedByName] = useState(null)
+  const [pausedByColorIndex, setPausedByColorIndex] = useState(null)
   const [remainingColorIndexes, setRemainingColorIndexes] = useState([])
   const [pendingWinnerId, setPendingWinnerId] = useState(null)
   const [finalPlayers, setFinalPlayers] = useState([])
   const [gameDuration, setGameDuration] = useState(null)
   const [movesCount, setMovesCount] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [timeLeft, setTimeLeft] = useState(TURN_TIME_LIMIT)
   const pendingFinalOrderRef = useRef(null)
   const startTimeRef = useRef(null)
   const pausedAtRef = useRef(null)
@@ -71,6 +74,23 @@ export default function MemoryGameRemote() {
     }, 1000)
     return () => clearInterval(interval)
   }, [step, paused])
+
+  useEffect(() => {
+    if (step !== 'playing') return
+    setTimeLeft(TURN_TIME_LIMIT)
+  }, [step, currentColorIndex])
+
+  useEffect(() => {
+    if (step !== 'playing' || paused || flipped.length > 0) return
+    const interval = setInterval(() => setTimeLeft(t => Math.max(0, t - 0.1)), 100)
+    return () => clearInterval(interval)
+  }, [step, paused, flipped.length, currentColorIndex])
+
+  useEffect(() => {
+    if (step !== 'playing' || paused || flipped.length > 0) return
+    if (timeLeft <= 0 && currentColorIndex === myColorIndex) handleSkipTurn()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft])
 
   useEffect(() => {
     connectHub().catch(() => setError('Connexion impossible.'))
@@ -106,12 +126,14 @@ export default function MemoryGameRemote() {
         pausedDurationRef.current = 0
         setPaused(false)
         setPausedByName(null)
+        setPausedByColorIndex(null)
         setRemainingColorIndexes(payload.players.map(p => p.colorIndex))
         setStep('order')
       }),
-      onHubEvent('GamePaused', ({ byName }) => {
+      onHubEvent('GamePaused', ({ byColorIndex, byName }) => {
         pausedAtRef.current = Date.now()
         setPausedByName(byName ?? null)
+        setPausedByColorIndex(byColorIndex)
         setPaused(true)
       }),
       onHubEvent('GameResumed', () => {
@@ -120,6 +142,7 @@ export default function MemoryGameRemote() {
           pausedAtRef.current = null
         }
         setPausedByName(null)
+        setPausedByColorIndex(null)
         setPaused(false)
       }),
       onHubEvent('WheelSpun', ({ winnerColorIndex }) => {
@@ -146,6 +169,9 @@ export default function MemoryGameRemote() {
           setCurrentColorIndex(nextPlayerColorIndex)
           setLocked(false)
         }, matched ? MATCH_DELAY : FLIP_BACK_DELAY)
+      }),
+      onHubEvent('TurnSkipped', ({ nextPlayerColorIndex }) => {
+        setCurrentColorIndex(nextPlayerColorIndex)
       }),
       onHubEvent('GameFinished', ({ players: finished, durationSeconds }) => {
         setFinalPlayers(finished)
@@ -210,6 +236,11 @@ export default function MemoryGameRemote() {
     if (locked || currentColorIndex !== myColorIndex) return
     if (flipped.includes(card.cardId) || matchedBy.has(card.memberId)) return
     gameHub.flipCard(card.cardId).catch(() => {})
+  }
+
+  function handleSkipTurn() {
+    if (paused || flipped.length > 0 || currentColorIndex !== myColorIndex) return
+    gameHub.skipTurn().catch(() => {})
   }
 
   function handleExit() {
@@ -348,6 +379,17 @@ export default function MemoryGameRemote() {
             </button>
           </div>
           <PlayerScoreBar players={players} isActive={p => p.colorIndex === currentColorIndex} />
+          {flipped.length === 0 && (
+            <div className="h-1 w-full rounded-full bg-gray-200 overflow-hidden mt-2">
+              <div
+                className={`h-full rounded-full ${timeLeft <= TURN_TIME_LIMIT * 0.3 ? 'bg-red-500 animate-pulse' : 'bg-primary'}`}
+                style={{
+                  width: `${Math.max(0, Math.min(100, (timeLeft / TURN_TIME_LIMIT) * 100))}%`,
+                  transition: 'width 100ms linear, background-color 200ms',
+                }}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex-1 min-h-0 px-4 pb-4">
@@ -368,12 +410,18 @@ export default function MemoryGameRemote() {
               <p className="text-sm font-bold text-gray-800">⏸ Partie mise en pause</p>
               {pausedByName && <p className="text-xs text-gray-400 mt-1">par {pausedByName}</p>}
             </div>
-            <button
-              onClick={() => gameHub.resumeGame().catch(() => {})}
-              className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
-            >
-              Reprendre
-            </button>
+            {pausedByColorIndex === myColorIndex ? (
+              <button
+                onClick={() => gameHub.resumeGame().catch(() => {})}
+                className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
+              >
+                Reprendre
+              </button>
+            ) : (
+              <p className="text-xs text-gray-400 text-center">
+                Seul{pausedByName ? ` ${pausedByName}` : ''} peut reprendre la partie.
+              </p>
+            )}
             <button
               onClick={handleExit}
               className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-red-500 shadow-lg active:bg-gray-50"
