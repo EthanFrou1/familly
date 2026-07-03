@@ -120,11 +120,11 @@ function translatePath(path, targetGender) {
     // Second cousins
     case 'parent|parent|sibling|child':
     case 'parent|parent|halfSibling|child':
-      return gr('Votre cousin(e)', 'Votre cousine', 'Votre cousin(e) éloigné(e)')
+      return gr('Votre cousin éloigné', 'Votre cousine éloignée', 'Votre cousin(e) éloigné(e)')
 
     case 'parent|sibling|child|child':
     case 'parent|halfSibling|child|child':
-      return gr('Votre cousin(e)', 'Votre cousine', 'Votre cousin(e) éloigné(e)')
+      return gr('Votre cousin éloigné', 'Votre cousine éloignée', 'Votre cousin(e) éloigné(e)')
 
     case 'parent|parent|child':
       return gr('Votre oncle', 'Votre tante', 'Votre oncle/tante')

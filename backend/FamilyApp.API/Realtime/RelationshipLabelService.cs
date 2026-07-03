@@ -108,10 +108,10 @@ public static class RelationshipLabelService
             "spouse|child" => Gr("Votre beau-fils", "Votre belle-fille", "Votre beau-fils/fille"),
 
             "parent|parent|sibling|child" or "parent|parent|halfSibling|child" =>
-                Gr("Votre cousin(e)", "Votre cousine", "Votre cousin(e) éloigné(e)"),
+                Gr("Votre cousin éloigné", "Votre cousine éloignée", "Votre cousin(e) éloigné(e)"),
 
             "parent|sibling|child|child" or "parent|halfSibling|child|child" =>
-                Gr("Votre cousin(e)", "Votre cousine", "Votre cousin(e) éloigné(e)"),
+                Gr("Votre cousin éloigné", "Votre cousine éloignée", "Votre cousin(e) éloigné(e)"),
 
             "parent|parent|child" => Gr("Votre oncle", "Votre tante", "Votre oncle/tante"),
 
