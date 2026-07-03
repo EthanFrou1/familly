@@ -54,6 +54,7 @@ public class GameSession
     public bool Paused { get; set; }
     public DateTime? PausedAt { get; set; }
     public double PausedSeconds { get; set; }
+    public int? PausedByColorIndex { get; set; }
 
     public List<int> RemainingColorIndexesForWheel { get; set; } = [];
     public List<int> TurnOrderColorIndexes { get; set; } = [];

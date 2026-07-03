@@ -41,6 +41,7 @@ export default function RelationshipGameRemote() {
   const [currentColorIndex, setCurrentColorIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const [pausedByName, setPausedByName] = useState(null)
+  const [pausedByColorIndex, setPausedByColorIndex] = useState(null)
   const [remainingColorIndexes, setRemainingColorIndexes] = useState([])
   const [pendingWinnerId, setPendingWinnerId] = useState(null)
   const [finalPlayers, setFinalPlayers] = useState([])
@@ -120,12 +121,14 @@ export default function RelationshipGameRemote() {
         pausedDurationRef.current = 0
         setPaused(false)
         setPausedByName(null)
+        setPausedByColorIndex(null)
         setRemainingColorIndexes(payload.players.map(p => p.colorIndex))
         setStep('order')
       }),
-      onHubEvent('GamePaused', ({ byName }) => {
+      onHubEvent('GamePaused', ({ byColorIndex, byName }) => {
         pausedAtRef.current = Date.now()
         setPausedByName(byName ?? null)
+        setPausedByColorIndex(byColorIndex)
         setPaused(true)
       }),
       onHubEvent('GameResumed', () => {
@@ -134,6 +137,7 @@ export default function RelationshipGameRemote() {
           pausedAtRef.current = null
         }
         setPausedByName(null)
+        setPausedByColorIndex(null)
         setPaused(false)
       }),
       onHubEvent('WheelSpun', ({ winnerColorIndex }) => {
@@ -404,12 +408,18 @@ export default function RelationshipGameRemote() {
               <p className="text-sm font-bold text-gray-800">⏸ Partie mise en pause</p>
               {pausedByName && <p className="text-xs text-gray-400 mt-1">par {pausedByName}</p>}
             </div>
-            <button
-              onClick={() => gameHub.resumeGame().catch(() => {})}
-              className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
-            >
-              Reprendre
-            </button>
+            {pausedByColorIndex === myColorIndex ? (
+              <button
+                onClick={() => gameHub.resumeGame().catch(() => {})}
+                className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
+              >
+                Reprendre
+              </button>
+            ) : (
+              <p className="text-xs text-gray-400 text-center">
+                Seul{pausedByName ? ` ${pausedByName}` : ''} peut reprendre la partie.
+              </p>
+            )}
             <button
               onClick={handleExit}
               className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-red-500 shadow-lg active:bg-gray-50"

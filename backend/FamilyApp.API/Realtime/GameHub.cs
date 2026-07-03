@@ -197,6 +197,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             if (session.Paused) return;
             session.Paused = true;
             session.PausedAt = DateTime.UtcNow;
+            session.PausedByColorIndex = caller.ColorIndex;
         }
 
         await Clients.Group(session.Code).SendAsync("GamePaused", new { byColorIndex = caller.ColorIndex, byName = caller.Name });
@@ -207,13 +208,18 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         var session = store.FindByConnectionId(Context.ConnectionId);
         if (session is null || !session.Started) return;
 
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null) return;
+
         lock (session)
         {
             if (!session.Paused) return;
+            if (session.PausedByColorIndex != caller.ColorIndex) return;
             if (session.PausedAt is not null)
                 session.PausedSeconds += (DateTime.UtcNow - session.PausedAt.Value).TotalSeconds;
             session.Paused = false;
             session.PausedAt = null;
+            session.PausedByColorIndex = null;
         }
 
         await Clients.Group(session.Code).SendAsync("GameResumed");
@@ -351,6 +357,33 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             await db.SaveChangesAsync();
         }
         if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
+    }
+
+    // Appelé par le client du joueur actif quand son délai de 15s pour retourner une
+    // première carte est écoulé sans qu'il ait joué : passe la main sans révéler de carte.
+    public async Task SkipTurn()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null) return;
+
+        object? payload = null;
+
+        lock (session)
+        {
+            if (session.TurnOrderColorIndexes.Count == 0) return;
+            var currentColorIndex = session.TurnOrderColorIndexes[session.CurrentPlayerIndex];
+            if (caller.ColorIndex != currentColorIndex) return;
+            if (session.FlippedCardIds.Count > 0) return;
+
+            var nextPlayerIndex = (session.CurrentPlayerIndex + 1) % session.TurnOrderColorIndexes.Count;
+            session.CurrentPlayerIndex = nextPlayerIndex;
+            payload = new { nextPlayerColorIndex = session.TurnOrderColorIndexes[nextPlayerIndex] };
+        }
+
+        if (payload is not null) await Clients.Group(session.Code).SendAsync("TurnSkipped", payload);
     }
 
     public async Task StartQuiz(int questionCount)
@@ -522,6 +555,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             session.Paused = false;
             session.PausedAt = null;
             session.PausedSeconds = 0;
+            session.PausedByColorIndex = null;
             foreach (var p in session.Players) p.Score = 0;
         }
 
