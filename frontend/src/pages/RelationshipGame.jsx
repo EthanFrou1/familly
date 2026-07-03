@@ -285,16 +285,16 @@ function RelationshipPrompt({ round, memberById }) {
       <div className="flex items-center gap-5">
         <div className="flex flex-col items-center gap-2">
           <Avatar member={a} size="xl" className="ring-4 ring-primary/30" />
-          <p className="font-extrabold text-gray-800 text-sm">{a?.firstName}</p>
+          <p className="font-extrabold text-gray-800 text-sm text-center">{a?.firstName} {a?.lastName}</p>
         </div>
         <span className="text-2xl">🤔</span>
         <div className="flex flex-col items-center gap-2">
           <Avatar member={b} size="xl" className="ring-4 ring-dark/30" />
-          <p className="font-extrabold text-gray-800 text-sm">{b?.firstName}</p>
+          <p className="font-extrabold text-gray-800 text-sm text-center">{b?.firstName} {b?.lastName}</p>
         </div>
       </div>
-      <p className="text-sm font-bold text-gray-500">
-        {b?.firstName} est le/la <span className="text-primary">…</span> de {a?.firstName} ?
+      <p className="text-sm font-bold text-gray-500 text-center">
+        {b?.firstName} {b?.lastName} est le/la <span className="text-primary">…</span> de {a?.firstName} {a?.lastName} ?
       </p>
     </div>
   )
