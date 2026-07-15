@@ -9,7 +9,7 @@ export const ATTRIBUTE_COLUMNS = [
   { key: 'city', label: 'Ville', emoji: '📍', description: "Même ville, même pays (mais autre ville), ou totalement différent." },
   { key: 'gender', label: 'Sexe', emoji: '🚻', description: "Même sexe que la réponse ou non." },
   { key: 'branch', label: 'Famille', emoji: '🌿', description: "Même famille (utile pour les familles recomposées) ou non." },
-  { key: 'alive', label: 'Statut', emoji: '💫', description: "Vivant ou décédé, comme la réponse ou non." },
+  { key: 'alive', label: 'Statut', emoji: '🔁', description: "Vivant ou décédé, comme la réponse ou non." },
 ]
 
 const CELL_EMOJI = { green: '🟩', yellow: '🟨', gray: '⬜' }
@@ -17,7 +17,8 @@ const CELL_EMOJI = { green: '🟩', yellow: '🟨', gray: '⬜' }
 export function buildShareText(state) {
   const columns = ATTRIBUTE_COLUMNS.filter(c => c.key !== 'branch' || state.showBranchColumn)
   const lines = state.rows.map(row =>
-    columns.map(c => CELL_EMOJI[row[c.key]?.status] ?? '⬜').join('')
+    // La case Naissance affiche l'année brute (indice neutre) plutôt qu'un statut vert/gris.
+    columns.map(c => c.key === 'birthYear' ? '⬜' : CELL_EMOJI[row[c.key]?.status] ?? '⬜').join('')
   )
 
   const result = state.status === 'solved' ? `Réussi en ${state.attemptsUsed}/${MAX_ATTEMPTS}` : `Raté (${MAX_ATTEMPTS}/${MAX_ATTEMPTS})`
