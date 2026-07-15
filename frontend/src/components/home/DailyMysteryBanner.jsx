@@ -20,7 +20,7 @@ export default function DailyMysteryBanner() {
     >
       <span className="text-2xl shrink-0">🔮</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-gray-900">Le Mystère du jour</p>
+        <p className="text-sm font-bold text-gray-900">Le Membre Mystère</p>
         <p className="text-xs text-gray-500 mt-0.5">
           {finished
             ? state.status === 'solved'
