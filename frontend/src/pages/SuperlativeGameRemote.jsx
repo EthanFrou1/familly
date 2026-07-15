@@ -403,6 +403,14 @@ export default function SuperlativeGameRemote() {
   )
 }
 
+// Évite les lignes interminables quand beaucoup de joueurs votent pour la même personne ou
+// sont ex-æquo : au-delà de maxShown, on regroupe le reste dans "+N autres".
+function formatNameList(names, maxShown = 4) {
+  if (names.length <= maxShown) return names.join(', ')
+  const rest = names.length - maxShown
+  return `${names.slice(0, maxShown).join(', ')} +${rest} autre${rest > 1 ? 's' : ''}`
+}
+
 function WinnerReveal({ players, reveal }) {
   const winners = (reveal.winnerMemberIds ?? []).map(id => players.find(p => p.memberId === id)).filter(Boolean)
   const voteCount = id => reveal.votes?.[id] ?? 0
@@ -425,15 +433,31 @@ function WinnerReveal({ players, reveal }) {
     )
   }
 
+  const shownWinners = winners.slice(0, 6)
+  const extraWinners = winners.length - shownWinners.length
+
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="flex justify-center -space-x-3">
-        {winners.map(w => (
-          <Avatar key={w.memberId} src={w.profilePictureUrl} name={w.name} size="lg" className="ring-4 ring-white" />
+      <div className="flex flex-wrap justify-center gap-1.5">
+        {shownWinners.map(w => (
+          <Avatar
+            key={w.memberId}
+            src={w.profilePictureUrl}
+            name={w.name}
+            size={winners.length > 3 ? 'md' : 'lg'}
+            className="ring-2 ring-white shadow"
+          />
         ))}
+        {extraWinners > 0 && (
+          <div className="h-12 w-12 rounded-full bg-gray-100 ring-2 ring-white shadow flex items-center justify-center text-xs font-bold text-gray-500">
+            +{extraWinners}
+          </div>
+        )}
       </div>
-      <p className="font-extrabold text-gray-800">{winners.map(w => w.name.split(' ')[0]).join(', ')}</p>
-      <p className="text-xs text-primary font-bold">{voteCount(winners[0].memberId)} vote{voteCount(winners[0].memberId) > 1 ? 's' : ''}</p>
+      <p className="font-extrabold text-gray-800 px-2">{formatNameList(winners.map(w => w.name.split(' ')[0]), 4)}</p>
+      <p className="text-xs text-primary font-bold">
+        {voteCount(winners[0].memberId)} vote{voteCount(winners[0].memberId) > 1 ? 's' : ''}{winners.length > 1 ? ' chacun' : ''}
+      </p>
     </div>
   )
 }
@@ -451,15 +475,15 @@ function VoteBreakdown({ players, reveal }) {
     .sort((a, b) => b.count - a.count)
 
   return (
-    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+    <div className="space-y-1.5 max-h-56 overflow-y-auto">
       {rows.map(({ player, count, voters }) => (
-        <div key={player.memberId} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
-          <Avatar src={player.profilePictureUrl} name={player.name} size="xs" />
+        <div key={player.memberId} className="flex items-start gap-2 rounded-xl bg-gray-50 px-3 py-2">
+          <Avatar src={player.profilePictureUrl} name={player.name} size="xs" className="mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0 text-left">
             <p className="text-xs font-bold text-gray-700 truncate">{player.name.split(' ')[0]}</p>
             {voters.length > 0 && (
-              <p className="text-[10px] text-gray-400 truncate">
-                voté par {voters.map(v => v.name.split(' ')[0]).join(', ')}
+              <p className="text-[10px] text-gray-400 leading-snug break-words">
+                voté par {formatNameList(voters.map(v => v.name.split(' ')[0]), 4)}
               </p>
             )}
           </div>
