@@ -14,7 +14,7 @@ import PlayerScoreBar from '../components/games/PlayerScoreBar'
 import { AnswerTimer } from '../components/games/QuizRoundScreen'
 import Avatar from '../components/shared/Avatar'
 
-const ROUND_TIME_LIMIT = 30
+const ROUND_TIME_LIMIT = 20
 const ROUND_PRESETS = [
   { label: 'Court', value: 6, emoji: '🌱', minRequired: 2 },
   { label: 'Moyen', value: 10, emoji: '🌳', minRequired: 2 },
