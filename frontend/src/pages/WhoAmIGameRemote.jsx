@@ -148,8 +148,8 @@ export default function WhoAmIGameRemote() {
         setClues(prev => [...prev, clue])
       }),
       onHubEvent('AnswerProgress', setAnswerProgress),
-      onHubEvent('RoundResolved', ({ correctMemberId, scorerMemberIds, scorerPoints, isLastRound }) => {
-        setReveal({ correctMemberId, scorerMemberIds, scorerPoints, isLastRound })
+      onHubEvent('RoundResolved', ({ correctMemberId, scorerMemberIds, scorerPoints, answers, isLastRound }) => {
+        setReveal({ correctMemberId, scorerMemberIds, scorerPoints, answers, isLastRound })
         if (scorerPoints) {
           setPlayers(prev => prev.map(p => scorerPoints[p.memberId] ? { ...p, score: p.score + scorerPoints[p.memberId] } : p))
         }
@@ -376,38 +376,26 @@ export default function WhoAmIGameRemote() {
             {answerProgress.answered}/{answerProgress.total} ont répondu
           </p>
 
-          {!reveal && (
-            <div className="mb-3">
-              <div className="flex gap-2">
-                <button
-                  onClick={handleRequestHint}
-                  disabled={submitted || noMoreHints}
-                  className="flex-1 rounded-xl bg-white shadow-sm py-2.5 text-sm font-semibold text-gray-500 active:bg-gray-50 disabled:opacity-40"
-                >
-                  {noMoreHints ? 'Plus d\'indice' : 'Indice suivant (-1 pt)'}
-                </button>
-                {isHost && (
-                  <button
-                    onClick={() => gameHub.forceResolveRound().catch(() => {})}
-                    className="flex-1 rounded-xl bg-white shadow-sm py-2.5 text-sm font-semibold text-gray-500 active:bg-gray-50"
-                  >
-                    Révéler la réponse
-                  </button>
-                )}
-              </div>
-              {hintsUsed > 0 && (
-                <p className="text-[11px] text-gray-400 text-center mt-1.5">
-                  {hintsUsed} indice{hintsUsed > 1 ? 's' : ''} demandé{hintsUsed > 1 ? 's' : ''} — max {Math.max(1, 3 - hintsUsed)} pt{Math.max(1, 3 - hintsUsed) > 1 ? 's' : ''} si vous trouvez
-                </p>
-              )}
-            </div>
-          )}
-
           {clues.map((clue, i) => (
             <p key={i} className="rounded-xl bg-white shadow-sm px-4 py-3 text-sm font-semibold text-gray-700">
               {clue}
             </p>
           ))}
+
+          {!reveal && !noMoreHints && (
+            <button
+              onClick={handleRequestHint}
+              disabled={submitted}
+              className="w-full rounded-xl bg-white shadow-sm py-2.5 text-sm font-semibold text-gray-500 active:bg-gray-50 disabled:opacity-40"
+            >
+              Indice suivant (-1 pt)
+            </button>
+          )}
+          {!reveal && hintsUsed > 0 && (
+            <p className="text-[11px] text-gray-400 text-center">
+              {hintsUsed} indice{hintsUsed > 1 ? 's' : ''} demandé{hintsUsed > 1 ? 's' : ''} — max {Math.max(1, 3 - hintsUsed)} pt{Math.max(1, 3 - hintsUsed) > 1 ? 's' : ''} si vous trouvez
+            </p>
+          )}
 
           {!reveal && (
             <div className="pt-2">
@@ -442,8 +430,8 @@ export default function WhoAmIGameRemote() {
       </div>
 
       {reveal && (
-        <div className="fixed inset-0 z-30 bg-black/40 flex items-center justify-center px-6">
-          <div className="w-full max-w-xs rounded-3xl bg-white shadow-xl p-6 text-center space-y-4">
+        <div className="fixed inset-0 z-30 bg-black/40 flex items-center justify-center px-6 py-10">
+          <div className="w-full max-w-xs max-h-full overflow-y-auto rounded-3xl bg-white shadow-xl p-6 text-center space-y-4">
             <Avatar member={revealedMember} size="xl" className="mx-auto ring-4 ring-primary/30" />
             <div>
               <p className="font-extrabold text-gray-800">
@@ -452,6 +440,10 @@ export default function WhoAmIGameRemote() {
               <p className="text-xs text-gray-500 mt-1">
                 {scorerLines.length > 0 ? `Trouvé par ${scorerLines.join(', ')}` : 'Personne n\'a trouvé'}
               </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5 text-left">Réponses des joueurs</p>
+              <AnswerBreakdown players={players} reveal={reveal} memberById={memberById} />
             </div>
             {isHost ? (
               <button
@@ -495,6 +487,30 @@ export default function WhoAmIGameRemote() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function AnswerBreakdown({ players, reveal, memberById }) {
+  return (
+    <div className="space-y-1.5 max-h-56 overflow-y-auto">
+      {players.map(p => {
+        const guessId = reveal.answers?.[p.memberId]
+        const guessedMember = guessId ? memberById.get(guessId) : null
+        const correct = guessId != null && guessId === reveal.correctMemberId
+        return (
+          <div key={p.memberId} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
+            <Avatar src={p.profilePictureUrl} name={p.name} size="xs" className="shrink-0" />
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-xs font-bold text-gray-700 truncate">{p.name.split(' ')[0]}</p>
+              <p className={`text-[10px] truncate ${correct ? 'text-green-600 font-semibold' : 'text-gray-400'}`}>
+                {guessedMember ? `${guessedMember.firstName} ${guessedMember.lastName}` : 'Pas de réponse'}
+              </p>
+            </div>
+            {correct && <span className="text-sm font-black text-primary shrink-0">✓</span>}
+          </div>
+        )
+      })}
     </div>
   )
 }
