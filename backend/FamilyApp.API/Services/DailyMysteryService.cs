@@ -32,9 +32,14 @@ public class DailyMysteryService(AppDbContext db)
         var existing = await db.DailyChallenges.FirstOrDefaultAsync(c => c.Date == today);
         if (existing is not null) return existing;
 
-        var eligible = await db.Members.Where(m => m.BirthDate != null).Select(m => m.Id).ToListAsync();
+        // Un membre trop peu renseigné donnerait une grille presque entièrement grise :
+        // on exige la date de naissance (colonne Naissance) + au moins un autre attribut distinctif.
+        var eligible = await db.Members
+            .Where(m => m.BirthDate != null && (m.City != null || m.Gender != null))
+            .Select(m => m.Id)
+            .ToListAsync();
         if (eligible.Count == 0)
-            throw new InvalidOperationException("Aucun membre éligible (avec date de naissance) pour le défi du jour.");
+            throw new InvalidOperationException("Aucun membre suffisamment renseigné pour le défi du jour.");
 
         var recentCount = Math.Min(AvoidRepeatDays, eligible.Count - 1);
         var recentIds = (await db.DailyChallenges

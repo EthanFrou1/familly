@@ -11,6 +11,7 @@ import { GAMES, GAME_LABELS, GAME_UNIT_LABELS } from '../utils/gameRegistry'
 import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
 import OpenRoomsList from '../components/games/OpenRoomsList'
 import LeaderboardView from '../components/games/LeaderboardView'
+import DailyMysteryHero from '../components/games/DailyMysteryHero'
 import Avatar from '../components/shared/Avatar'
 
 const MIN_MEMBERS_FOR_SUPERLATIVE = 3
@@ -99,6 +100,8 @@ export default function GamesLobby() {
 
         {tab === 'games' && (
           <div className="space-y-4">
+            <DailyMysteryHero unlocked={dailyMysteryUnlocked} minMembers={MIN_MEMBERS_FOR_DAILY_MYSTERY} />
+
             <div className="relative rounded-3xl bg-dark shadow-lg shadow-black/10 overflow-hidden p-5">
               <span className="absolute top-4 right-4 rounded-full bg-primary/90 text-white text-[10px] font-extrabold tracking-wide px-2.5 py-1">
                 POPULAIRE
@@ -183,15 +186,6 @@ export default function GamesLobby() {
               unlocked={whoAmIUnlocked}
               lockedHint="Complétez plus de profils (bio, métier, sport...) pour débloquer"
               onPlay={() => navigate('/games/whoami/remote')}
-            />
-
-            <GameCard
-              emoji="🔮"
-              title="Le Mystère du jour"
-              description="Un membre mystère par jour à deviner en 6 essais, avec des indices façon Wordle."
-              unlocked={dailyMysteryUnlocked}
-              lockedHint={`${MIN_MEMBERS_FOR_DAILY_MYSTERY} membres min. pour débloquer`}
-              onPlay={() => navigate('/games/daily-mystery')}
             />
 
             {latestResult && (
