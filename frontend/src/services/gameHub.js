@@ -59,4 +59,5 @@ export const gameHub = {
   submitAnswer: (key) => getConnection().invoke('SubmitAnswer', key),
   revealNextClue: () => getConnection().invoke('RevealNextClue'),
   forceResolveRound: () => getConnection().invoke('ForceResolveRound'),
+  continueRound: () => getConnection().invoke('ContinueRound'),
 }

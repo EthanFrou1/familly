@@ -11,7 +11,6 @@ import DotsIcon from '../components/games/DotsIcon'
 import PlayerScoreBar from '../components/games/PlayerScoreBar'
 import Avatar from '../components/shared/Avatar'
 
-const REVEAL_DELAY = 2200
 const ROUND_PRESETS = [
   { label: 'Court', value: 8, emoji: '🌱', minRequired: 2 },
   { label: 'Moyen', value: 12, emoji: '🌳', minRequired: 2 },
@@ -116,27 +115,23 @@ export default function SuperlativeGameRemote() {
         setPaused(false)
       }),
       onHubEvent('AnswerProgress', setAnswerProgress),
-      onHubEvent('RoundResolved', ({ votes, winnerMemberIds }) => {
-        setReveal({ votes, winnerMemberIds })
+      onHubEvent('RoundResolved', ({ votes, winnerMemberIds, isLastRound }) => {
+        setReveal({ votes, winnerMemberIds, isLastRound })
         if (winnerMemberIds?.length) {
           setPlayers(prev => prev.map(p => winnerMemberIds.includes(p.memberId) ? { ...p, score: p.score + 1 } : p))
         }
       }),
       onHubEvent('NextRound', ({ round }) => {
-        setTimeout(() => {
-          setCurrentRound(round)
-          setRoundIndex(i => i + 1)
-          setMyVote(null)
-          setAnswerProgress(prev => ({ answered: 0, total: prev.total }))
-          setReveal(null)
-        }, REVEAL_DELAY)
+        setCurrentRound(round)
+        setRoundIndex(i => i + 1)
+        setMyVote(null)
+        setAnswerProgress(prev => ({ answered: 0, total: prev.total }))
+        setReveal(null)
       }),
       onHubEvent('GameFinished', ({ players: finished, durationSeconds }) => {
-        setTimeout(() => {
-          setFinalPlayers(finished)
-          setGameDuration(durationSeconds)
-          setStep('results')
-        }, REVEAL_DELAY)
+        setFinalPlayers(finished)
+        setGameDuration(durationSeconds)
+        setStep('results')
       }),
       onHubEvent('BackToDifficulty', () => setStep('difficulty')),
     ]
@@ -185,6 +180,11 @@ export default function SuperlativeGameRemote() {
     if (paused || myVote || reveal) return
     setMyVote(memberId)
     gameHub.submitAnswer(memberId).catch(() => {})
+  }
+
+  function handleContinue() {
+    if (!isHost) return
+    gameHub.continueRound().catch(() => {})
   }
 
   function handleExit() {
@@ -311,9 +311,18 @@ export default function SuperlativeGameRemote() {
 
         <div className="flex-1 overflow-y-auto px-4 py-5">
           <p className="text-center text-lg font-extrabold text-gray-800 mb-1.5">{currentRound?.prompt}</p>
-          <p className="text-center text-xs font-semibold text-gray-400 mb-5">
+          <p className="text-center text-xs font-semibold text-gray-400 mb-3">
             {answerProgress.answered}/{answerProgress.total} ont voté
           </p>
+
+          {isHost && !reveal && (
+            <button
+              onClick={() => gameHub.forceResolveRound().catch(() => {})}
+              className="w-full mb-4 rounded-xl bg-white shadow-sm py-2.5 text-sm font-semibold text-gray-500 active:bg-gray-50"
+            >
+              Forcer la révélation
+            </button>
+          )}
 
           <div className="grid grid-cols-3 gap-3">
             {players.map(p => {
@@ -337,18 +346,26 @@ export default function SuperlativeGameRemote() {
             })}
           </div>
         </div>
-
-        {isHost && !reveal && (
-          <div className="shrink-0 px-4 pb-5">
-            <button
-              onClick={() => gameHub.forceResolveRound().catch(() => {})}
-              className="w-full rounded-xl bg-white shadow-sm py-3 text-sm font-semibold text-gray-500 active:bg-gray-50"
-            >
-              Forcer la révélation
-            </button>
-          </div>
-        )}
       </div>
+
+      {reveal && (
+        <div className="fixed inset-0 z-30 bg-black/40 flex items-center justify-center px-6">
+          <div className="w-full max-w-xs rounded-3xl bg-white shadow-xl p-6 text-center space-y-4">
+            <p className="text-sm font-bold text-gray-500">{currentRound?.prompt}</p>
+            <WinnerReveal players={players} reveal={reveal} />
+            {isHost ? (
+              <button
+                onClick={handleContinue}
+                className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white active:bg-primary-dark"
+              >
+                {reveal.isLastRound ? 'Voir les résultats' : 'Round suivant'}
+              </button>
+            ) : (
+              <p className="text-xs text-gray-400">En attente de l'hôte pour continuer…</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {paused && (
         <div className="fixed inset-0 z-40 flex items-center justify-center px-10">
@@ -378,6 +395,41 @@ export default function SuperlativeGameRemote() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function WinnerReveal({ players, reveal }) {
+  const winners = (reveal.winnerMemberIds ?? []).map(id => players.find(p => p.memberId === id)).filter(Boolean)
+  const voteCount = id => reveal.votes?.[id] ?? 0
+
+  if (winners.length === 0) {
+    return <p className="text-sm text-gray-400 py-4">Personne n'a voté à temps</p>
+  }
+
+  if (winners.length === 2 && winners[0].profilePictureUrl && winners[1].profilePictureUrl) {
+    const [a, b] = winners
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <div className="relative h-28 w-28 rounded-full overflow-hidden ring-4 ring-primary/30">
+          <img src={a.profilePictureUrl} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ clipPath: 'inset(0 50% 0 0)' }} />
+          <img src={b.profilePictureUrl} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ clipPath: 'inset(0 0 0 50%)' }} />
+        </div>
+        <p className="font-extrabold text-gray-800">Égalité : {a.name.split(' ')[0]} & {b.name.split(' ')[0]} 😄</p>
+        <p className="text-xs text-primary font-bold">{voteCount(a.memberId)} vote{voteCount(a.memberId) > 1 ? 's' : ''} chacun</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="flex justify-center -space-x-3">
+        {winners.map(w => (
+          <Avatar key={w.memberId} src={w.profilePictureUrl} name={w.name} size="lg" className="ring-4 ring-white" />
+        ))}
+      </div>
+      <p className="font-extrabold text-gray-800">{winners.map(w => w.name.split(' ')[0]).join(', ')}</p>
+      <p className="text-xs text-primary font-bold">{voteCount(winners[0].memberId)} vote{voteCount(winners[0].memberId) > 1 ? 's' : ''}</p>
     </div>
   )
 }
