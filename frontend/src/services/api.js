@@ -180,6 +180,11 @@ export const gamesApi = {
   getGlobalLeaderboard: () => api.get('/games/leaderboard/global'),
 }
 
+export const dailyMysteryApi = {
+  getToday: () => api.get('/daily-mystery/today'),
+  guess: (memberId) => api.post('/daily-mystery/guess', { memberId }),
+}
+
 export const pushApi = {
   getVapidPublicKey: () => api.get('/push/vapid-public-key'),
   subscribe: (endpoint, p256dh, auth) => api.post('/push/subscribe', { endpoint, p256dh, auth }),

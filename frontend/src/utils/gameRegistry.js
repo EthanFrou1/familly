@@ -4,6 +4,7 @@ export const GAMES = [
   { key: 'relationship', label: 'Quel est le lien', unitLabel: 'questions', fullLabel: 'Quel est le lien ?', emoji: '🌳' },
   { key: 'superlative', label: 'Le plus susceptible', unitLabel: 'titres', fullLabel: 'Le/la plus susceptible de...', emoji: '🎉' },
   { key: 'whoami', label: 'Qui suis-je', unitLabel: 'personnages', fullLabel: 'Qui suis-je ?', emoji: '❓' },
+  { key: 'dailymystery', label: 'Mystère du jour', unitLabel: 'essais', fullLabel: 'Le Mystère du jour', emoji: '🔮' },
 ]
 
 export const GAME_LABELS = Object.fromEntries(GAMES.map(g => [g.key, g.label]))

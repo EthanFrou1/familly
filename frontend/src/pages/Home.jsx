@@ -7,8 +7,10 @@ import { familiesApi, settingsApi, relationsApi, activityLogsApi, photosApi, gam
 import { usePageRefresh } from '../hooks/usePageRefresh'
 import Avatar from '../components/shared/Avatar'
 import BirthdayPopup from '../components/home/BirthdayPopup'
+import DailyMysteryBanner from '../components/home/DailyMysteryBanner'
 import CalendarExportSheet from '../components/members/CalendarExportSheet'
 import { usePushNotifications } from '../hooks/usePushNotifications'
+import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_DAILY_MYSTERY } from '../utils/dailyMystery'
 
 function timeAgo(dateStr) {
   if (!dateStr) return ''
@@ -322,6 +324,9 @@ export default function Home() {
       </div>
 
       <div className="px-4 mt-6 space-y-6">
+
+        {/* Mystère du jour */}
+        {members.length >= MIN_MEMBERS_FOR_DAILY_MYSTERY && <DailyMysteryBanner />}
 
         {/* Prochains anniversaires */}
         {birthdays.length > 0 && (

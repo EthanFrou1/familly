@@ -6,10 +6,12 @@ import { membersWithPhoto, MIN_PAIRS_TO_UNLOCK } from '../utils/memoryGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_WHOISIT } from '../utils/whoIsItGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_RELATIONSHIP } from '../utils/relationshipGame'
 import { MIN_SUBJECTS_TO_UNLOCK, eligibleSubjectsCount } from '../utils/whoAmIGame'
+import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_DAILY_MYSTERY } from '../utils/dailyMystery'
 import { GAMES, GAME_LABELS, GAME_UNIT_LABELS } from '../utils/gameRegistry'
 import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
 import OpenRoomsList from '../components/games/OpenRoomsList'
 import LeaderboardView from '../components/games/LeaderboardView'
+import DailyMysteryHero from '../components/games/DailyMysteryHero'
 import Avatar from '../components/shared/Avatar'
 
 const MIN_MEMBERS_FOR_SUPERLATIVE = 3
@@ -38,6 +40,7 @@ export default function GamesLobby() {
   const relationshipUnlocked = members.length >= MIN_MEMBERS_FOR_RELATIONSHIP
   const superlativeUnlocked = members.length >= MIN_MEMBERS_FOR_SUPERLATIVE
   const whoAmIUnlocked = eligibleSubjectsCount(members) >= MIN_SUBJECTS_TO_UNLOCK
+  const dailyMysteryUnlocked = members.length >= MIN_MEMBERS_FOR_DAILY_MYSTERY
   const fanMembers = membersWithPhoto(members).slice(0, 3)
   const memberById = new Map(members.map(m => [m.id, m]))
 
@@ -97,6 +100,8 @@ export default function GamesLobby() {
 
         {tab === 'games' && (
           <div className="space-y-4">
+            <DailyMysteryHero unlocked={dailyMysteryUnlocked} minMembers={MIN_MEMBERS_FOR_DAILY_MYSTERY} />
+
             <div className="relative rounded-3xl bg-dark shadow-lg shadow-black/10 overflow-hidden p-5">
               <span className="absolute top-4 right-4 rounded-full bg-primary/90 text-white text-[10px] font-extrabold tracking-wide px-2.5 py-1">
                 POPULAIRE

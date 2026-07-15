@@ -20,6 +20,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TimelineEvent> TimelineEvents => Set<TimelineEvent>();
     public DbSet<TimelineEventMember> TimelineEventMembers => Set<TimelineEventMember>();
     public DbSet<GameResult> GameResults => Set<GameResult>();
+    public DbSet<DailyChallenge> DailyChallenges => Set<DailyChallenge>();
+    public DbSet<DailyChallengeAttempt> DailyChallengeAttempts => Set<DailyChallengeAttempt>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -119,6 +121,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(tem => new { tem.TimelineEventId, tem.MemberId });
             e.HasOne(tem => tem.TimelineEvent).WithMany(te => te.LinkedMembers).HasForeignKey(tem => tem.TimelineEventId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(tem => tem.Member).WithMany().HasForeignKey(tem => tem.MemberId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<DailyChallenge>(e =>
+        {
+            e.HasKey(d => d.Id);
+            e.HasIndex(d => d.Date).IsUnique();
+            e.HasOne(d => d.Member).WithMany().HasForeignKey(d => d.MemberId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<DailyChallengeAttempt>(e =>
+        {
+            e.HasKey(a => a.Id);
+            e.HasIndex(a => new { a.DailyChallengeId, a.UserId }).IsUnique();
+            e.HasOne(a => a.DailyChallenge).WithMany().HasForeignKey(a => a.DailyChallengeId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
