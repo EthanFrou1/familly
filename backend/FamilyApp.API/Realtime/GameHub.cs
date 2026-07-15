@@ -693,6 +693,9 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
                 {
                     votes = voteCounts.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
                     winnerMemberIds = winnerIds.Select(id => id.ToString()),
+                    // Détail voteur -> pour qui il a voté (null si abstention/timeout), pour
+                    // afficher qui a voté pour qui et alimenter le débat entre les rounds.
+                    answers = session.PendingAnswers.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
                     isLastRound,
                 };
             }

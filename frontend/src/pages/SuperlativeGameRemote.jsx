@@ -115,8 +115,8 @@ export default function SuperlativeGameRemote() {
         setPaused(false)
       }),
       onHubEvent('AnswerProgress', setAnswerProgress),
-      onHubEvent('RoundResolved', ({ votes, winnerMemberIds, isLastRound }) => {
-        setReveal({ votes, winnerMemberIds, isLastRound })
+      onHubEvent('RoundResolved', ({ votes, winnerMemberIds, answers, isLastRound }) => {
+        setReveal({ votes, winnerMemberIds, answers, isLastRound })
         if (winnerMemberIds?.length) {
           setPlayers(prev => prev.map(p => winnerMemberIds.includes(p.memberId) ? { ...p, score: p.score + 1 } : p))
         }
@@ -349,10 +349,14 @@ export default function SuperlativeGameRemote() {
       </div>
 
       {reveal && (
-        <div className="fixed inset-0 z-30 bg-black/40 flex items-center justify-center px-6">
-          <div className="w-full max-w-xs rounded-3xl bg-white shadow-xl p-6 text-center space-y-4">
+        <div className="fixed inset-0 z-30 bg-black/40 flex items-center justify-center px-6 py-10">
+          <div className="w-full max-w-xs max-h-full overflow-y-auto rounded-3xl bg-white shadow-xl p-6 text-center space-y-4">
             <p className="text-sm font-bold text-gray-500">{currentRound?.prompt}</p>
             <WinnerReveal players={players} reveal={reveal} />
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5 text-left">Détail des votes</p>
+              <VoteBreakdown players={players} reveal={reveal} />
+            </div>
             {isHost ? (
               <button
                 onClick={handleContinue}
@@ -430,6 +434,38 @@ function WinnerReveal({ players, reveal }) {
       </div>
       <p className="font-extrabold text-gray-800">{winners.map(w => w.name.split(' ')[0]).join(', ')}</p>
       <p className="text-xs text-primary font-bold">{voteCount(winners[0].memberId)} vote{voteCount(winners[0].memberId) > 1 ? 's' : ''}</p>
+    </div>
+  )
+}
+
+function VoteBreakdown({ players, reveal }) {
+  const rows = players
+    .map(p => ({
+      player: p,
+      count: reveal.votes?.[p.memberId] ?? 0,
+      voters: Object.entries(reveal.answers ?? {})
+        .filter(([, votedFor]) => votedFor === p.memberId)
+        .map(([voterId]) => players.find(v => v.memberId === voterId))
+        .filter(Boolean),
+    }))
+    .sort((a, b) => b.count - a.count)
+
+  return (
+    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+      {rows.map(({ player, count, voters }) => (
+        <div key={player.memberId} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
+          <Avatar src={player.profilePictureUrl} name={player.name} size="xs" />
+          <div className="flex-1 min-w-0 text-left">
+            <p className="text-xs font-bold text-gray-700 truncate">{player.name.split(' ')[0]}</p>
+            {voters.length > 0 && (
+              <p className="text-[10px] text-gray-400 truncate">
+                voté par {voters.map(v => v.name.split(' ')[0]).join(', ')}
+              </p>
+            )}
+          </div>
+          <span className="text-xs font-black text-primary shrink-0">{count}</span>
+        </div>
+      ))}
     </div>
   )
 }
