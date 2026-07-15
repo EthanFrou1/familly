@@ -369,9 +369,9 @@ export default function WhoAmIGameRemote() {
           <PlayerScoreBar players={players} isActive={() => false} />
         </div>
 
-        <AnswerTimer timeLeft={timeLeft} timeLimit={ROUND_TIME_LIMIT} frozen={!!reveal} />
-
         <div className="flex-1 overflow-y-auto px-4 py-5 space-y-2">
+          <AnswerTimer timeLeft={timeLeft} timeLimit={ROUND_TIME_LIMIT} frozen={!!reveal} />
+
           <p className="text-center text-xs font-semibold text-gray-400 mb-3">
             {answerProgress.answered}/{answerProgress.total} ont répondu
           </p>
