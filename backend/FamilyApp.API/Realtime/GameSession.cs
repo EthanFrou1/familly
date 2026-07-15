@@ -75,7 +75,9 @@ public class GameSession
 
     public List<SimRound> SimRounds { get; set; } = [];
     public int SimRoundIndex { get; set; }
-    public int CurrentClueIndex { get; set; }
+    // (whoami) Nombre d'indices supplémentaires demandés par chaque joueur pour le round en
+    // cours, en privé — chaque indice coûte des points au moment du score (voir ResolveRoundAsync).
+    public Dictionary<Guid, int> PlayerHintCounts { get; set; } = [];
     public Dictionary<Guid, string?> PendingAnswers { get; set; } = [];
     public bool ResultSaved { get; set; }
 }

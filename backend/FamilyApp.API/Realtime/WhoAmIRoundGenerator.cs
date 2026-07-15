@@ -2,15 +2,13 @@ namespace FamilyApp.API.Realtime;
 
 // Génère les rounds du jeu "Qui suis-je ?" : choisit un membre de la famille comme sujet et
 // construit des indices progressifs (du plus vague au plus révélateur) à partir de son lien de
-// parenté avec un joueur présent et de ses champs bio/métier/sport/date de naissance.
+// parenté avec un joueur présent et de ses champs métier/sport/date de naissance.
 // CorrectKey (l'id du sujet) ne doit jamais être envoyé au client avant résolution du round.
 public static class WhoAmIRoundGenerator
 {
-    private const int MaxBioSnippetLength = 70;
-
     public record MemberInfo(
         Guid Id, string FirstName, string LastName, string? Gender, Guid? FamilyId,
-        DateTime? BirthDate, string? Occupation, string? Sport, string? Bio);
+        DateTime? BirthDate, string? Occupation, string? Sport);
 
     public static List<SimRound> Build(
         List<MemberInfo> members,
@@ -40,9 +38,6 @@ public static class WhoAmIRoundGenerator
 
             if (!string.IsNullOrWhiteSpace(subject.Sport))
                 clues.Add($"Sport / loisir : {subject.Sport}");
-
-            if (!string.IsNullOrWhiteSpace(subject.Bio))
-                clues.Add($"Extrait de bio : {Truncate(subject.Bio, MaxBioSnippetLength)}");
 
             if (clues.Count == 0) continue;
 
@@ -80,11 +75,7 @@ public static class WhoAmIRoundGenerator
     private static int NonNullFieldCount(MemberInfo m) =>
         (m.BirthDate.HasValue ? 1 : 0) +
         (!string.IsNullOrWhiteSpace(m.Occupation) ? 1 : 0) +
-        (!string.IsNullOrWhiteSpace(m.Sport) ? 1 : 0) +
-        (!string.IsNullOrWhiteSpace(m.Bio) ? 1 : 0);
-
-    private static string Truncate(string text, int maxLength) =>
-        text.Length <= maxLength ? text : text[..maxLength].TrimEnd() + "…";
+        (!string.IsNullOrWhiteSpace(m.Sport) ? 1 : 0);
 
     private static List<T> Shuffle<T>(List<T> list) => [.. list.OrderBy(_ => Random.Shared.Next())];
 }

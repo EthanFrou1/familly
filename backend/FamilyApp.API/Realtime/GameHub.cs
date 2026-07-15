@@ -560,7 +560,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         else if (session.GameType == "whoami")
         {
             var members = await db.Members
-                .Select(m => new WhoAmIRoundGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.Occupation, m.Sport, m.Bio))
+                .Select(m => new WhoAmIRoundGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.Occupation, m.Sport))
                 .ToListAsync();
 
             var relations = await db.Relations
@@ -581,7 +581,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         {
             session.SimRounds = rounds;
             session.SimRoundIndex = 0;
-            session.CurrentClueIndex = 0;
+            session.PlayerHintCounts.Clear();
             session.PendingAnswers.Clear();
             session.PairsCount = rounds.Count;
             session.Started = true;
@@ -626,27 +626,31 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         if (shouldResolve) await ResolveRoundAsync(session);
     }
 
-    // (whoami) L'hôte révèle l'indice suivant à tout le monde, sans affecter les réponses déjà
-    // soumises.
-    public async Task RevealNextClue()
+    // (whoami) N'importe quel joueur peut demander un indice supplémentaire pour lui-même,
+    // en privé (les autres ne le voient pas) — ça coûte des points au moment du score si sa
+    // réponse est correcte (voir ResolveRoundAsync). Renvoie false s'il n'y a plus d'indice.
+    public async Task<bool> RevealNextClue()
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
-        if (session is null || !session.Started || session.Paused) return;
+        if (session is null || !session.Started || session.Paused) return false;
 
         var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
-        if (caller is null || !caller.IsHost) return;
+        if (caller is null) return false;
 
         string? clue = null;
         lock (session)
         {
-            if (session.SimRoundIndex >= session.SimRounds.Count) return;
+            if (session.SimRoundIndex >= session.SimRounds.Count) return false;
             var round = session.SimRounds[session.SimRoundIndex];
-            if (session.CurrentClueIndex + 1 >= round.Clues.Count) return;
-            session.CurrentClueIndex++;
-            clue = round.Clues[session.CurrentClueIndex];
+            var hintsUsed = session.PlayerHintCounts.GetValueOrDefault(caller.MemberId);
+            var nextClueIndex = 1 + hintsUsed; // l'indice 0 est déjà envoyé à tous au début du round
+            if (nextClueIndex >= round.Clues.Count) return false;
+            session.PlayerHintCounts[caller.MemberId] = hintsUsed + 1;
+            clue = round.Clues[nextClueIndex];
         }
 
-        await Clients.Group(session.Code).SendAsync("ClueRevealed", new { clue });
+        await Clients.Caller.SendAsync("ClueRevealed", new { clue });
+        return true;
     }
 
     // L'hôte force la résolution du round en cours (ex: certains joueurs ne répondent pas).
@@ -702,24 +706,30 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             else if (session.GameType == "whoami")
             {
                 var scorerIds = new List<Guid>();
+                var scorerPoints = new Dictionary<Guid, int>();
                 foreach (var (memberId, answer) in session.PendingAnswers)
                 {
                     if (answer != round.CorrectKey) continue;
                     scorerIds.Add(memberId);
+                    // Base 3 points, -1 par indice privé demandé ce round, plancher à 1.
+                    var hintsUsed = session.PlayerHintCounts.GetValueOrDefault(memberId);
+                    var points = Math.Max(1, 3 - hintsUsed);
+                    scorerPoints[memberId] = points;
                     var player = session.Players.FirstOrDefault(p => p.MemberId == memberId);
-                    if (player is not null) player.Score++;
+                    if (player is not null) player.Score += points;
                 }
 
                 resolvedPayload = new
                 {
                     correctMemberId = round.CorrectKey,
                     scorerMemberIds = scorerIds.Select(id => id.ToString()),
+                    scorerPoints = scorerPoints.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
                     isLastRound,
                 };
             }
 
             session.PendingAnswers.Clear();
-            session.CurrentClueIndex = 0;
+            session.PlayerHintCounts.Clear();
             session.SimRoundIndex++;
 
             if (session.SimRoundIndex >= session.SimRounds.Count) session.Finished = true;
@@ -814,7 +824,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             session.QuizQuestionIndex = 0;
             session.SimRounds = [];
             session.SimRoundIndex = 0;
-            session.CurrentClueIndex = 0;
+            session.PlayerHintCounts.Clear();
             session.PendingAnswers.Clear();
             session.ResultSaved = false;
             session.Paused = false;
