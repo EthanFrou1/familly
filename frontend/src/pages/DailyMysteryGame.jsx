@@ -6,6 +6,7 @@ import { dailyMysteryApi } from '../services/api'
 import { MAX_ATTEMPTS, buildShareText } from '../utils/dailyMystery'
 import GameHeader from '../components/games/GameHeader'
 import DailyMysteryGrid from '../components/games/DailyMysteryGrid'
+import DailyMysteryLegendSheet from '../components/games/DailyMysteryLegendSheet'
 import Avatar from '../components/shared/Avatar'
 
 export default function DailyMysteryGame() {
@@ -16,6 +17,7 @@ export default function DailyMysteryGame() {
   const [search, setSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showLegend, setShowLegend] = useState(false)
   const confettiFiredRef = useRef(false)
 
   useEffect(() => {
@@ -94,9 +96,18 @@ export default function DailyMysteryGame() {
 
       <div className="px-4 pt-4 space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-primary bg-white rounded-full px-3 py-1 shadow-sm">
-            Essai {state.attemptsUsed}/{MAX_ATTEMPTS}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-primary bg-white rounded-full px-3 py-1 shadow-sm">
+              Essai {state.attemptsUsed}/{MAX_ATTEMPTS}
+            </span>
+            <button
+              onClick={() => setShowLegend(true)}
+              className="h-6 w-6 shrink-0 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 text-xs font-bold active:bg-gray-50"
+              aria-label="Comment lire la grille ?"
+            >
+              ⓘ
+            </button>
+          </div>
           {state.maxStreak > 0 && (
             <span className="text-xs font-semibold text-gray-400">Record : {state.maxStreak} 🔥</span>
           )}
@@ -163,6 +174,10 @@ export default function DailyMysteryGame() {
           <p className="text-center text-xs font-semibold text-gray-400">Reviens demain pour un nouveau mystère !</p>
         )}
       </div>
+
+      {showLegend && (
+        <DailyMysteryLegendSheet showBranchColumn={state.showBranchColumn} onClose={() => setShowLegend(false)} />
+      )}
     </div>
   )
 }

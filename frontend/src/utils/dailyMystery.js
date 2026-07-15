@@ -4,12 +4,12 @@ export const MAX_ATTEMPTS = 15
 // Ordre d'affichage des colonnes de la grille. `branch` est masquée dynamiquement
 // par le backend (showBranchColumn) si la famille n'a qu'une seule branche/aucune.
 export const ATTRIBUTE_COLUMNS = [
-  { key: 'generation', label: 'Génération', emoji: '🌳' },
-  { key: 'birthYear', label: 'Naissance', emoji: '🎂' },
-  { key: 'city', label: 'Ville', emoji: '📍' },
-  { key: 'gender', label: 'Sexe', emoji: '🚻' },
-  { key: 'branch', label: 'Branche', emoji: '🌿' },
-  { key: 'alive', label: 'Statut', emoji: '💫' },
+  { key: 'generation', label: 'Génération', emoji: '🌳', description: "Même génération, génération proche (parent/enfant direct) ou éloignée par rapport à la réponse." },
+  { key: 'birthYear', label: 'Naissance', emoji: '🎂', description: "Année de naissance du membre proposé, affichée directement dans la case." },
+  { key: 'city', label: 'Ville', emoji: '📍', description: "Même ville, même pays (mais autre ville), ou totalement différent." },
+  { key: 'gender', label: 'Sexe', emoji: '🚻', description: "Même sexe que la réponse ou non." },
+  { key: 'branch', label: 'Famille', emoji: '🌿', description: "Même famille (utile pour les familles recomposées) ou non." },
+  { key: 'alive', label: 'Statut', emoji: '💫', description: "Vivant ou décédé, comme la réponse ou non." },
 ]
 
 const CELL_EMOJI = { green: '🟩', yellow: '🟨', gray: '⬜' }
