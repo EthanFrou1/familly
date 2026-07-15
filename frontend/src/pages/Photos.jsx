@@ -214,9 +214,12 @@ function GalerieTab() {
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
         ) : !hasContent ? (
-          <EmptyState />
+          <div className="grid grid-cols-3 gap-0.5 p-0.5">
+            <AddPhotoTile onClick={() => fileRef.current?.click()} />
+          </div>
         ) : (
           <div className="grid grid-cols-3 gap-0.5 p-0.5">
+            {!selectionMode && !uploading && <AddPhotoTile onClick={() => fileRef.current?.click()} />}
             {uploading && <UploadPlaceholder />}
             {filteredPhotos.map((photo, i) => {
               const ownPhoto = photo.uploaderId === user?.memberId || user?.role === 'Admin'
@@ -715,6 +718,7 @@ function AlbumDetail({ album, onBack, onDeleted, onPhotoCountChange }) {
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-0.5 p-0.5">
+            {canUpload && !selectionMode && !uploading && <AddPhotoTile onClick={() => fileRef.current?.click()} />}
             {uploading && <UploadPlaceholder />}
             {photos.map((photo, i) => (
               <PhotoThumb
@@ -856,13 +860,17 @@ function UploadPlaceholder() {
   )
 }
 
-function EmptyState() {
+function AddPhotoTile({ onClick }) {
   return (
-    <div className="flex flex-col items-center justify-center h-40 gap-2 text-gray-400">
-      <svg className="h-10 w-10 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 18h16.5M3.75 21h16.5" />
+    <button
+      onClick={onClick}
+      title="Ajouter une photo"
+      className="aspect-square flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 active:bg-gray-100"
+    >
+      <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
       </svg>
-      <p className="text-sm">Aucune photo pour l&apos;instant</p>
-    </div>
+    </button>
   )
 }
+
