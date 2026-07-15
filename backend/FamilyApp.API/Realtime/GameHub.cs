@@ -664,14 +664,12 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
     private async Task ResolveRoundAsync(GameSession session)
     {
         object? resolvedPayload = null;
-        object? finishedPayload = null;
-        object? nextRoundPayload = null;
-        GameResult? resultToSave = null;
 
         lock (session)
         {
             if (session.SimRoundIndex >= session.SimRounds.Count) return;
             var round = session.SimRounds[session.SimRoundIndex];
+            var isLastRound = session.SimRoundIndex + 1 >= session.SimRounds.Count;
 
             if (session.GameType == "superlative")
             {
@@ -695,6 +693,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
                 {
                     votes = voteCounts.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
                     winnerMemberIds = winnerIds.Select(id => id.ToString()),
+                    isLastRound,
                 };
             }
             else if (session.GameType == "whoami")
@@ -712,6 +711,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
                 {
                     correctMemberId = round.CorrectKey,
                     scorerMemberIds = scorerIds.Select(id => id.ToString()),
+                    isLastRound,
                 };
             }
 
@@ -719,11 +719,32 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             session.CurrentClueIndex = 0;
             session.SimRoundIndex++;
 
-            var isLast = session.SimRoundIndex >= session.SimRounds.Count;
+            if (session.SimRoundIndex >= session.SimRounds.Count) session.Finished = true;
+        }
 
-            if (isLast)
+        if (resolvedPayload is not null) await Clients.Group(session.Code).SendAsync("RoundResolved", resolvedPayload);
+    }
+
+    // L'hôte décide quand enchaîner (round suivant ou résultats finaux) : ça laisse le temps à
+    // la table de débattre des votes/indices affichés sur RoundResolved avant de continuer.
+    public async Task ContinueRound()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        if (session.Finished)
+        {
+            GameResult? resultToSave = null;
+            object? finishedPayload = null;
+
+            lock (session)
             {
-                session.Finished = true;
+                if (session.ResultSaved) return;
+                session.ResultSaved = true;
+
                 var durationSeconds = session.StartedAt is null ? 0 : (int)((DateTime.UtcNow - session.StartedAt.Value).TotalSeconds - session.PausedSeconds);
                 var topScore = session.Players.Max(p => p.Score);
                 var winners = session.Players.Where(p => p.Score == topScore).ToList();
@@ -749,22 +770,24 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
                     durationSeconds,
                 };
             }
-            else
+
+            if (resultToSave is not null)
             {
+                db.GameResults.Add(resultToSave);
+                await db.SaveChangesAsync();
+            }
+            if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
+        }
+        else
+        {
+            object? nextRoundPayload = null;
+            lock (session)
+            {
+                if (session.SimRoundIndex >= session.SimRounds.Count) return;
                 nextRoundPayload = new { round = ToPublicSimRound(session.SimRounds[session.SimRoundIndex]) };
             }
+            if (nextRoundPayload is not null) await Clients.Group(session.Code).SendAsync("NextRound", nextRoundPayload);
         }
-
-        if (resolvedPayload is not null) await Clients.Group(session.Code).SendAsync("RoundResolved", resolvedPayload);
-
-        if (resultToSave is not null)
-        {
-            db.GameResults.Add(resultToSave);
-            await db.SaveChangesAsync();
-        }
-
-        if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
-        if (nextRoundPayload is not null) await Clients.Group(session.Code).SendAsync("NextRound", nextRoundPayload);
     }
 
     public async Task PlayAgain()
@@ -790,6 +813,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             session.SimRoundIndex = 0;
             session.CurrentClueIndex = 0;
             session.PendingAnswers.Clear();
+            session.ResultSaved = false;
             session.Paused = false;
             session.PausedAt = null;
             session.PausedSeconds = 0;

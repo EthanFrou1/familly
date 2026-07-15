@@ -13,7 +13,6 @@ import DotsIcon from '../components/games/DotsIcon'
 import PlayerScoreBar from '../components/games/PlayerScoreBar'
 import Avatar from '../components/shared/Avatar'
 
-const REVEAL_DELAY = 2600
 const ROUND_PRESETS = [
   { label: 'Court', value: 6, emoji: '🌱', minRequired: 2 },
   { label: 'Moyen', value: 10, emoji: '🌳', minRequired: 2 },
@@ -125,28 +124,24 @@ export default function WhoAmIGameRemote() {
         setClues(prev => [...prev, clue])
       }),
       onHubEvent('AnswerProgress', setAnswerProgress),
-      onHubEvent('RoundResolved', ({ correctMemberId, scorerMemberIds }) => {
-        setReveal({ correctMemberId, scorerMemberIds })
+      onHubEvent('RoundResolved', ({ correctMemberId, scorerMemberIds, isLastRound }) => {
+        setReveal({ correctMemberId, scorerMemberIds, isLastRound })
         if (scorerMemberIds?.length) {
           setPlayers(prev => prev.map(p => scorerMemberIds.includes(p.memberId) ? { ...p, score: p.score + 1 } : p))
         }
       }),
       onHubEvent('NextRound', ({ round }) => {
-        setTimeout(() => {
-          setClues(round.clues)
-          setRoundIndex(i => i + 1)
-          setGuessSearch('')
-          setSubmitted(false)
-          setAnswerProgress(prev => ({ answered: 0, total: prev.total }))
-          setReveal(null)
-        }, REVEAL_DELAY)
+        setClues(round.clues)
+        setRoundIndex(i => i + 1)
+        setGuessSearch('')
+        setSubmitted(false)
+        setAnswerProgress(prev => ({ answered: 0, total: prev.total }))
+        setReveal(null)
       }),
       onHubEvent('GameFinished', ({ players: finished, durationSeconds }) => {
-        setTimeout(() => {
-          setFinalPlayers(finished)
-          setGameDuration(durationSeconds)
-          setStep('results')
-        }, REVEAL_DELAY)
+        setFinalPlayers(finished)
+        setGameDuration(durationSeconds)
+        setStep('results')
       }),
       onHubEvent('BackToDifficulty', () => setStep('difficulty')),
     ]
@@ -195,6 +190,11 @@ export default function WhoAmIGameRemote() {
     if (paused || submitted || reveal) return
     setSubmitted(true)
     gameHub.submitAnswer(memberId).catch(() => {})
+  }
+
+  function handleContinue() {
+    if (!isHost) return
+    gameHub.continueRound().catch(() => {})
   }
 
   function handleExit() {
@@ -333,25 +333,30 @@ export default function WhoAmIGameRemote() {
             {answerProgress.answered}/{answerProgress.total} ont répondu
           </p>
 
+          {isHost && !reveal && (
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => gameHub.revealNextClue().catch(() => {})}
+                className="flex-1 rounded-xl bg-white shadow-sm py-2.5 text-sm font-semibold text-gray-500 active:bg-gray-50"
+              >
+                Indice suivant
+              </button>
+              <button
+                onClick={() => gameHub.forceResolveRound().catch(() => {})}
+                className="flex-1 rounded-xl bg-white shadow-sm py-2.5 text-sm font-semibold text-gray-500 active:bg-gray-50"
+              >
+                Révéler la réponse
+              </button>
+            </div>
+          )}
+
           {clues.map((clue, i) => (
             <p key={i} className="rounded-xl bg-white shadow-sm px-4 py-3 text-sm font-semibold text-gray-700">
               {clue}
             </p>
           ))}
 
-          {reveal ? (
-            <div className="rounded-2xl bg-primary/10 px-4 py-4 flex items-center gap-3 mt-3">
-              <Avatar member={revealedMember} size="md" />
-              <div className="min-w-0">
-                <p className="text-sm font-extrabold text-gray-800 truncate">
-                  {revealedMember ? `${revealedMember.firstName} ${revealedMember.lastName}` : 'Réponse'}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {scorerNames.length > 0 ? `Trouvé par ${scorerNames.join(', ')}` : 'Personne n\'a trouvé'}
-                </p>
-              </div>
-            </div>
-          ) : (
+          {!reveal && (
             <div className="pt-2">
               <input
                 value={guessSearch}
@@ -381,24 +386,33 @@ export default function WhoAmIGameRemote() {
             </div>
           )}
         </div>
-
-        {isHost && !reveal && (
-          <div className="shrink-0 px-4 pb-5 flex gap-2">
-            <button
-              onClick={() => gameHub.revealNextClue().catch(() => {})}
-              className="flex-1 rounded-xl bg-white shadow-sm py-3 text-sm font-semibold text-gray-500 active:bg-gray-50"
-            >
-              Indice suivant
-            </button>
-            <button
-              onClick={() => gameHub.forceResolveRound().catch(() => {})}
-              className="flex-1 rounded-xl bg-white shadow-sm py-3 text-sm font-semibold text-gray-500 active:bg-gray-50"
-            >
-              Révéler la réponse
-            </button>
-          </div>
-        )}
       </div>
+
+      {reveal && (
+        <div className="fixed inset-0 z-30 bg-black/40 flex items-center justify-center px-6">
+          <div className="w-full max-w-xs rounded-3xl bg-white shadow-xl p-6 text-center space-y-4">
+            <Avatar member={revealedMember} size="xl" className="mx-auto ring-4 ring-primary/30" />
+            <div>
+              <p className="font-extrabold text-gray-800">
+                {revealedMember ? `${revealedMember.firstName} ${revealedMember.lastName}` : 'Réponse'}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {scorerNames.length > 0 ? `Trouvé par ${scorerNames.join(', ')}` : 'Personne n\'a trouvé'}
+              </p>
+            </div>
+            {isHost ? (
+              <button
+                onClick={handleContinue}
+                className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white active:bg-primary-dark"
+              >
+                {reveal.isLastRound ? 'Voir les résultats' : 'Round suivant'}
+              </button>
+            ) : (
+              <p className="text-xs text-gray-400">En attente de l'hôte pour continuer…</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {paused && (
         <div className="fixed inset-0 z-40 flex items-center justify-center px-10">

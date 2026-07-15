@@ -77,4 +77,5 @@ public class GameSession
     public int SimRoundIndex { get; set; }
     public int CurrentClueIndex { get; set; }
     public Dictionary<Guid, string?> PendingAnswers { get; set; } = [];
+    public bool ResultSaved { get; set; }
 }
