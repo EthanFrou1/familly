@@ -724,6 +724,9 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
                     correctMemberId = round.CorrectKey,
                     scorerMemberIds = scorerIds.Select(id => id.ToString()),
                     scorerPoints = scorerPoints.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
+                    // Réponse de chaque joueur (null si pas répondu à temps), pour afficher qui a
+                    // dit quoi entre les rounds.
+                    answers = session.PendingAnswers.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
                     isLastRound,
                 };
             }
