@@ -3,8 +3,8 @@ import { ATTRIBUTE_COLUMNS } from '../../utils/dailyMystery'
 
 const CELL_STYLES = {
   green: 'bg-green-500 text-white border-green-600/30',
-  yellow: 'bg-primary text-white border-primary-dark/40',
-  gray: 'bg-stone-100 text-gray-400 border-stone-300',
+  yellow: 'bg-amber-300 text-amber-900 border-amber-400/50',
+  gray: 'bg-red-400 text-white border-red-500/30',
 }
 
 const ARROWS = { up: '↑', down: '↓' }
@@ -23,7 +23,7 @@ export default function DailyMysteryGrid({ rows, showBranchColumn }) {
   }
 
   return (
-    <div className="max-h-[42vh] overflow-y-auto">
+    <div className="max-h-[27vh] overflow-y-auto">
       <div
         className="sticky top-0 bg-surface z-10 pb-1.5"
         style={{ display: 'grid', gridTemplateColumns, gap: '4px' }}

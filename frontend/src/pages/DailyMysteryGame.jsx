@@ -94,7 +94,7 @@ export default function DailyMysteryGame() {
         />
       </div>
 
-      <div className="shrink-0 flex items-center gap-2 px-4 pt-3">
+      <div className="shrink-0 flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-3 pb-1.5">
         <span className="text-xs font-extrabold text-dark bg-primary/15 border border-primary/40 rounded-full px-3.5 py-1.5">
           Essai {state.attemptsUsed}/{MAX_ATTEMPTS}
         </span>
@@ -105,20 +105,21 @@ export default function DailyMysteryGame() {
         >
           i
         </button>
+        <div className="flex items-center gap-2.5 text-[10px] font-semibold text-gray-500">
+          <LegendDot className="bg-green-500" label="Trouvé" />
+          <LegendDot className="bg-amber-300" label="Proche" />
+          <LegendDot className="bg-red-400" label="Différent" />
+        </div>
         {state.maxStreak > 0 && (
           <span className="ml-auto text-xs font-semibold text-gray-400">Record : {state.maxStreak} 🔥</span>
         )}
       </div>
 
-      <div className="shrink-0 flex items-center gap-3 px-4 pb-1.5 pt-1 text-[10px] font-semibold text-gray-500">
-        <LegendDot className="bg-green-500" label="Trouvé" />
-        <LegendDot className="bg-primary" label="Proche" />
-        <LegendDot className="bg-stone-100 border border-stone-300" label="Différent" />
-      </div>
-
       <div className="px-4">
         <DailyMysteryGrid rows={state.rows} showBranchColumn={state.showBranchColumn} />
       </div>
+
+      <div className="flex-1 min-h-0" />
 
       {!finished && (
         <div className="shrink-0 px-4 pb-4 pt-2 relative">
@@ -181,6 +182,9 @@ export default function DailyMysteryGame() {
           <p className="text-center text-xs font-semibold text-gray-400">Reviens demain pour un nouveau mystère !</p>
         </div>
       )}
+
+      {/* Réserve fixe : le FAB de la nav déborde au-dessus de la barre, ce padding l'évite. */}
+      <div className="shrink-0 h-6" />
 
       {showLegend && (
         <DailyMysteryLegendSheet showBranchColumn={state.showBranchColumn} onClose={() => setShowLegend(false)} />
