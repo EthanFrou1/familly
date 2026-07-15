@@ -3,7 +3,8 @@ namespace FamilyApp.API.DTOs;
 public record DailyGuessRequestDto(Guid MemberId);
 
 // Status: "green" | "yellow" | "gray". Direction (attributs numériques/génération) : "up" | "down" | null.
-public record DailyGuessCellDto(string Status, string? Direction);
+// Value : valeur brute affichable dans la case (utilisé pour l'année de naissance, indice supplémentaire).
+public record DailyGuessCellDto(string Status, string? Direction, string? Value = null);
 
 public record DailyGuessRowDto(
     Guid MemberId,

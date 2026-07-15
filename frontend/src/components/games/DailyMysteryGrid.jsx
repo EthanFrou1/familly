@@ -20,40 +20,44 @@ export default function DailyMysteryGrid({ rows, showBranchColumn }) {
     )
   }
 
+  // Largeurs en fractions (flex-1) plutôt qu'en pixels fixes : la grille s'adapte
+  // à la largeur de l'écran au lieu de forcer un scroll horizontal.
   return (
-    <div className="overflow-x-auto -mx-4 px-4">
-      <div className="min-w-max space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="w-32 shrink-0" />
-          {columns.map(c => (
-            <div key={c.key} className="w-11 shrink-0 text-center">
-              <div className="text-base leading-none">{c.emoji}</div>
-              <div className="text-[9px] font-semibold text-gray-400 leading-tight mt-0.5">{c.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {rows.map(row => (
-          <div key={row.memberId} className="flex items-center gap-2">
-            <div className="w-32 shrink-0 flex items-center gap-2 min-w-0">
-              <Avatar src={row.profilePictureUrl} name={`${row.firstName} ${row.lastName}`} size="sm" />
-              <span className="text-xs font-bold text-gray-700 truncate">{row.firstName}</span>
-            </div>
-            {columns.map(c => {
-              const cell = row[c.key]
-              if (!cell) return <div key={c.key} className="w-11 shrink-0" />
-              return (
-                <div
-                  key={c.key}
-                  className={`w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-sm font-black ${CELL_STYLES[cell.status] ?? CELL_STYLES.gray}`}
-                >
-                  {cell.direction ? ARROWS[cell.direction] : row.isCorrect ? '✓' : ''}
-                </div>
-              )
-            })}
-          </div>
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1">
+        <div className="w-16 shrink-0" />
+        {columns.map(c => (
+          <div key={c.key} className="flex-1 text-center text-base leading-none">{c.emoji}</div>
         ))}
       </div>
+
+      {rows.map(row => (
+        <div key={row.memberId} className="flex items-center gap-1">
+          <div className="w-16 shrink-0 flex items-center gap-1 min-w-0">
+            <Avatar src={row.profilePictureUrl} name={`${row.firstName} ${row.lastName}`} size="xs" />
+            <span className="text-[10px] font-bold text-gray-700 truncate">{row.firstName}</span>
+          </div>
+          {columns.map(c => {
+            const cell = row[c.key]
+            if (!cell) return <div key={c.key} className="flex-1" />
+            return (
+              <div
+                key={c.key}
+                className={`flex-1 aspect-square rounded-lg flex flex-col items-center justify-center leading-none ${CELL_STYLES[cell.status] ?? CELL_STYLES.gray}`}
+              >
+                {c.key === 'birthYear' && cell.value ? (
+                  <>
+                    <span className="text-[10px] font-black">{cell.value}</span>
+                    {cell.direction && <span className="text-[9px]">{ARROWS[cell.direction]}</span>}
+                  </>
+                ) : (
+                  <span className="text-sm font-black">{cell.direction ? ARROWS[cell.direction] : row.isCorrect ? '✓' : ''}</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }

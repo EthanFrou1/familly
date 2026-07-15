@@ -176,9 +176,10 @@ public class DailyMysteryService(AppDbContext db)
 
     private static DailyGuessCellDto BuildNumericCell(int? guessValue, int? answerValue)
     {
-        if (guessValue is null || answerValue is null) return new DailyGuessCellDto("gray", null);
-        if (guessValue == answerValue) return new DailyGuessCellDto("green", null);
-        return new DailyGuessCellDto("gray", answerValue > guessValue ? "up" : "down");
+        var value = guessValue?.ToString();
+        if (guessValue is null || answerValue is null) return new DailyGuessCellDto("gray", null, value);
+        if (guessValue == answerValue) return new DailyGuessCellDto("green", null, value);
+        return new DailyGuessCellDto("gray", answerValue > guessValue ? "up" : "down", value);
     }
 
     private static DailyGuessCellDto BuildCityCell(string? guessCity, string? guessCountry, string? answerCity, string? answerCountry)
