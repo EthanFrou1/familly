@@ -638,6 +638,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         if (caller is null) return false;
 
         string? clue = null;
+        bool hasMore = false;
         lock (session)
         {
             if (session.SimRoundIndex >= session.SimRounds.Count) return false;
@@ -647,9 +648,10 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             if (nextClueIndex >= round.Clues.Count) return false;
             session.PlayerHintCounts[caller.MemberId] = hintsUsed + 1;
             clue = round.Clues[nextClueIndex];
+            hasMore = nextClueIndex + 1 < round.Clues.Count;
         }
 
-        await Clients.Caller.SendAsync("ClueRevealed", new { clue });
+        await Clients.Caller.SendAsync("ClueRevealed", new { clue, hasMore });
         return true;
     }
 
@@ -857,6 +859,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         id = round.Id,
         prompt = round.Prompt,
         clues = round.Clues.Count > 0 ? new[] { round.Clues[0] } : Array.Empty<string>(),
+        hasMoreClues = round.Clues.Count > 1,
     };
 
     private object BuildOpenRoomsPayload() =>
