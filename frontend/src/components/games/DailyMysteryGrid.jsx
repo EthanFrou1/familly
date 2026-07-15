@@ -23,7 +23,7 @@ export default function DailyMysteryGrid({ rows, showBranchColumn }) {
   }
 
   return (
-    <div className="max-h-[27vh] overflow-y-auto">
+    <div className="h-full overflow-y-auto">
       <div
         className="sticky top-0 bg-surface z-10 pb-1.5"
         style={{ display: 'grid', gridTemplateColumns, gap: '4px' }}

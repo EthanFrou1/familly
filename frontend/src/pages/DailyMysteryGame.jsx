@@ -115,11 +115,9 @@ export default function DailyMysteryGame() {
         )}
       </div>
 
-      <div className="px-4">
+      <div className="flex-1 min-h-0 px-4">
         <DailyMysteryGrid rows={state.rows} showBranchColumn={state.showBranchColumn} />
       </div>
-
-      <div className="flex-1 min-h-0" />
 
       {!finished && (
         <div className="shrink-0 px-4 pb-4 pt-2 relative">
