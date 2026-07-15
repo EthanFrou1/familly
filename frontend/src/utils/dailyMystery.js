@@ -1,5 +1,5 @@
 export const MIN_MEMBERS_TO_UNLOCK = 8
-export const MAX_ATTEMPTS = 6
+export const MAX_ATTEMPTS = 15
 
 // Ordre d'affichage des colonnes de la grille. `branch` est masquée dynamiquement
 // par le backend (showBranchColumn) si la famille n'a qu'une seule branche/aucune.

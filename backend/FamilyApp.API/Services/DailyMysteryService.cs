@@ -12,7 +12,7 @@ namespace FamilyApp.API.Services;
 // Comme WhoAmIRoundGenerator, le membre réponse n'est jamais exposé avant résolution/échec.
 public class DailyMysteryService(AppDbContext db)
 {
-    public const int MaxAttempts = 6;
+    public const int MaxAttempts = 15;
     private const int AvoidRepeatDays = 20;
 
     public record MemberInfo(
