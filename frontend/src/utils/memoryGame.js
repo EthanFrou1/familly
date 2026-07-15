@@ -13,6 +13,12 @@ export const PLAYER_COLORS = [
   { ring: 'ring-rose-400', border: 'border-rose-400', dot: 'bg-rose-400', text: 'text-rose-500', hex: '#fb7185' },
   { ring: 'ring-amber-400', border: 'border-amber-400', dot: 'bg-amber-400', text: 'text-amber-500', hex: '#fbbf24' },
   { ring: 'ring-violet-400', border: 'border-violet-400', dot: 'bg-violet-400', text: 'text-violet-500', hex: '#a78bfa' },
+  { ring: 'ring-emerald-400', border: 'border-emerald-400', dot: 'bg-emerald-400', text: 'text-emerald-500', hex: '#34d399' },
+  { ring: 'ring-cyan-400', border: 'border-cyan-400', dot: 'bg-cyan-400', text: 'text-cyan-500', hex: '#22d3ee' },
+  { ring: 'ring-fuchsia-400', border: 'border-fuchsia-400', dot: 'bg-fuchsia-400', text: 'text-fuchsia-500', hex: '#e879f9' },
+  { ring: 'ring-orange-400', border: 'border-orange-400', dot: 'bg-orange-400', text: 'text-orange-500', hex: '#fb923c' },
+  { ring: 'ring-lime-400', border: 'border-lime-400', dot: 'bg-lime-400', text: 'text-lime-500', hex: '#a3e635' },
+  { ring: 'ring-indigo-400', border: 'border-indigo-400', dot: 'bg-indigo-400', text: 'text-indigo-500', hex: '#818cf8' },
 ]
 
 export function membersWithPhoto(members) {

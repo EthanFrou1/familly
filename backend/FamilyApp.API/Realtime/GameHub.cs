@@ -15,7 +15,14 @@ public record PlayerDto(Guid MemberId, string Name, string? ProfilePictureUrl, i
 public class GameHub(AppDbContext db, GameSessionStore store) : Hub
 {
     private const int MinPlayers = 2;
-    private const int MaxPlayers = 4;
+    private const int DefaultMaxPlayers = 4;
+    private static readonly Dictionary<string, int> MaxPlayersByGameType = new()
+    {
+        ["superlative"] = 10,
+        ["whoami"] = 10,
+    };
+
+    private static int MaxPlayersFor(string gameType) => MaxPlayersByGameType.GetValueOrDefault(gameType, DefaultMaxPlayers);
 
     public Task<object> GetOpenRooms() => Task.FromResult(BuildOpenRoomsPayload());
 
@@ -50,7 +57,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         List<PlayerDto> playerDtos;
         lock (session)
         {
-            if (session.Players.Count >= MaxPlayers)
+            if (session.Players.Count >= MaxPlayersFor(session.GameType))
                 return new { success = false, error = "La partie est complète." };
             if (session.Players.Any(p => p.MemberId == memberId))
                 return new { success = false, error = "Vous êtes déjà dans cette partie." };
@@ -535,6 +542,231 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
     }
 
+    // Démarre un jeu à rounds simultanés (superlative / whoami) : contrairement à StartQuiz,
+    // il n'y a pas de tour par tour — tous les joueurs répondent en parallèle à chaque round.
+    public async Task StartSimultaneousGame(int roundCount)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || session.Started) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost || session.Players.Count < MinPlayers) return;
+
+        List<SimRound> rounds;
+        if (session.GameType == "superlative")
+        {
+            rounds = SuperlativeRoundGenerator.Build(roundCount);
+        }
+        else if (session.GameType == "whoami")
+        {
+            var members = await db.Members
+                .Select(m => new WhoAmIRoundGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.Occupation, m.Sport, m.Bio))
+                .ToListAsync();
+
+            var relations = await db.Relations
+                .Select(r => new RelationshipLabelService.RelationInfo(r.MemberAId, r.MemberBId, r.Type))
+                .ToListAsync();
+
+            rounds = WhoAmIRoundGenerator.Build(members, relations, session.Players, roundCount);
+        }
+        else
+        {
+            return;
+        }
+
+        if (rounds.Count == 0) return;
+
+        object payload;
+        lock (session)
+        {
+            session.SimRounds = rounds;
+            session.SimRoundIndex = 0;
+            session.CurrentClueIndex = 0;
+            session.PendingAnswers.Clear();
+            session.PairsCount = rounds.Count;
+            session.Started = true;
+            session.StartedAt = DateTime.UtcNow;
+            foreach (var p in session.Players) p.Score = 0;
+
+            payload = new
+            {
+                players = ToPlayerDtos(session),
+                roundCount = rounds.Count,
+                firstRound = ToPublicSimRound(rounds[0]),
+            };
+        }
+
+        await Clients.Group(session.Code).SendAsync("SimRoundStarting", payload);
+        await BroadcastRoomsChangedAsync();
+    }
+
+    // Soumission de réponse simultanée : chaque joueur appelle cette méthode indépendamment des
+    // autres. Le round se résout automatiquement dès que tout le monde a répondu.
+    public async Task SubmitAnswer(string? key)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null) return;
+
+        bool shouldResolve;
+        object progressPayload;
+
+        lock (session)
+        {
+            if (session.SimRoundIndex >= session.SimRounds.Count) return;
+            session.PendingAnswers[caller.MemberId] = key;
+            progressPayload = new { answered = session.PendingAnswers.Count, total = session.Players.Count };
+            shouldResolve = session.PendingAnswers.Count >= session.Players.Count;
+        }
+
+        await Clients.Group(session.Code).SendAsync("AnswerProgress", progressPayload);
+
+        if (shouldResolve) await ResolveRoundAsync(session);
+    }
+
+    // (whoami) L'hôte révèle l'indice suivant à tout le monde, sans affecter les réponses déjà
+    // soumises.
+    public async Task RevealNextClue()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        string? clue = null;
+        lock (session)
+        {
+            if (session.SimRoundIndex >= session.SimRounds.Count) return;
+            var round = session.SimRounds[session.SimRoundIndex];
+            if (session.CurrentClueIndex + 1 >= round.Clues.Count) return;
+            session.CurrentClueIndex++;
+            clue = round.Clues[session.CurrentClueIndex];
+        }
+
+        await Clients.Group(session.Code).SendAsync("ClueRevealed", new { clue });
+    }
+
+    // L'hôte force la résolution du round en cours (ex: certains joueurs ne répondent pas).
+    public async Task ForceResolveRound()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        await ResolveRoundAsync(session);
+    }
+
+    private async Task ResolveRoundAsync(GameSession session)
+    {
+        object? resolvedPayload = null;
+        object? finishedPayload = null;
+        object? nextRoundPayload = null;
+        GameResult? resultToSave = null;
+
+        lock (session)
+        {
+            if (session.SimRoundIndex >= session.SimRounds.Count) return;
+            var round = session.SimRounds[session.SimRoundIndex];
+
+            if (session.GameType == "superlative")
+            {
+                var voteCounts = new Dictionary<Guid, int>();
+                foreach (var answer in session.PendingAnswers.Values)
+                {
+                    if (answer is null || !Guid.TryParse(answer, out var votedId)) continue;
+                    voteCounts[votedId] = voteCounts.GetValueOrDefault(votedId) + 1;
+                }
+
+                var maxVotes = voteCounts.Count == 0 ? 0 : voteCounts.Values.Max();
+                List<Guid> winnerIds = maxVotes == 0 ? [] : voteCounts.Where(kv => kv.Value == maxVotes).Select(kv => kv.Key).ToList();
+
+                foreach (var winnerId in winnerIds)
+                {
+                    var winner = session.Players.FirstOrDefault(p => p.MemberId == winnerId);
+                    if (winner is not null) winner.Score++;
+                }
+
+                resolvedPayload = new
+                {
+                    votes = voteCounts.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
+                    winnerMemberIds = winnerIds.Select(id => id.ToString()),
+                };
+            }
+            else if (session.GameType == "whoami")
+            {
+                var scorerIds = new List<Guid>();
+                foreach (var (memberId, answer) in session.PendingAnswers)
+                {
+                    if (answer != round.CorrectKey) continue;
+                    scorerIds.Add(memberId);
+                    var player = session.Players.FirstOrDefault(p => p.MemberId == memberId);
+                    if (player is not null) player.Score++;
+                }
+
+                resolvedPayload = new
+                {
+                    correctMemberId = round.CorrectKey,
+                    scorerMemberIds = scorerIds.Select(id => id.ToString()),
+                };
+            }
+
+            session.PendingAnswers.Clear();
+            session.CurrentClueIndex = 0;
+            session.SimRoundIndex++;
+
+            var isLast = session.SimRoundIndex >= session.SimRounds.Count;
+
+            if (isLast)
+            {
+                session.Finished = true;
+                var durationSeconds = session.StartedAt is null ? 0 : (int)((DateTime.UtcNow - session.StartedAt.Value).TotalSeconds - session.PausedSeconds);
+                var topScore = session.Players.Max(p => p.Score);
+                var winners = session.Players.Where(p => p.Score == topScore).ToList();
+                var winnerName = winners.Count == 1 ? winners[0].Name : null;
+
+                var playersJson = JsonSerializer.Serialize(session.Players
+                    .Select(p => new GamePlayerScoreDto(p.Name, p.Score, p.MemberId, false)));
+
+                resultToSave = new GameResult
+                {
+                    GameType = session.GameType,
+                    PairsCount = session.PairsCount,
+                    PlayerCount = session.Players.Count,
+                    PlayersJson = playersJson,
+                    WinnerName = winnerName,
+                    DurationSeconds = durationSeconds,
+                    PlayedByUserId = Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!),
+                };
+
+                finishedPayload = new
+                {
+                    players = session.Players.Select(p => new { memberId = p.MemberId, name = p.Name, score = p.Score, colorIndex = p.ColorIndex }),
+                    durationSeconds,
+                };
+            }
+            else
+            {
+                nextRoundPayload = new { round = ToPublicSimRound(session.SimRounds[session.SimRoundIndex]) };
+            }
+        }
+
+        if (resolvedPayload is not null) await Clients.Group(session.Code).SendAsync("RoundResolved", resolvedPayload);
+
+        if (resultToSave is not null)
+        {
+            db.GameResults.Add(resultToSave);
+            await db.SaveChangesAsync();
+        }
+
+        if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
+        if (nextRoundPayload is not null) await Clients.Group(session.Code).SendAsync("NextRound", nextRoundPayload);
+    }
+
     public async Task PlayAgain()
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
@@ -554,6 +786,10 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             session.RemainingColorIndexesForWheel = [];
             session.QuizQuestions = [];
             session.QuizQuestionIndex = 0;
+            session.SimRounds = [];
+            session.SimRoundIndex = 0;
+            session.CurrentClueIndex = 0;
+            session.PendingAnswers.Clear();
             session.Paused = false;
             session.PausedAt = null;
             session.PausedSeconds = 0;
@@ -574,13 +810,22 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         options = q.Options.Select(o => new { key = o.Key, label = o.Label }),
     };
 
+    // N'expose jamais round.CorrectKey, ni les indices au-delà du premier (whoami) : ils sont
+    // révélés progressivement via RevealNextClue.
+    private static object ToPublicSimRound(SimRound round) => new
+    {
+        id = round.Id,
+        prompt = round.Prompt,
+        clues = round.Clues.Count > 0 ? new[] { round.Clues[0] } : Array.Empty<string>(),
+    };
+
     private object BuildOpenRoomsPayload() =>
         store.GetOpenSessions().Select(s => new
         {
             code = s.Code,
             gameType = s.GameType,
             playerCount = s.Players.Count,
-            maxPlayers = MaxPlayers,
+            maxPlayers = MaxPlayersFor(s.GameType),
             players = s.Players.Select(p => new { name = p.Name, profilePictureUrl = p.ProfilePictureUrl }),
         });
 

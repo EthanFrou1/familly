@@ -37,6 +37,17 @@ public class QuizQuestion
     public Guid? MemberBId { get; set; }
 }
 
+// Round d'un jeu "simultané" (superlative / whoami) : tous les joueurs répondent en parallèle,
+// contrairement aux QuizQuestion résolues tour par tour. CorrectKey ne doit jamais être envoyé
+// au client avant résolution (whoami : id du membre-sujet).
+public class SimRound
+{
+    public required string Id { get; set; }
+    public string? Prompt { get; set; }
+    public List<string> Clues { get; set; } = [];
+    public required string CorrectKey { get; set; }
+}
+
 public class GameSession
 {
     public required string Code { get; set; }
@@ -61,4 +72,9 @@ public class GameSession
 
     public List<QuizQuestion> QuizQuestions { get; set; } = [];
     public int QuizQuestionIndex { get; set; }
+
+    public List<SimRound> SimRounds { get; set; } = [];
+    public int SimRoundIndex { get; set; }
+    public int CurrentClueIndex { get; set; }
+    public Dictionary<Guid, string?> PendingAnswers { get; set; } = [];
 }

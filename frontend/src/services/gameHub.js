@@ -55,4 +55,8 @@ export const gameHub = {
   playAgain: () => getConnection().invoke('PlayAgain'),
   startQuiz: (questionCount) => getConnection().invoke('StartQuiz', questionCount),
   answerQuestion: (key) => getConnection().invoke('AnswerQuestion', key),
+  startSimultaneousGame: (roundCount) => getConnection().invoke('StartSimultaneousGame', roundCount),
+  submitAnswer: (key) => getConnection().invoke('SubmitAnswer', key),
+  revealNextClue: () => getConnection().invoke('RevealNextClue'),
+  forceResolveRound: () => getConnection().invoke('ForceResolveRound'),
 }
