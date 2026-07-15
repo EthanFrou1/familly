@@ -27,7 +27,10 @@ export default function DailyMysteryGrid({ rows, showBranchColumn }) {
       <div className="flex items-center gap-1">
         <div className="w-16 shrink-0" />
         {columns.map(c => (
-          <div key={c.key} className="flex-1 text-center text-base leading-none">{c.emoji}</div>
+          <div key={c.key} className="flex-1 text-center">
+            <div className="text-base leading-none">{c.emoji}</div>
+            <div className="text-[8px] font-semibold text-gray-400 leading-tight mt-0.5">{c.label}</div>
+          </div>
         ))}
       </div>
 
