@@ -12,7 +12,6 @@ function nonNullFieldCount(member) {
   return (
     (member.birthDate ? 1 : 0) +
     (member.occupation?.trim() ? 1 : 0) +
-    (member.sport?.trim() ? 1 : 0) +
-    (member.bio?.trim() ? 1 : 0)
+    (member.sport?.trim() ? 1 : 0)
   )
 }

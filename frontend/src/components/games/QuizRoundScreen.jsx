@@ -32,7 +32,7 @@ export default function QuizRoundScreen({ prompt, correctKey, options, selectedK
   )
 }
 
-function AnswerTimer({ timeLeft, timeLimit, frozen }) {
+export function AnswerTimer({ timeLeft, timeLimit, frozen }) {
   const pct = Math.max(0, Math.min(100, (timeLeft / timeLimit) * 100))
   const low = !frozen && timeLeft <= timeLimit * 0.3
 

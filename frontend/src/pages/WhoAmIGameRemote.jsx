@@ -11,8 +11,10 @@ import DifficultySetupStep from '../components/games/DifficultySetupStep'
 import GameResultsScreen from '../components/games/GameResultsScreen'
 import DotsIcon from '../components/games/DotsIcon'
 import PlayerScoreBar from '../components/games/PlayerScoreBar'
+import { AnswerTimer } from '../components/games/QuizRoundScreen'
 import Avatar from '../components/shared/Avatar'
 
+const ROUND_TIME_LIMIT = 30
 const ROUND_PRESETS = [
   { label: 'Court', value: 6, emoji: '🌱', minRequired: 2 },
   { label: 'Moyen', value: 10, emoji: '🌳', minRequired: 2 },
@@ -38,6 +40,9 @@ export default function WhoAmIGameRemote() {
   const [clues, setClues] = useState([])
   const [guessSearch, setGuessSearch] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [hintsUsed, setHintsUsed] = useState(0)
+  const [noMoreHints, setNoMoreHints] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(ROUND_TIME_LIMIT)
   const [answerProgress, setAnswerProgress] = useState({ answered: 0, total: 0 })
   const [reveal, setReveal] = useState(null)
   const [paused, setPaused] = useState(false)
@@ -80,6 +85,23 @@ export default function WhoAmIGameRemote() {
   }, [step, paused])
 
   useEffect(() => {
+    if (step !== 'playing') return
+    setTimeLeft(ROUND_TIME_LIMIT)
+  }, [step, roundIndex])
+
+  useEffect(() => {
+    if (step !== 'playing' || paused || reveal) return
+    const interval = setInterval(() => setTimeLeft(t => Math.max(0, t - 0.1)), 100)
+    return () => clearInterval(interval)
+  }, [step, paused, reveal, roundIndex])
+
+  useEffect(() => {
+    if (step !== 'playing' || paused || reveal || !isHost) return
+    if (timeLeft <= 0) gameHub.forceResolveRound().catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft])
+
+  useEffect(() => {
     const offs = [
       onHubEvent('PlayerJoined', setPlayers),
       onHubEvent('PlayerLeft', setPlayers),
@@ -94,6 +116,8 @@ export default function WhoAmIGameRemote() {
         setClues(payload.firstRound.clues)
         setGuessSearch('')
         setSubmitted(false)
+        setHintsUsed(0)
+        setNoMoreHints(false)
         setAnswerProgress({ answered: 0, total: payload.players.length })
         setReveal(null)
         setElapsedSeconds(0)
@@ -124,10 +148,10 @@ export default function WhoAmIGameRemote() {
         setClues(prev => [...prev, clue])
       }),
       onHubEvent('AnswerProgress', setAnswerProgress),
-      onHubEvent('RoundResolved', ({ correctMemberId, scorerMemberIds, isLastRound }) => {
-        setReveal({ correctMemberId, scorerMemberIds, isLastRound })
-        if (scorerMemberIds?.length) {
-          setPlayers(prev => prev.map(p => scorerMemberIds.includes(p.memberId) ? { ...p, score: p.score + 1 } : p))
+      onHubEvent('RoundResolved', ({ correctMemberId, scorerMemberIds, scorerPoints, isLastRound }) => {
+        setReveal({ correctMemberId, scorerMemberIds, scorerPoints, isLastRound })
+        if (scorerPoints) {
+          setPlayers(prev => prev.map(p => scorerPoints[p.memberId] ? { ...p, score: p.score + scorerPoints[p.memberId] } : p))
         }
       }),
       onHubEvent('NextRound', ({ round }) => {
@@ -135,6 +159,8 @@ export default function WhoAmIGameRemote() {
         setRoundIndex(i => i + 1)
         setGuessSearch('')
         setSubmitted(false)
+        setHintsUsed(0)
+        setNoMoreHints(false)
         setAnswerProgress(prev => ({ answered: 0, total: prev.total }))
         setReveal(null)
       }),
@@ -188,6 +214,8 @@ export default function WhoAmIGameRemote() {
 
   function handleGuess(memberId) {
     if (paused || submitted || reveal) return
+    const guessed = memberById.get(memberId)
+    if (guessed) setGuessSearch(`${guessed.firstName} ${guessed.lastName}`)
     setSubmitted(true)
     gameHub.submitAnswer(memberId).catch(() => {})
   }
@@ -195,6 +223,17 @@ export default function WhoAmIGameRemote() {
   function handleContinue() {
     if (!isHost) return
     gameHub.continueRound().catch(() => {})
+  }
+
+  async function handleRequestHint() {
+    if (paused || submitted || reveal || noMoreHints) return
+    try {
+      const revealed = await gameHub.revealNextClue()
+      if (revealed) setHintsUsed(n => n + 1)
+      else setNoMoreHints(true)
+    } catch {
+      // ignore
+    }
   }
 
   function handleExit() {
@@ -207,8 +246,10 @@ export default function WhoAmIGameRemote() {
     : []
 
   const revealedMember = reveal ? memberById.get(reveal.correctMemberId) : null
-  const scorerNames = reveal
-    ? players.filter(p => reveal.scorerMemberIds?.includes(p.memberId)).map(p => p.name.split(' ')[0])
+  const scorerLines = reveal
+    ? players
+        .filter(p => reveal.scorerMemberIds?.includes(p.memberId))
+        .map(p => `${p.name.split(' ')[0]} (+${reveal.scorerPoints?.[p.memberId] ?? 1})`)
     : []
 
   if (step === 'menu') {
@@ -328,25 +369,37 @@ export default function WhoAmIGameRemote() {
           <PlayerScoreBar players={players} isActive={() => false} />
         </div>
 
+        <AnswerTimer timeLeft={timeLeft} timeLimit={ROUND_TIME_LIMIT} frozen={!!reveal} />
+
         <div className="flex-1 overflow-y-auto px-4 py-5 space-y-2">
           <p className="text-center text-xs font-semibold text-gray-400 mb-3">
             {answerProgress.answered}/{answerProgress.total} ont répondu
           </p>
 
-          {isHost && !reveal && (
-            <div className="flex gap-2 mb-3">
-              <button
-                onClick={() => gameHub.revealNextClue().catch(() => {})}
-                className="flex-1 rounded-xl bg-white shadow-sm py-2.5 text-sm font-semibold text-gray-500 active:bg-gray-50"
-              >
-                Indice suivant
-              </button>
-              <button
-                onClick={() => gameHub.forceResolveRound().catch(() => {})}
-                className="flex-1 rounded-xl bg-white shadow-sm py-2.5 text-sm font-semibold text-gray-500 active:bg-gray-50"
-              >
-                Révéler la réponse
-              </button>
+          {!reveal && (
+            <div className="mb-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRequestHint}
+                  disabled={submitted || noMoreHints}
+                  className="flex-1 rounded-xl bg-white shadow-sm py-2.5 text-sm font-semibold text-gray-500 active:bg-gray-50 disabled:opacity-40"
+                >
+                  {noMoreHints ? 'Plus d\'indice' : 'Indice suivant (-1 pt)'}
+                </button>
+                {isHost && (
+                  <button
+                    onClick={() => gameHub.forceResolveRound().catch(() => {})}
+                    className="flex-1 rounded-xl bg-white shadow-sm py-2.5 text-sm font-semibold text-gray-500 active:bg-gray-50"
+                  >
+                    Révéler la réponse
+                  </button>
+                )}
+              </div>
+              {hintsUsed > 0 && (
+                <p className="text-[11px] text-gray-400 text-center mt-1.5">
+                  {hintsUsed} indice{hintsUsed > 1 ? 's' : ''} demandé{hintsUsed > 1 ? 's' : ''} — max {Math.max(1, 3 - hintsUsed)} pt{Math.max(1, 3 - hintsUsed) > 1 ? 's' : ''} si vous trouvez
+                </p>
+              )}
             </div>
           )}
 
@@ -397,7 +450,7 @@ export default function WhoAmIGameRemote() {
                 {revealedMember ? `${revealedMember.firstName} ${revealedMember.lastName}` : 'Réponse'}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {scorerNames.length > 0 ? `Trouvé par ${scorerNames.join(', ')}` : 'Personne n\'a trouvé'}
+                {scorerLines.length > 0 ? `Trouvé par ${scorerLines.join(', ')}` : 'Personne n\'a trouvé'}
               </p>
             </div>
             {isHost ? (

@@ -220,6 +220,10 @@ export default function RelationshipGameRemote() {
       const order = pendingFinalOrderRef.current
       pendingFinalOrderRef.current = null
       setCurrentColorIndex(order[0])
+      setPlayers(prev => {
+        const byColor = new Map(prev.map(p => [p.colorIndex, p]))
+        return order.map(ci => byColor.get(ci)).filter(Boolean)
+      })
       setStep('playing')
     }
   }
