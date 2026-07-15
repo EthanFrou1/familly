@@ -25,6 +25,7 @@ import RelationshipGame from './pages/RelationshipGame'
 import RelationshipGameRemote from './pages/RelationshipGameRemote'
 import SuperlativeGameRemote from './pages/SuperlativeGameRemote'
 import WhoAmIGameRemote from './pages/WhoAmIGameRemote'
+import DailyMysteryGame from './pages/DailyMysteryGame'
 import Leaderboard from './pages/Leaderboard'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
@@ -95,6 +96,7 @@ function ProtectedLayoutContent() {
           <Route path="/games/relationship/remote" element={<RelationshipGameRemote />} />
           <Route path="/games/superlative/remote" element={<SuperlativeGameRemote />} />
           <Route path="/games/whoami/remote" element={<WhoAmIGameRemote />} />
+          <Route path="/games/daily-mystery" element={<DailyMysteryGame />} />
           <Route path="/games/leaderboard" element={<Leaderboard />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/duplicates" element={<Duplicates />} />

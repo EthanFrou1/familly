@@ -6,6 +6,7 @@ import { membersWithPhoto, MIN_PAIRS_TO_UNLOCK } from '../utils/memoryGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_WHOISIT } from '../utils/whoIsItGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_RELATIONSHIP } from '../utils/relationshipGame'
 import { MIN_SUBJECTS_TO_UNLOCK, eligibleSubjectsCount } from '../utils/whoAmIGame'
+import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_DAILY_MYSTERY } from '../utils/dailyMystery'
 import { GAMES, GAME_LABELS, GAME_UNIT_LABELS } from '../utils/gameRegistry'
 import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
 import OpenRoomsList from '../components/games/OpenRoomsList'
@@ -38,6 +39,7 @@ export default function GamesLobby() {
   const relationshipUnlocked = members.length >= MIN_MEMBERS_FOR_RELATIONSHIP
   const superlativeUnlocked = members.length >= MIN_MEMBERS_FOR_SUPERLATIVE
   const whoAmIUnlocked = eligibleSubjectsCount(members) >= MIN_SUBJECTS_TO_UNLOCK
+  const dailyMysteryUnlocked = members.length >= MIN_MEMBERS_FOR_DAILY_MYSTERY
   const fanMembers = membersWithPhoto(members).slice(0, 3)
   const memberById = new Map(members.map(m => [m.id, m]))
 
@@ -181,6 +183,15 @@ export default function GamesLobby() {
               unlocked={whoAmIUnlocked}
               lockedHint="Complétez plus de profils (bio, métier, sport...) pour débloquer"
               onPlay={() => navigate('/games/whoami/remote')}
+            />
+
+            <GameCard
+              emoji="🔮"
+              title="Le Mystère du jour"
+              description="Un membre mystère par jour à deviner en 6 essais, avec des indices façon Wordle."
+              unlocked={dailyMysteryUnlocked}
+              lockedHint={`${MIN_MEMBERS_FOR_DAILY_MYSTERY} membres min. pour débloquer`}
+              onPlay={() => navigate('/games/daily-mystery')}
             />
 
             {latestResult && (
