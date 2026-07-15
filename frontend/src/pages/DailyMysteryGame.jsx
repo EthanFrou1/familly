@@ -110,7 +110,13 @@ export default function DailyMysteryGame() {
         )}
       </div>
 
-      <div className="flex-1 min-h-0 px-4 pt-2">
+      <div className="shrink-0 flex items-center gap-3 px-4 pb-1.5 pt-1 text-[10px] font-semibold text-gray-500">
+        <LegendDot className="bg-green-500" label="Trouvé" />
+        <LegendDot className="bg-primary" label="Proche" />
+        <LegendDot className="bg-stone-100 border border-stone-300" label="Différent" />
+      </div>
+
+      <div className="px-4">
         <DailyMysteryGrid rows={state.rows} showBranchColumn={state.showBranchColumn} />
       </div>
 
@@ -208,5 +214,14 @@ function MysteryHeader({ onBack, subtitle }) {
         </div>
       </div>
     </div>
+  )
+}
+
+function LegendDot({ className, label }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`h-2.5 w-2.5 rounded-sm shrink-0 ${className}`} />
+      {label}
+    </span>
   )
 }

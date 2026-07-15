@@ -2,9 +2,9 @@ import Avatar from '../shared/Avatar'
 import { ATTRIBUTE_COLUMNS } from '../../utils/dailyMystery'
 
 const CELL_STYLES = {
-  green: 'bg-green-500 text-white',
-  yellow: 'bg-primary text-white',
-  gray: 'bg-stone-100 text-gray-400',
+  green: 'bg-green-500 text-white border-green-600/30',
+  yellow: 'bg-primary text-white border-primary-dark/40',
+  gray: 'bg-stone-100 text-gray-400 border-stone-300',
 }
 
 const ARROWS = { up: '↑', down: '↓' }
@@ -23,7 +23,7 @@ export default function DailyMysteryGrid({ rows, showBranchColumn }) {
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="max-h-[42vh] overflow-y-auto">
       <div
         className="sticky top-0 bg-surface z-10 pb-1.5"
         style={{ display: 'grid', gridTemplateColumns, gap: '4px' }}
@@ -55,8 +55,8 @@ export default function DailyMysteryGrid({ rows, showBranchColumn }) {
               return (
                 <div
                   key={c.key}
-                  className={`h-9 rounded-lg flex flex-col items-center justify-center leading-none ${
-                    isBirthYear ? 'bg-stone-100 text-gray-600' : CELL_STYLES[cell.status] ?? CELL_STYLES.gray
+                  className={`h-9 rounded-lg border flex flex-col items-center justify-center leading-none ${
+                    isBirthYear ? 'bg-stone-100 text-gray-600 border-stone-300' : CELL_STYLES[cell.status] ?? CELL_STYLES.gray
                   }`}
                 >
                   {isBirthYear && cell.value ? (
