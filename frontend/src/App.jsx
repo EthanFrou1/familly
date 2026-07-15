@@ -23,6 +23,8 @@ import WhoIsItGame from './pages/WhoIsItGame'
 import WhoIsItGameRemote from './pages/WhoIsItGameRemote'
 import RelationshipGame from './pages/RelationshipGame'
 import RelationshipGameRemote from './pages/RelationshipGameRemote'
+import SuperlativeGameRemote from './pages/SuperlativeGameRemote'
+import WhoAmIGameRemote from './pages/WhoAmIGameRemote'
 import Leaderboard from './pages/Leaderboard'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
@@ -91,6 +93,8 @@ function ProtectedLayoutContent() {
           <Route path="/games/quiwho/remote" element={<WhoIsItGameRemote />} />
           <Route path="/games/relationship" element={<RelationshipGame />} />
           <Route path="/games/relationship/remote" element={<RelationshipGameRemote />} />
+          <Route path="/games/superlative/remote" element={<SuperlativeGameRemote />} />
+          <Route path="/games/whoami/remote" element={<WhoAmIGameRemote />} />
           <Route path="/games/leaderboard" element={<Leaderboard />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/duplicates" element={<Duplicates />} />

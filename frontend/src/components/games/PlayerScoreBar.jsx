@@ -3,14 +3,14 @@ import Avatar from '../shared/Avatar'
 
 export default function PlayerScoreBar({ players, isActive, memberById }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       {players.map((p, i) => {
         const active = isActive(p, i)
         const color = PLAYER_COLORS[p.colorIndex % PLAYER_COLORS.length]
         return (
           <div
             key={p.memberId ?? p.name + i}
-            className={`flex-1 flex items-center gap-2 rounded-2xl py-1.5 px-2 transition-all duration-200 ${
+            className={`flex-1 min-w-[90px] flex items-center gap-2 rounded-2xl py-1.5 px-2 transition-all duration-200 ${
               active ? 'bg-primary shadow-md scale-105' : 'bg-white shadow-sm'
             }`}
           >
