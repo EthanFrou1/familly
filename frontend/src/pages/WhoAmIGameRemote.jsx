@@ -117,7 +117,7 @@ export default function WhoAmIGameRemote() {
         setGuessSearch('')
         setSubmitted(false)
         setHintsUsed(0)
-        setNoMoreHints(false)
+        setNoMoreHints(!payload.firstRound.hasMoreClues)
         setAnswerProgress({ answered: 0, total: payload.players.length })
         setReveal(null)
         setElapsedSeconds(0)
@@ -144,8 +144,9 @@ export default function WhoAmIGameRemote() {
         setPausedByColorIndex(null)
         setPaused(false)
       }),
-      onHubEvent('ClueRevealed', ({ clue }) => {
+      onHubEvent('ClueRevealed', ({ clue, hasMore }) => {
         setClues(prev => [...prev, clue])
+        setNoMoreHints(!hasMore)
       }),
       onHubEvent('AnswerProgress', setAnswerProgress),
       onHubEvent('RoundResolved', ({ correctMemberId, scorerMemberIds, scorerPoints, answers, isLastRound }) => {
@@ -160,7 +161,7 @@ export default function WhoAmIGameRemote() {
         setGuessSearch('')
         setSubmitted(false)
         setHintsUsed(0)
-        setNoMoreHints(false)
+        setNoMoreHints(!round.hasMoreClues)
         setAnswerProgress(prev => ({ answered: 0, total: prev.total }))
         setReveal(null)
       }),
