@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import confetti from 'canvas-confetti'
 import { useAuth } from '../hooks/useAuth'
-import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight'
 import { useMembers } from '../store/MembersContext'
 import { dailyMysteryApi } from '../services/api'
 import { MAX_ATTEMPTS, buildShareText } from '../utils/dailyMystery'
@@ -24,7 +23,6 @@ export default function DailyMysteryGame() {
   const [copied, setCopied] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const confettiFiredRef = useRef(false)
-  const vh = useVisualViewportHeight()
 
   useEffect(() => {
     dailyMysteryApi.getTodayLeaderboard()
@@ -81,14 +79,14 @@ export default function DailyMysteryGame() {
 
   if (step === 'lobby') {
     const myEntry = participants?.find(p => p.memberId === user?.memberId)
-    const ctaLabel = !myEntry
-      ? 'Jouer'
+    const ctaLabel = !myEntry || myEntry.attemptsUsed === 0
+      ? 'Lancer le jeu'
       : myEntry.status === 'inProgress'
         ? `Continuer (essai ${myEntry.attemptsUsed}/${MAX_ATTEMPTS})`
         : 'Voir mon résultat'
 
     return (
-      <div className="flex flex-col bg-surface" style={{ height: vh }}>
+      <div className="h-full flex flex-col bg-surface">
         <div className="shrink-0">
           <MysteryHeader onBack={() => navigate('/games')} subtitle="Qui a déjà relevé le défi aujourd'hui ?" />
         </div>
@@ -123,7 +121,7 @@ export default function DailyMysteryGame() {
 
   if (loading) {
     return (
-      <div className="bg-surface" style={{ height: vh }}>
+      <div className="h-full bg-surface">
         <MysteryHeader onBack={() => setStep('lobby')} />
       </div>
     )
@@ -131,7 +129,7 @@ export default function DailyMysteryGame() {
 
   if (!state) {
     return (
-      <div className="bg-surface" style={{ height: vh }}>
+      <div className="h-full bg-surface">
         <MysteryHeader onBack={() => setStep('lobby')} />
         <p className="text-center text-sm font-semibold text-gray-400 mt-10">
           Impossible de charger le défi du jour. Réessaie plus tard.
@@ -143,7 +141,7 @@ export default function DailyMysteryGame() {
   const finished = state.status !== 'inProgress'
 
   return (
-    <div className="flex flex-col bg-surface" style={{ height: vh }}>
+    <div className="h-full flex flex-col bg-surface">
       <div className="shrink-0">
         <MysteryHeader
           onBack={() => setStep('lobby')}
@@ -172,14 +170,20 @@ export default function DailyMysteryGame() {
         )}
       </div>
 
-      <div className="flex-1 min-h-0 px-4">
-        <DailyMysteryGrid rows={state.rows} showBranchColumn={state.showBranchColumn} />
-      </div>
-
       {!finished && (
-        <div className="shrink-0 px-4 pb-4 pt-2 relative">
+        <div className="shrink-0 px-4 pt-1 pb-2 relative">
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-2xl px-3.5 py-2.5 shadow-sm">
+            <span className="text-base shrink-0">🔎</span>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              disabled={submitting}
+              placeholder="Cherche un membre de la famille..."
+              className="flex-1 min-w-0 bg-transparent text-sm font-semibold text-gray-700 focus:outline-none"
+            />
+          </div>
           {suggestions.length > 0 && (
-            <div className="absolute inset-x-4 bottom-full mb-1 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden z-20">
+            <div className="absolute inset-x-4 top-full mt-1 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden z-20">
               {suggestions.map(m => (
                 <button
                   key={m.id}
@@ -192,18 +196,12 @@ export default function DailyMysteryGame() {
               ))}
             </div>
           )}
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-2xl px-3.5 py-2.5 shadow-sm">
-            <span className="text-base shrink-0">🔎</span>
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              disabled={submitting}
-              placeholder="Cherche un membre de la famille..."
-              className="flex-1 min-w-0 bg-transparent text-sm font-semibold text-gray-700 focus:outline-none"
-            />
-          </div>
         </div>
       )}
+
+      <div className="flex-1 min-h-0 px-4 pb-4">
+        <DailyMysteryGrid rows={state.rows} showBranchColumn={state.showBranchColumn} />
+      </div>
 
       {finished && (
         <div className="shrink-0 px-4 pb-4 pt-2 space-y-3">

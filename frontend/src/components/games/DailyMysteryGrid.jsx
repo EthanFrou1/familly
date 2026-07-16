@@ -48,16 +48,17 @@ export default function DailyMysteryGrid({ rows, showBranchColumn }) {
               <Avatar src={row.profilePictureUrl} name={`${row.firstName} ${row.lastName}`} size="xs" />
               <span className="text-[10px] font-bold text-gray-700 truncate">{row.firstName}</span>
             </div>
-            {columns.map(c => {
+            {columns.map((c, i) => {
               const cell = row[c.key]
               if (!cell) return <div key={c.key} />
               const isBirthYear = c.key === 'birthYear'
               return (
                 <div
                   key={c.key}
-                  className={`h-9 rounded-lg border flex flex-col items-center justify-center leading-none ${
-                    isBirthYear ? 'bg-stone-100 text-gray-600 border-stone-300' : CELL_STYLES[cell.status] ?? CELL_STYLES.gray
+                  className={`h-9 rounded-lg border flex flex-col items-center justify-center leading-none animate-[mystery-cell-in_320ms_ease-out_both] ${
+                    CELL_STYLES[cell.status] ?? CELL_STYLES.gray
                   }`}
+                  style={{ animationDelay: `${i * 70}ms` }}
                 >
                   {isBirthYear && cell.value ? (
                     <>
