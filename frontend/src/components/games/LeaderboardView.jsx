@@ -1,25 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMembers } from '../../store/MembersContext'
 import { useAuth } from '../../hooks/useAuth'
-import { gamesApi } from '../../services/api'
+import { gamesApi, dailyMysteryApi } from '../../services/api'
 import { GAMES, GAME_FULL_LABELS, GAME_EMOJIS } from '../../utils/gameRegistry'
 import Avatar from '../shared/Avatar'
 import Podium from './Podium'
 
 const TABS = [{ key: 'global', label: 'Global' }, ...GAMES]
 
-export default function LeaderboardView() {
+export default function LeaderboardView({ initialTab = 'global' }) {
   const { members } = useMembers()
   const { user } = useAuth()
   const memberById = useMemo(() => new Map(members.map(m => [m.id, m])), [members])
 
-  const [tab, setTab] = useState('global')
+  const [tab, setTab] = useState(initialTab)
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    const request = tab === 'global' ? gamesApi.getGlobalLeaderboard() : gamesApi.getLeaderboard(tab)
+    const request = tab === 'global'
+      ? gamesApi.getGlobalLeaderboard()
+      : tab === 'dailymystery'
+        ? dailyMysteryApi.getLeaderboard()
+        : gamesApi.getLeaderboard(tab)
     request
       .then(({ data }) => setEntries(data))
       .catch(() => setEntries([]))

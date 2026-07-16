@@ -50,3 +50,14 @@ public record DailyMysteryParticipantDto(
     int AttemptsUsed,
     int Streak
 );
+
+// Classement toutes dates confondues, même forme que le leaderboard générique des autres jeux
+// (GamesController.GetLeaderboard) pour être affichable sans changement côté frontend.
+public record DailyMysteryLeaderboardEntryDto(
+    Guid MemberId,
+    string Name,
+    int GamesPlayed,
+    int Wins,
+    int Losses,
+    double WinRate
+);
