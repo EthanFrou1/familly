@@ -55,12 +55,25 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         var (memberId, name, photo) = await ResolveCallerAsync();
 
         List<PlayerDto> playerDtos;
+        string? staleConnectionId = null;
         lock (session)
         {
-            if (session.Players.Count >= MaxPlayersFor(session.GameType))
+            // Un membre déjà présent (même MemberId) est traité comme une reconnexion plutôt
+            // que rejeté : sur mobile, une PWA mise en arrière-plan/tuée après avoir rejoint
+            // ne déclenche pas toujours LeaveRoom, laissant une entrée fantôme le temps que
+            // le serveur détecte la déconnexion (timeout SignalR).
+            var stale = session.Players.FirstOrDefault(p => p.MemberId == memberId);
+
+            if (stale is null && session.Players.Count >= MaxPlayersFor(session.GameType))
                 return new { success = false, error = "La partie est complète." };
-            if (session.Players.Any(p => p.MemberId == memberId))
-                return new { success = false, error = "Vous êtes déjà dans cette partie." };
+
+            var colorIndex = stale?.ColorIndex ?? session.Players.Count;
+            var isHost = stale?.IsHost ?? false;
+            if (stale is not null)
+            {
+                staleConnectionId = stale.ConnectionId;
+                session.Players.Remove(stale);
+            }
 
             session.Players.Add(new SessionPlayer
             {
@@ -68,11 +81,14 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
                 MemberId = memberId,
                 Name = name,
                 ProfilePictureUrl = photo,
-                ColorIndex = session.Players.Count,
-                IsHost = false,
+                ColorIndex = colorIndex,
+                IsHost = isHost,
             });
             playerDtos = ToPlayerDtos(session);
         }
+
+        if (staleConnectionId is not null)
+            await Groups.RemoveFromGroupAsync(staleConnectionId, session.Code);
 
         await Groups.AddToGroupAsync(Context.ConnectionId, session.Code);
         await Clients.Group(session.Code).SendAsync("PlayerJoined", playerDtos);

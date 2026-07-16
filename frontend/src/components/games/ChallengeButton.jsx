@@ -1,16 +1,24 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { pushApi } from '../../services/api'
 import Avatar from '../shared/Avatar'
 
 // Envoie une notif push (lien direct vers la partie) aux membres choisis.
-// Ne liste que ceux joignables : notifs activées + app installée en PWA.
-export default function ChallengeButton({ gameType, roomCode }) {
+// Ne liste que ceux joignables (notifs activées + app installée en PWA) et pas
+// déjà présents dans le salon.
+export default function ChallengeButton({ gameType, roomCode, excludedMemberIds = [] }) {
   const [open, setOpen] = useState(false)
   const [members, setMembers] = useState(null)
   const [selected, setSelected] = useState(new Set())
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+
+  const challengeable = useMemo(() => {
+    if (members === null) return null
+    const excluded = new Set(excludedMemberIds)
+    return members.filter(m => !excluded.has(m.memberId))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members, excludedMemberIds.join(',')])
 
   function openModal() {
     setOpen(true)
@@ -76,16 +84,17 @@ export default function ChallengeButton({ gameType, roomCode }) {
               </button>
             </div>
 
-            {members === null ? (
+            {challengeable === null ? (
               <p className="text-center text-sm text-gray-400 py-8">Chargement…</p>
-            ) : members.length === 0 ? (
+            ) : challengeable.length === 0 ? (
               <p className="text-center text-sm text-gray-400 py-8">
-                Personne n'est joignable pour l'instant : le défi ne fonctionne que pour les membres
-                ayant activé les notifications et installé l'app sur leur téléphone.
+                {members.length === 0
+                  ? "Personne n'est joignable pour l'instant : le défi ne fonctionne que pour les membres ayant activé les notifications et installé l'app sur leur téléphone."
+                  : 'Tous les membres joignables sont déjà dans le salon.'}
               </p>
             ) : (
               <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
-                {members.map(m => {
+                {challengeable.map(m => {
                   const isSelected = selected.has(m.userId)
                   return (
                     <button
@@ -108,7 +117,7 @@ export default function ChallengeButton({ gameType, roomCode }) {
 
             {error && <p className="text-xs text-red-500 text-center mt-2 shrink-0">{error}</p>}
 
-            {members?.length > 0 && (
+            {challengeable?.length > 0 && (
               <button
                 onClick={handleSend}
                 disabled={selected.size === 0 || sending}
