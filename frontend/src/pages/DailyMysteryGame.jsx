@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import confetti from 'canvas-confetti'
+import { useAuth } from '../hooks/useAuth'
+import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight'
 import { useMembers } from '../store/MembersContext'
 import { dailyMysteryApi } from '../services/api'
 import { MAX_ATTEMPTS, buildShareText } from '../utils/dailyMystery'
@@ -9,8 +11,12 @@ import DailyMysteryLegendSheet from '../components/games/DailyMysteryLegendSheet
 import Avatar from '../components/shared/Avatar'
 
 export default function DailyMysteryGame() {
+  const { user } = useAuth()
   const { members } = useMembers()
   const navigate = useNavigate()
+  const [step, setStep] = useState('lobby')
+  const [participants, setParticipants] = useState(null)
+  const [loadingParticipants, setLoadingParticipants] = useState(true)
   const [state, setState] = useState(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -18,13 +24,22 @@ export default function DailyMysteryGame() {
   const [copied, setCopied] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const confettiFiredRef = useRef(false)
+  const vh = useVisualViewportHeight()
 
   useEffect(() => {
+    dailyMysteryApi.getTodayLeaderboard()
+      .then(({ data }) => setParticipants(data))
+      .catch(() => setParticipants([]))
+      .finally(() => setLoadingParticipants(false))
+  }, [])
+
+  useEffect(() => {
+    if (step !== 'game') return
     dailyMysteryApi.getToday()
       .then(({ data }) => setState(data))
       .catch(() => setState(null))
       .finally(() => setLoading(false))
-  }, [])
+  }, [step])
 
   useEffect(() => {
     if (state?.status === 'solved' && !confettiFiredRef.current) {
@@ -64,18 +79,60 @@ export default function DailyMysteryGame() {
     } catch {}
   }
 
+  if (step === 'lobby') {
+    const myEntry = participants?.find(p => p.memberId === user?.memberId)
+    const ctaLabel = !myEntry
+      ? 'Jouer'
+      : myEntry.status === 'inProgress'
+        ? `Continuer (essai ${myEntry.attemptsUsed}/${MAX_ATTEMPTS})`
+        : 'Voir mon résultat'
+
+    return (
+      <div className="flex flex-col bg-surface" style={{ height: vh }}>
+        <div className="shrink-0">
+          <MysteryHeader onBack={() => navigate('/games')} subtitle="Qui a déjà relevé le défi aujourd'hui ?" />
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 space-y-2">
+          {loadingParticipants ? (
+            <p className="text-center text-sm font-semibold text-gray-400 py-10">Chargement…</p>
+          ) : participants.length === 0 ? (
+            <p className="text-center text-sm font-semibold text-gray-400 py-10">
+              Personne n'a encore relevé le défi aujourd'hui. Sois le premier ! 🚀
+            </p>
+          ) : (
+            participants.map(p => (
+              <ParticipantRow key={p.memberId} p={p} isMe={p.memberId === user?.memberId} />
+            ))
+          )}
+        </div>
+
+        <div className="shrink-0 px-4 pb-4 pt-2">
+          <button
+            onClick={() => setStep('game')}
+            className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
+          >
+            {ctaLabel}
+          </button>
+        </div>
+
+        <div className="shrink-0 h-6" />
+      </div>
+    )
+  }
+
   if (loading) {
     return (
-      <div className="h-full bg-surface">
-        <MysteryHeader onBack={() => navigate('/games')} />
+      <div className="bg-surface" style={{ height: vh }}>
+        <MysteryHeader onBack={() => setStep('lobby')} />
       </div>
     )
   }
 
   if (!state) {
     return (
-      <div className="h-full bg-surface">
-        <MysteryHeader onBack={() => navigate('/games')} />
+      <div className="bg-surface" style={{ height: vh }}>
+        <MysteryHeader onBack={() => setStep('lobby')} />
         <p className="text-center text-sm font-semibold text-gray-400 mt-10">
           Impossible de charger le défi du jour. Réessaie plus tard.
         </p>
@@ -86,10 +143,10 @@ export default function DailyMysteryGame() {
   const finished = state.status !== 'inProgress'
 
   return (
-    <div className="h-full flex flex-col bg-surface">
+    <div className="flex flex-col bg-surface" style={{ height: vh }}>
       <div className="shrink-0">
         <MysteryHeader
-          onBack={() => navigate('/games')}
+          onBack={() => setStep('lobby')}
           subtitle={state.streak > 0 ? `🔥 ${state.streak} jour${state.streak > 1 ? 's' : ''} de suite` : 'Devine le membre mystère 🔍'}
         />
       </div>
@@ -115,11 +172,9 @@ export default function DailyMysteryGame() {
         )}
       </div>
 
-      <div className="px-4">
+      <div className="flex-1 min-h-0 px-4">
         <DailyMysteryGrid rows={state.rows} showBranchColumn={state.showBranchColumn} />
       </div>
-
-      <div className="flex-1 min-h-0" />
 
       {!finished && (
         <div className="shrink-0 px-4 pb-4 pt-2 relative">
@@ -213,7 +268,7 @@ function MysteryHeader({ onBack, subtitle }) {
           </svg>
         </button>
         <div className="min-w-0">
-          <h1 className="text-xl font-black text-white leading-tight truncate">Le Mystère du jour</h1>
+          <h1 className="text-xl font-black text-white leading-tight truncate">Le Membre Mystère</h1>
           {subtitle && <p className="text-xs font-semibold text-white/80 mt-0.5 truncate">{subtitle}</p>}
         </div>
       </div>
@@ -227,5 +282,30 @@ function LegendDot({ className, label }) {
       <span className={`h-2.5 w-2.5 rounded-sm shrink-0 ${className}`} />
       {label}
     </span>
+  )
+}
+
+const STATUS_LABELS = {
+  solved: p => `✅ Trouvé en ${p.attemptsUsed}/${MAX_ATTEMPTS}`,
+  failed: () => `❌ Raté (${MAX_ATTEMPTS}/${MAX_ATTEMPTS})`,
+  inProgress: p => `⏳ En cours (essai ${p.attemptsUsed}/${MAX_ATTEMPTS})`,
+}
+
+function ParticipantRow({ p, isMe }) {
+  return (
+    <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${isMe ? 'bg-primary/10 border border-primary/30' : 'bg-white shadow-sm'}`}>
+      <Avatar src={p.profilePictureUrl} name={`${p.firstName} ${p.lastName}`} size="sm" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-gray-800 truncate">
+          {p.firstName} {p.lastName}{isMe ? ' (toi)' : ''}
+        </p>
+        <p className="text-xs text-gray-500">{(STATUS_LABELS[p.status] ?? STATUS_LABELS.inProgress)(p)}</p>
+      </div>
+      {p.streak > 0 && (
+        <span className="shrink-0 text-xs font-bold text-amber-700 bg-amber-100 rounded-full px-2.5 py-1">
+          🔥 {p.streak}
+        </span>
+      )}
+    </div>
   )
 }

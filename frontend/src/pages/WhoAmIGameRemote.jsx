@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
@@ -13,6 +13,7 @@ import DotsIcon from '../components/games/DotsIcon'
 import PlayerScoreBar from '../components/games/PlayerScoreBar'
 import { AnswerTimer } from '../components/games/QuizRoundScreen'
 import Avatar from '../components/shared/Avatar'
+import ChallengeButton from '../components/games/ChallengeButton'
 
 const ROUND_TIME_LIMIT = 20
 const ROUND_PRESETS = [
@@ -24,7 +25,8 @@ const ROUND_PRESETS = [
 export default function WhoAmIGameRemote() {
   const navigate = useNavigate()
   const location = useLocation()
-  const autoJoinCode = location.state?.autoJoinCode
+  const [searchParams] = useSearchParams()
+  const autoJoinCode = location.state?.autoJoinCode || searchParams.get('code')
   const { user } = useAuth()
   const { members } = useMembers()
   const { setHideChrome } = useUiChrome()
@@ -34,6 +36,7 @@ export default function WhoAmIGameRemote() {
   const [error, setError] = useState('')
   const [connecting, setConnecting] = useState(false)
 
+  const [roomCode, setRoomCode] = useState('')
   const [players, setPlayers] = useState([])
   const [roundCount, setRoundCount] = useState(0)
   const [roundIndex, setRoundIndex] = useState(0)
@@ -183,6 +186,7 @@ export default function WhoAmIGameRemote() {
       const res = await gameHub.createRoom('whoami')
       if (!res.success) { setError(res.error); return }
       setPlayers(res.players)
+      setRoomCode(res.code)
       setStep('lobby')
     } catch {
       setError('Impossible de créer la partie.')
@@ -201,6 +205,7 @@ export default function WhoAmIGameRemote() {
       const res = await gameHub.joinRoom(codeToJoin.toUpperCase())
       if (!res.success) { setError(res.error); return }
       setPlayers(res.players)
+      setRoomCode(res.code)
       setStep('lobby')
     } catch {
       setError('Impossible de rejoindre la partie.')
@@ -296,6 +301,8 @@ export default function WhoAmIGameRemote() {
               </div>
             ))}
           </div>
+
+          {isHost && <ChallengeButton gameType="whoami" roomCode={roomCode} />}
 
           {isHost ? (
             <button

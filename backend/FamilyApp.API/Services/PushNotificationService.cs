@@ -14,15 +14,16 @@ public class PushNotificationService(AppDbContext db, IConfiguration config)
     );
 
     public Task SendToAllAsync(string title, string body, string url = "/")
-        => SendAsync(null, title, body, url);
+        => SendAsync(null, title, body, url, standaloneOnly: false);
 
-    public Task SendToUsersAsync(List<Guid> userIds, string title, string body, string url = "/")
-        => SendAsync(userIds, title, body, url);
+    public Task SendToUsersAsync(List<Guid> userIds, string title, string body, string url = "/", bool standaloneOnly = false)
+        => SendAsync(userIds, title, body, url, standaloneOnly);
 
-    private async Task SendAsync(List<Guid>? userIds, string title, string body, string url)
+    private async Task SendAsync(List<Guid>? userIds, string title, string body, string url, bool standaloneOnly)
     {
         var query = db.PushSubscriptions.AsNoTracking();
         if (userIds != null) query = query.Where(s => userIds.Contains(s.UserId));
+        if (standaloneOnly) query = query.Where(s => s.IsStandalone);
         var subscriptions = await query.ToListAsync();
         if (subscriptions.Count == 0) return;
 

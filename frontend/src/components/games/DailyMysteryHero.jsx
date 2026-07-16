@@ -14,7 +14,7 @@ export default function DailyMysteryHero({ unlocked, minMembers }) {
       </span>
 
       <div className="text-5xl text-center mt-1 mb-2">🔮</div>
-      <h2 className="text-xl font-black text-white text-center mt-1">Le Mystère du jour</h2>
+      <h2 className="text-xl font-black text-white text-center mt-1">Le Membre Mystère</h2>
       <p className="text-sm text-white/75 font-medium text-center mt-2 mb-1">
         Un membre mystère à deviner en {MAX_ATTEMPTS} essais. Un par jour, pour toute la famille !
       </p>

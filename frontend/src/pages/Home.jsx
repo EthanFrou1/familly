@@ -325,7 +325,7 @@ export default function Home() {
 
       <div className="px-4 mt-6 space-y-6">
 
-        {/* Mystère du jour */}
+        {/* Membre Mystère */}
         {members.length >= MIN_MEMBERS_FOR_DAILY_MYSTERY && <DailyMysteryBanner />}
 
         {/* Prochains anniversaires */}

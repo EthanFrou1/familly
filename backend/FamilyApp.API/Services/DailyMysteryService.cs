@@ -87,6 +87,44 @@ public class DailyMysteryService(AppDbContext db)
         }
     }
 
+    // Liste en lecture seule des membres ayant déjà une tentative aujourd'hui, avec leur résultat
+    // et leur streak. N'appelle jamais GetOrCreateAttemptAsync : consulter cet écran ne doit pas
+    // créer de tentative pour l'utilisateur courant.
+    public async Task<List<DailyMysteryParticipantDto>> GetTodayParticipantsAsync()
+    {
+        var challenge = await GetOrCreateTodayChallengeAsync();
+
+        var attempts = await db.DailyChallengeAttempts
+            .Where(a => a.DailyChallengeId == challenge.Id)
+            .ToListAsync();
+
+        var userIds = attempts.Select(a => a.UserId).ToList();
+        var userMembers = await db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.Member })
+            .ToListAsync();
+
+        var participants = new List<DailyMysteryParticipantDto>();
+        foreach (var attempt in attempts)
+        {
+            var um = userMembers.FirstOrDefault(x => x.Id == attempt.UserId);
+            if (um is null) continue;
+
+            var guessedIds = JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? [];
+            var status = attempt.Solved ? "solved" : guessedIds.Count >= MaxAttempts ? "failed" : "inProgress";
+            var (streak, _) = await ComputeStreakAsync(attempt.UserId, challenge.Date);
+
+            participants.Add(new DailyMysteryParticipantDto(
+                um.Member.Id, um.Member.FirstName, um.Member.LastName, um.Member.ProfilePictureUrl,
+                status, guessedIds.Count, streak));
+        }
+
+        return participants
+            .OrderBy(p => p.Status switch { "solved" => 0, "inProgress" => 1, _ => 2 })
+            .ThenBy(p => p.Status == "solved" ? p.AttemptsUsed : int.MaxValue)
+            .ToList();
+    }
+
     public async Task<DailyMysteryStateDto> SubmitGuessAsync(Guid userId, Guid memberId)
     {
         if (!await db.Members.AnyAsync(m => m.Id == memberId))

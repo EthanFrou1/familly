@@ -40,3 +40,14 @@ public record DailyMysteryStateDto(
     int Streak,
     int MaxStreak
 );
+
+// Status: "inProgress" | "solved" | "failed". Streak : jours consécutifs résolus pour ce membre.
+public record DailyMysteryParticipantDto(
+    Guid MemberId,
+    string FirstName,
+    string LastName,
+    string? ProfilePictureUrl,
+    string Status,
+    int AttemptsUsed,
+    int Streak
+);

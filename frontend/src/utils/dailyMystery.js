@@ -24,5 +24,5 @@ export function buildShareText(state) {
   const result = state.status === 'solved' ? `Réussi en ${state.attemptsUsed}/${MAX_ATTEMPTS}` : `Raté (${MAX_ATTEMPTS}/${MAX_ATTEMPTS})`
   const streakLine = state.streak > 0 ? `🔥 ${state.streak} jour${state.streak > 1 ? 's' : ''} de suite` : null
 
-  return ['🔮 Le Mystère du jour', result, ...(streakLine ? [streakLine] : []), '', ...lines].join('\n')
+  return ['🔮 Le Membre Mystère', result, ...(streakLine ? [streakLine] : []), '', ...lines].join('\n')
 }

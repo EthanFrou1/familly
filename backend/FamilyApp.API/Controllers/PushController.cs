@@ -31,6 +31,7 @@ public class PushController(AppDbContext db, IConfiguration config, PushNotifica
             Endpoint = dto.Endpoint,
             P256dh = dto.P256dh,
             Auth = dto.Auth,
+            IsStandalone = dto.IsStandalone,
         });
 
         await db.SaveChangesAsync();
@@ -85,9 +86,60 @@ public class PushController(AppDbContext db, IConfiguration config, PushNotifica
         return Ok(new { sent = count });
     }
 
+    // Membres joignables pour un défi : notifications activées + site installé en PWA (mode standalone).
+    [HttpGet("challengeable-members")]
+    public async Task<IActionResult> GetChallengeableMembers()
+    {
+        var userId = GetUserId();
+        var standaloneUserIds = await db.PushSubscriptions
+            .Where(s => s.IsStandalone)
+            .Select(s => s.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        var members = await db.Users
+            .Where(u => u.Id != userId && standaloneUserIds.Contains(u.Id))
+            .Include(u => u.Member)
+            .Select(u => new
+            {
+                userId = u.Id,
+                memberId = u.MemberId,
+                firstName = u.Member.FirstName,
+                lastName = u.Member.LastName,
+                profilePictureUrl = u.Member.ProfilePictureUrl,
+            })
+            .OrderBy(m => m.firstName)
+            .ToListAsync();
+
+        return Ok(members);
+    }
+
+    // Envoie un lien de partie en cours à un ou plusieurs membres, uniquement ceux joignables (cf. challengeable-members).
+    [HttpPost("challenge")]
+    public async Task<IActionResult> SendChallenge([FromBody] ChallengeDto dto)
+    {
+        if (dto.TargetUserIds == null || dto.TargetUserIds.Count == 0)
+            return BadRequest(new { message = "Choisis au moins un membre à défier." });
+
+        var userId = GetUserId();
+        var host = await db.Users.Include(u => u.Member).FirstOrDefaultAsync(u => u.Id == userId);
+        if (host == null) return Unauthorized();
+
+        var url = $"/games/{dto.GameType}/remote?code={dto.RoomCode}";
+        await push.SendToUsersAsync(
+            dto.TargetUserIds,
+            $"🎮 {host.Member.FirstName} te défie !",
+            "Rejoins la partie maintenant",
+            url,
+            standaloneOnly: true);
+
+        return Ok();
+    }
+
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 }
 
-public record SubscribeDto(string Endpoint, string P256dh, string Auth);
+public record SubscribeDto(string Endpoint, string P256dh, string Auth, bool IsStandalone = false);
 public record UnsubscribeDto(string Endpoint);
 public record SendTestDto(List<Guid> UserIds);
+public record ChallengeDto(List<Guid> TargetUserIds, string GameType, string RoomCode);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
@@ -13,6 +13,7 @@ import GameResultsScreen from '../components/games/GameResultsScreen'
 import DotsIcon from '../components/games/DotsIcon'
 import PlayerScoreBar from '../components/games/PlayerScoreBar'
 import Avatar from '../components/shared/Avatar'
+import ChallengeButton from '../components/games/ChallengeButton'
 
 const FLIP_BACK_DELAY = 900
 const MATCH_DELAY = 300
@@ -21,7 +22,8 @@ const TURN_TIME_LIMIT = 15
 export default function MemoryGameRemote() {
   const navigate = useNavigate()
   const location = useLocation()
-  const autoJoinCode = location.state?.autoJoinCode
+  const [searchParams] = useSearchParams()
+  const autoJoinCode = location.state?.autoJoinCode || searchParams.get('code')
   const { user } = useAuth()
   const { members } = useMembers()
   const { setHideChrome } = useUiChrome()
@@ -32,6 +34,7 @@ export default function MemoryGameRemote() {
   const [error, setError] = useState('')
   const [connecting, setConnecting] = useState(false)
 
+  const [roomCode, setRoomCode] = useState('')
   const [players, setPlayers] = useState([])
   const [pairsCount, setPairsCount] = useState(null)
   const [deck, setDeck] = useState([])
@@ -193,6 +196,7 @@ export default function MemoryGameRemote() {
       const res = await gameHub.createRoom('memory')
       if (!res.success) { setError(res.error); return }
       setPlayers(res.players)
+      setRoomCode(res.code)
       setStep('lobby')
     } catch {
       setError('Impossible de créer la partie.')
@@ -211,6 +215,7 @@ export default function MemoryGameRemote() {
       const res = await gameHub.joinRoom(codeToJoin.toUpperCase())
       if (!res.success) { setError(res.error); return }
       setPlayers(res.players)
+      setRoomCode(res.code)
       setStep('lobby')
     } catch {
       setError('Impossible de rejoindre la partie.')
@@ -297,6 +302,8 @@ export default function MemoryGameRemote() {
               </div>
             ))}
           </div>
+
+          {isHost && <ChallengeButton gameType="memory" roomCode={roomCode} />}
 
           {isHost ? (
             <button
