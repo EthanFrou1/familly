@@ -127,6 +127,46 @@ public class DailyMysteryService(AppDbContext db)
             .ToList();
     }
 
+    // Classement toutes dates confondues (contrairement à GetTodayParticipantsAsync, limité au jour même).
+    // Une tentative sans aucun essai (écran juste ouvert) ne compte pas comme "jouée".
+    public async Task<List<DailyMysteryLeaderboardEntryDto>> GetAllTimeLeaderboardAsync()
+    {
+        var attempts = await db.DailyChallengeAttempts.ToListAsync();
+
+        var userIds = attempts.Select(a => a.UserId).Distinct().ToList();
+        var memberByUser = (await db.Users
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.Member })
+                .ToListAsync())
+            .ToDictionary(x => x.Id, x => x.Member);
+
+        var stats = new Dictionary<Guid, (int Played, int Solved)>();
+        foreach (var attempt in attempts)
+        {
+            if (!memberByUser.ContainsKey(attempt.UserId)) continue;
+
+            var guessedIds = JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? [];
+            if (guessedIds.Count == 0) continue;
+
+            var current = stats.GetValueOrDefault(attempt.UserId, (Played: 0, Solved: 0));
+            stats[attempt.UserId] = (current.Played + 1, current.Solved + (attempt.Solved ? 1 : 0));
+        }
+
+        return stats
+            .Select(kv =>
+            {
+                var member = memberByUser[kv.Key];
+                var (played, solved) = kv.Value;
+                return new DailyMysteryLeaderboardEntryDto(
+                    member.Id, $"{member.FirstName} {member.LastName}",
+                    played, solved, played - solved,
+                    played > 0 ? Math.Round(100.0 * solved / played, 1) : 0);
+            })
+            .OrderByDescending(e => e.WinRate)
+            .ThenByDescending(e => e.Wins)
+            .ToList();
+    }
+
     public async Task<DailyMysteryStateDto> SubmitGuessAsync(Guid userId, Guid memberId)
     {
         if (!await db.Members.AnyAsync(m => m.Id == memberId))

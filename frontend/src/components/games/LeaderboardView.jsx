@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMembers } from '../../store/MembersContext'
 import { useAuth } from '../../hooks/useAuth'
-import { gamesApi } from '../../services/api'
+import { gamesApi, dailyMysteryApi } from '../../services/api'
 import { GAMES, GAME_FULL_LABELS, GAME_EMOJIS } from '../../utils/gameRegistry'
 import Avatar from '../shared/Avatar'
 import Podium from './Podium'
@@ -19,7 +19,11 @@ export default function LeaderboardView() {
 
   useEffect(() => {
     setLoading(true)
-    const request = tab === 'global' ? gamesApi.getGlobalLeaderboard() : gamesApi.getLeaderboard(tab)
+    const request = tab === 'global'
+      ? gamesApi.getGlobalLeaderboard()
+      : tab === 'dailymystery'
+        ? dailyMysteryApi.getLeaderboard()
+        : gamesApi.getLeaderboard(tab)
     request
       .then(({ data }) => setEntries(data))
       .catch(() => setEntries([]))
