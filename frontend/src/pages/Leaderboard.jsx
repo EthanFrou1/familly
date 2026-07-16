@@ -8,6 +8,9 @@ export default function Leaderboard() {
   return (
     <div className="overflow-y-auto h-full bg-gray-50 pb-24">
       <GameHeader title="Classements" onBack={() => navigate('/games')} />
+      <p className="px-4 mt-2 text-xs font-semibold text-gray-400">
+        Qui est le/la champion(ne) de la famille ? Classement global sur tous les jeux, ou filtre par jeu.
+      </p>
       <div className="px-4 mt-5">
         <LeaderboardView />
       </div>

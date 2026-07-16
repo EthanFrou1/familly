@@ -29,11 +29,10 @@ public record DailyAnswerDto(
     string? City
 );
 
-// Status: "inProgress" | "solved" | "failed".
+// Status: "inProgress" | "solved". Nombre d'essais illimité.
 public record DailyMysteryStateDto(
     string Status,
     int AttemptsUsed,
-    int AttemptsRemaining,
     bool ShowBranchColumn,
     List<DailyGuessRowDto> Rows,
     DailyAnswerDto? Answer,
@@ -41,7 +40,7 @@ public record DailyMysteryStateDto(
     int MaxStreak
 );
 
-// Status: "inProgress" | "solved" | "failed". Streak : jours consécutifs résolus pour ce membre.
+// Status: "inProgress" | "solved". Streak : jours consécutifs résolus pour ce membre.
 public record DailyMysteryParticipantDto(
     Guid MemberId,
     string FirstName,
