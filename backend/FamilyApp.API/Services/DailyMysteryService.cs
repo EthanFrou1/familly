@@ -204,8 +204,10 @@ public class DailyMysteryService(AppDbContext db)
             generation, birthYear, city, gender, branch, alive, guess.Id == answer.Id);
     }
 
+    // Une chaîne vide (ville/genre non renseigné, envoyé "" plutôt que null par le formulaire)
+    // ne doit jamais être traitée comme une correspondance valide entre deux membres.
     private static bool Eq(string? a, string? b) =>
-        a is not null && b is not null && string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+        !string.IsNullOrWhiteSpace(a) && !string.IsNullOrWhiteSpace(b) && string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
     private static DailyGuessCellDto BuildNumericCell(int? guessValue, int? answerValue)
     {
@@ -228,7 +230,9 @@ public class DailyMysteryService(AppDbContext db)
         if (gap is null) return new DailyGuessCellDto("gray", null);
         if (gap == 0) return new DailyGuessCellDto("green", null);
 
-        var direction = gap > 0 ? "up" : "down";
+        // gap > 0 : la réponse est un descendant du membre proposé (génération plus jeune, donc "en bas" de l'arbre).
+        // gap < 0 : la réponse est un ancêtre (génération plus ancienne, donc "en haut" de l'arbre).
+        var direction = gap > 0 ? "down" : "up";
         return new DailyGuessCellDto(Math.Abs(gap.Value) == 1 ? "yellow" : "gray", direction);
     }
 
