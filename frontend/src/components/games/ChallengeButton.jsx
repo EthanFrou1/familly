@@ -40,6 +40,7 @@ export default function ChallengeButton({ gameType, roomCode }) {
       await pushApi.sendChallenge([...selected], gameType, roomCode)
       setSent(true)
       setSelected(new Set())
+      setTimeout(() => setOpen(false), 1200)
     } catch {
       setError("Impossible d'envoyer le défi.")
     } finally {
