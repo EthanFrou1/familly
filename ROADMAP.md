@@ -25,7 +25,7 @@ PWA mobile-first privée pour une famille (~100 membres), accès sur invitation 
 - [x] Timeline des événements familiaux
 - [x] Carte des membres (Leaflet)
 - [x] Espace Admin (aperçu membres, doublons, rôles, invitations)
-- [x] Notifications push (anniversaires, nouveaux membres)
+- [x] Notifications push (anniversaires, nouveaux membres, défis entre membres — voir section Jeux)
 - [x] PWA installable, mise à jour auto du service worker (reload forcé sur nouvelle version)
 - [x] Historique d'activité (fil d'actu, logs par membre)
 
@@ -34,14 +34,19 @@ PWA mobile-first privée pour une famille (~100 membres), accès sur invitation 
 - [x] **Memory des photos** — retrouver les paires de photos de membres (local + à distance)
 - [x] **Qui est-ce ?** — deviner le membre à partir de sa photo (local + à distance)
 - [x] **Quel est le lien ?** — deviner le lien de parenté entre deux membres (local + à distance)
-- [x] Mode **local** (passe-partout, un seul téléphone) pour les 3 jeux, avec liaison/invité par joueur
-- [x] Mode **à distance** (2 à 4 joueurs, chacun son téléphone, temps réel via SignalR) pour les 3 jeux
+- [x] **Le/la plus susceptible de...** — vote collectif sur des questions, jusqu'à 10 joueurs (à distance uniquement)
+- [x] **Qui suis-je ?** — indices progressifs sur un membre à deviner (à distance uniquement)
+- [x] Mode **local** (passe-partout, un seul téléphone) pour Memory / Qui est-ce / Quel est le lien, avec liaison/invité par joueur
+- [x] Mode **à distance** (2 à 10 joueurs selon le jeu, chacun son téléphone, temps réel via SignalR) pour Memory / Qui est-ce / Quel est le lien / Le plus susceptible / Qui suis-je
   - [x] Créer une partie (code à 5 caractères) / rejoindre par code
   - [x] Onglet "Parties ouvertes" : liste live des salons en attente, rejoignables en un tap
   - [x] Roue de tirage au sort de l'ordre de jeu (composant générique réutilisable)
-  - [x] Annulation de la partie si un joueur se déconnecte (pas de reconnexion en v1)
+  - [x] Annulation de la partie si un joueur se déconnecte pendant une partie déjà lancée (pas de reconnexion en pleine partie)
+  - [x] Reconnexion tolérée en salon d'attente (avant lancement) : un même membre qui revient remplace son entrée fantôme au lieu d'être rejeté (utile après mise en arrière-plan/fermeture de la PWA)
+  - [x] Défier des membres par notification push directement depuis le salon d'attente (lien direct vers la partie en cours) — uniquement les membres avec notifs activées **et** app installée en PWA (voir notes techniques)
   - [x] Chrono en direct pendant la partie (mm:ss, aligné sur le temps final sauvegardé)
-- [x] Classements : par jeu + classement global (moyenne des taux de victoire), podium (couronne 1er, médailles 2e/3e), tag "Vous"
+- [x] **Le Membre Mystère** — jeu quotidien façon Wordle (un membre à deviner par jour, pour toute la famille), essais illimités, grille de comparaison (génération, année de naissance, ville, sexe, famille, vivant/décédé), streak (jours consécutifs résolus) + record, classement dédié tous jours confondus (parties jouées/résolues, taux de réussite)
+- [x] Classements : par jeu + classement global (moyenne des taux de victoire) + classement Membre Mystère (agrégé séparément, hors GameResult), podium (couronne 1er, médailles 2e/3e), tag "Vous"
 - [x] Historique des parties (Jeux → dernière partie + historique dépliable)
 - [x] Stats sur le profil membre (parties jouées, victoires, défaites, meilleur temps sur Memory)
 - [x] Stats fun sur la Home ("Le boss du Memory", "Lanterne rouge")
@@ -50,8 +55,8 @@ PWA mobile-first privée pour une famille (~100 membres), accès sur invitation 
 
 ## 🚧 Idées déjà évoquées, pas commencées
 
-- [ ] **Devine l'âge** — à partir d'une photo, deviner l'âge/l'année de naissance, classement au plus proche (3ᵉ idée de jeu évoquée, pas encore construite)
-- [ ] Reconnexion en partie à distance (aujourd'hui : une déconnexion annule la partie pour tout le monde)
+- [ ] **Devine l'âge** — à partir d'une photo, deviner l'âge/l'année de naissance, classement au plus proche (idée de jeu évoquée, pas encore construite)
+- [ ] Reconnexion en **pleine partie** à distance (une déconnexion en cours de partie annule toujours la partie pour tout le monde — seule la reconnexion en salon d'attente avant lancement est gérée, voir section Jeux)
 
 ## 💡 Idées en vrac / à creuser
 
@@ -64,5 +69,7 @@ PWA mobile-first privée pour une famille (~100 membres), accès sur invitation 
 - **SignalR ≠ cookie** : le hub tourne en direct sur Railway (le proxy Vercel `/api/*` ne gère pas les WebSockets), donc le cookie `access_token` posé pour `mybigfamily.fr` n'est jamais envoyé sur `railway.app`. Le client SignalR envoie le JWT via `accessTokenFactory` (query string), lu côté serveur uniquement pour les chemins `/hubs/*`.
 - **`VITE_API_URL` doit rester vide** en prod pour que les appels REST utilisent des URLs relatives via le proxy Vercel (sinon CORS cassé — cf. incident déjà rencontré).
 - **`db.Database.Migrate()`** tourne dans tous les environnements au démarrage (pas seulement en dev).
-- **État de partie en mémoire** : si le process backend redémarre (déploiement Railway), toutes les parties à distance en cours sont perdues (pas de persistance intermédiaire, seul le résultat final compte).
+- **État de partie en mémoire** : si le process backend redémarre (déploiement Railway), toutes les parties à distance en cours sont perdues (pas de persistance intermédiaire, seul le résultat final compte). Les salons (`GameSessionStore`) suivent les joueurs par `ConnectionId` SignalR, pas par utilisateur : `JoinRoom` traite un `MemberId` déjà présent comme une reconnexion (remplace l'entrée fantôme) plutôt que de rejeter, pour tolérer les PWA mises en arrière-plan/tuées sans `LeaveRoom` propre.
 - **Palette de couleurs** : figée dans `index.css` (palette "Automne" : primary doré `#C49A36`, dark vert `#2D7A42`). Le système de thèmes multiples (`useTheme.js`, `ThemePicker.jsx`) a été retiré — utiliser les classes Tailwind sémantiques (`bg-primary`, `bg-dark`, etc.) plutôt qu'une couleur en dur, mais il n'y a plus qu'une seule palette possible.
+- **Défi entre membres (push)** : `PushSubscription.IsStandalone` marque un abonnement comme "installé en PWA" (détecté via `matchMedia('(display-mode: standalone)')` / `navigator.standalone`). Seuls les abonnements avec ce flag sont ciblés par `POST /api/push/challenge`. Ce flag n'existait pas avant son ajout — `usePushNotifications` le resynchronise à chaque ouverture d'app tant qu'un abonnement local existe, pour rattraper les abonnements créés avant cet ajout.
+- **Clic sur notif → navigation** : sur iOS/Safari en PWA, `clients.openWindow()` sur une fenêtre déjà ouverte ne change pas sa route (limitation WebKit connue), elle est juste ramenée au premier plan. Le service worker (`sw.js`) délègue donc la navigation à l'app via `postMessage({ type: 'navigate', url })`, écouté dans `ProtectedLayoutContent` (`App.jsx`) qui appelle `navigate(url)`.
