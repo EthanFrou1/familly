@@ -204,8 +204,10 @@ public class DailyMysteryService(AppDbContext db)
             generation, birthYear, city, gender, branch, alive, guess.Id == answer.Id);
     }
 
+    // Une chaîne vide (ville/genre non renseigné, envoyé "" plutôt que null par le formulaire)
+    // ne doit jamais être traitée comme une correspondance valide entre deux membres.
     private static bool Eq(string? a, string? b) =>
-        a is not null && b is not null && string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+        !string.IsNullOrWhiteSpace(a) && !string.IsNullOrWhiteSpace(b) && string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
     private static DailyGuessCellDto BuildNumericCell(int? guessValue, int? answerValue)
     {
