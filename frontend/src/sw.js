@@ -28,11 +28,18 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close()
+  const url = event.notification.data?.url ?? '/'
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      const url = event.notification.data?.url ?? '/'
-      const existing = list.find(c => c.url.includes(url) && 'focus' in c)
-      if (existing) return existing.focus()
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async list => {
+      const existing = list.find(c => 'focus' in c)
+      if (existing) {
+        // Sur iOS/Safari en PWA, une fenêtre déjà ouverte ne change pas de route
+        // via clients.openWindow (elle est juste ramenée au premier plan) : on
+        // délègue la navigation à l'app elle-même via postMessage.
+        await existing.focus()
+        existing.postMessage({ type: 'navigate', url })
+        return
+      }
       return clients.openWindow(url)
     })
   )

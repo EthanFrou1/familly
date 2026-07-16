@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider } from './store/AuthContext'
 import { MembersProvider } from './store/MembersContext'
 import { UiChromeProvider, useUiChrome } from './store/UiChromeContext'
@@ -73,6 +73,16 @@ function ProtectedLayout() {
 
 function ProtectedLayoutContent() {
   const { hideChrome } = useUiChrome()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    function handleMessage(event) {
+      if (event.data?.type === 'navigate' && event.data.url) navigate(event.data.url)
+    }
+    navigator.serviceWorker.addEventListener('message', handleMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', handleMessage)
+  }, [navigate])
 
   return (
     <div className="flex h-full flex-col bg-gray-50">
