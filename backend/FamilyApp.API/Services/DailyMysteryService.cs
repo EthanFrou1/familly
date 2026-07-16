@@ -32,9 +32,12 @@ public class DailyMysteryService(AppDbContext db)
         if (existing is not null) return existing;
 
         // Un membre trop peu renseigné donnerait une grille presque entièrement grise :
-        // on exige la date de naissance (colonne Naissance) + au moins un autre attribut distinctif.
+        // on exige les 4 attributs comparés (ville, naissance, sexe, famille) pour être réponse possible.
         var eligible = await db.Members
-            .Where(m => m.BirthDate != null && (m.City != null || m.Gender != null))
+            .Where(m => m.BirthDate != null
+                && m.City != null && m.City != ""
+                && m.Gender != null && m.Gender != ""
+                && m.FamilyId != null)
             .Select(m => m.Id)
             .ToListAsync();
         if (eligible.Count == 0)

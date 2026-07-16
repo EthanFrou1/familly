@@ -4,7 +4,6 @@ import confetti from 'canvas-confetti'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { dailyMysteryApi } from '../services/api'
-import { buildShareText } from '../utils/dailyMystery'
 import DailyMysteryGrid from '../components/games/DailyMysteryGrid'
 import DailyMysteryLegendSheet from '../components/games/DailyMysteryLegendSheet'
 import Avatar from '../components/shared/Avatar'
@@ -20,7 +19,6 @@ export default function DailyMysteryGame() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const confettiFiredRef = useRef(false)
 
@@ -66,15 +64,6 @@ export default function DailyMysteryGame() {
       setState(data)
     } catch {}
     setSubmitting(false)
-  }
-
-  async function handleShare() {
-    if (!state) return
-    try {
-      await navigator.clipboard.writeText(buildShareText(state))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {}
   }
 
   if (step === 'lobby') {
@@ -224,10 +213,10 @@ export default function DailyMysteryGame() {
           )}
 
           <button
-            onClick={handleShare}
+            onClick={() => navigate('/games')}
             className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
           >
-            {copied ? 'Copié ! 📋' : 'Partager mon résultat'}
+            Retour aux jeux
           </button>
 
           <p className="text-center text-xs font-semibold text-gray-400">Reviens demain pour un nouveau mystère !</p>
