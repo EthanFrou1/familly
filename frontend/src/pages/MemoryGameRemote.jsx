@@ -96,16 +96,17 @@ export default function MemoryGameRemote() {
   }, [timeLeft])
 
   useEffect(() => {
-    connectHub().catch(() => setError('Connexion impossible.'))
+    // La connexion doit être établie avant toute tentative de join automatique
+    // (deux useEffect séparés se battaient pour la même connexion encore en
+    // cours d'établissement sur un démarrage à froid, ex: lien de notification).
+    connectHub()
+      .then(() => { if (autoJoinCode) handleJoinRoom(autoJoinCode) })
+      .catch(() => setError('Connexion impossible.'))
     return () => {
       gameHub.leaveRoom().catch(() => {})
     }
-  }, [])
-
-  useEffect(() => {
-    if (autoJoinCode) handleJoinRoom(autoJoinCode)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoJoinCode])
+  }, [])
 
   useEffect(() => {
     const offs = [
