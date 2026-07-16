@@ -23,15 +23,20 @@ export default function DailyMysteryHero({ unlocked, minMembers }) {
       )}
 
       {unlocked && finished && (
-        <button
-          onClick={() => navigate('/games/leaderboard', { state: { tab: 'dailymystery' } })}
-          className="w-full mt-3 rounded-2xl bg-white/10 py-3.5 text-center active:bg-white/15"
-        >
-          <p className="text-sm font-black text-white">
-            ✅ Trouvé en {state.attemptsUsed} essai{state.attemptsUsed > 1 ? 's' : ''}
-          </p>
-          <p className="text-xs text-white/60 mt-0.5">Voir le classement</p>
-        </button>
+        <>
+          <div className="mt-3 rounded-2xl bg-white/10 py-3.5 text-center">
+            <p className="text-sm font-black text-white">
+              ✅ Trouvé en {state.attemptsUsed} essai{state.attemptsUsed > 1 ? 's' : ''}
+            </p>
+            <p className="text-xs text-white/60 mt-0.5">Reviens demain pour un nouveau mystère</p>
+          </div>
+          <button
+            onClick={() => navigate('/games/daily-mystery')}
+            className="w-full mt-2 rounded-lg py-2 text-center text-xs font-bold text-white/70 active:text-white"
+          >
+            Voir le classement
+          </button>
+        </>
       )}
 
       {unlocked && !finished && (

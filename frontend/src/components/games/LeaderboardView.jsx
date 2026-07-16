@@ -8,12 +8,12 @@ import Podium from './Podium'
 
 const TABS = [{ key: 'global', label: 'Global' }, ...GAMES]
 
-export default function LeaderboardView({ initialTab = 'global' }) {
+export default function LeaderboardView() {
   const { members } = useMembers()
   const { user } = useAuth()
   const memberById = useMemo(() => new Map(members.map(m => [m.id, m])), [members])
 
-  const [tab, setTab] = useState(initialTab)
+  const [tab, setTab] = useState('global')
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
 

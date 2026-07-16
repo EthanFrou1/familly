@@ -11,7 +11,7 @@ export default function DailyMysteryBanner() {
 
   return (
     <button
-      onClick={() => navigate(finished ? '/games/leaderboard' : '/games/daily-mystery', finished ? { state: { tab: 'dailymystery' } } : undefined)}
+      onClick={() => navigate('/games/daily-mystery')}
       className={`flex items-center gap-3 w-full rounded-2xl shadow-sm px-4 py-3.5 text-left transition-opacity ${
         finished ? 'bg-white active:opacity-70' : 'bg-gradient-to-r from-primary/10 to-amber-50 active:opacity-70'
       }`}
@@ -21,7 +21,7 @@ export default function DailyMysteryBanner() {
         <p className="text-sm font-bold text-gray-900">Le Membre Mystère</p>
         <p className="text-xs text-gray-500 mt-0.5">
           {finished
-            ? `Trouvé en ${state.attemptsUsed} essai${state.attemptsUsed > 1 ? 's' : ''} · voir le classement`
+            ? `Trouvé en ${state.attemptsUsed} essai${state.attemptsUsed > 1 ? 's' : ''} · reviens demain`
             : state.attemptsUsed > 0
               ? `Essai ${state.attemptsUsed} en cours`
               : 'Devine le membre mystère du jour'}
