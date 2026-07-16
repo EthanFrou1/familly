@@ -25,7 +25,17 @@ export function usePushNotifications() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
     navigator.serviceWorker.ready.then(async reg => {
       const sub = await reg.pushManager.getSubscription()
-      if (sub) { setSubscribed(true); return }
+      if (sub) {
+        setSubscribed(true)
+        // Resynchronise le flag "installé en PWA" à chaque ouverture : couvre les
+        // abonnements créés avant l'ajout de ce champ (restés à false) et les cas
+        // où l'app a été installée après la première autorisation des notifs.
+        try {
+          const json = sub.toJSON()
+          await pushApi.subscribe(json.endpoint, json.keys.p256dh, json.keys.auth, isStandaloneDisplay())
+        } catch { /* silencieux */ }
+        return
+      }
 
       // Permission déjà accordée (PWA réinstallée) → re-souscrire silencieusement
       if (Notification.permission === 'granted') {
