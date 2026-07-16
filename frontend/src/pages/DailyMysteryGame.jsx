@@ -4,7 +4,7 @@ import confetti from 'canvas-confetti'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { dailyMysteryApi } from '../services/api'
-import { MAX_ATTEMPTS, buildShareText } from '../utils/dailyMystery'
+import { buildShareText } from '../utils/dailyMystery'
 import DailyMysteryGrid from '../components/games/DailyMysteryGrid'
 import DailyMysteryLegendSheet from '../components/games/DailyMysteryLegendSheet'
 import Avatar from '../components/shared/Avatar'
@@ -82,7 +82,7 @@ export default function DailyMysteryGame() {
     const ctaLabel = !myEntry || myEntry.attemptsUsed === 0
       ? 'Lancer le jeu'
       : myEntry.status === 'inProgress'
-        ? `Continuer (essai ${myEntry.attemptsUsed}/${MAX_ATTEMPTS})`
+        ? `Continuer (essai ${myEntry.attemptsUsed})`
         : 'Voir mon résultat'
 
     return (
@@ -151,7 +151,7 @@ export default function DailyMysteryGame() {
 
       <div className="shrink-0 flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-3 pb-1.5">
         <span className="text-xs font-extrabold text-dark bg-primary/15 border border-primary/40 rounded-full px-3.5 py-1.5">
-          Essai {state.attemptsUsed}/{MAX_ATTEMPTS}
+          Essai {state.attemptsUsed}
         </span>
         <button
           onClick={() => setShowLegend(true)}
@@ -209,9 +209,7 @@ export default function DailyMysteryGame() {
             <div className="rounded-2xl bg-white shadow-sm p-4 flex items-center gap-3">
               <Avatar src={state.answer.profilePictureUrl} name={`${state.answer.firstName} ${state.answer.lastName}`} size="lg" />
               <div className="min-w-0">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                  {state.status === 'solved' ? 'Trouvé !' : 'La réponse était'}
-                </p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Trouvé !</p>
                 <p className="text-base font-black text-gray-800 truncate">
                   {state.answer.firstName} {state.answer.lastName}
                 </p>
@@ -284,9 +282,8 @@ function LegendDot({ className, label }) {
 }
 
 const STATUS_LABELS = {
-  solved: p => `✅ Trouvé en ${p.attemptsUsed}/${MAX_ATTEMPTS}`,
-  failed: () => `❌ Raté (${MAX_ATTEMPTS}/${MAX_ATTEMPTS})`,
-  inProgress: p => `⏳ En cours (essai ${p.attemptsUsed}/${MAX_ATTEMPTS})`,
+  solved: p => `✅ Trouvé en ${p.attemptsUsed} essai${p.attemptsUsed > 1 ? 's' : ''}`,
+  inProgress: p => `⏳ En cours (essai ${p.attemptsUsed})`,
 }
 
 function ParticipantRow({ p, isMe }) {

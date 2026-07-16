@@ -12,7 +12,6 @@ namespace FamilyApp.API.Services;
 // Comme WhoAmIRoundGenerator, le membre réponse n'est jamais exposé avant résolution/échec.
 public class DailyMysteryService(AppDbContext db)
 {
-    public const int MaxAttempts = 15;
     private const int AvoidRepeatDays = 20;
 
     public record MemberInfo(
@@ -111,7 +110,7 @@ public class DailyMysteryService(AppDbContext db)
             if (um is null) continue;
 
             var guessedIds = JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? [];
-            var status = attempt.Solved ? "solved" : guessedIds.Count >= MaxAttempts ? "failed" : "inProgress";
+            var status = attempt.Solved ? "solved" : "inProgress";
             var (streak, _) = await ComputeStreakAsync(attempt.UserId, challenge.Date);
 
             participants.Add(new DailyMysteryParticipantDto(
@@ -135,7 +134,7 @@ public class DailyMysteryService(AppDbContext db)
 
         var guessedIds = JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? [];
 
-        if (!attempt.Solved && guessedIds.Count < MaxAttempts && !guessedIds.Contains(memberId))
+        if (!attempt.Solved && !guessedIds.Contains(memberId))
         {
             guessedIds.Add(memberId);
             attempt.GuessesJson = JsonSerializer.Serialize(guessedIds);
@@ -143,10 +142,6 @@ public class DailyMysteryService(AppDbContext db)
             if (memberId == challenge.MemberId)
             {
                 attempt.Solved = true;
-                attempt.CompletedAt = DateTime.UtcNow;
-            }
-            else if (guessedIds.Count >= MaxAttempts)
-            {
                 attempt.CompletedAt = DateTime.UtcNow;
             }
 
@@ -181,7 +176,7 @@ public class DailyMysteryService(AppDbContext db)
             .Select(id => BuildRow(memberMap[id], answer, relations, showBranch))
             .ToList();
 
-        var status = attempt.Solved ? "solved" : guessedIds.Count >= MaxAttempts ? "failed" : "inProgress";
+        var status = attempt.Solved ? "solved" : "inProgress";
 
         DailyAnswerDto? answerDto = status == "inProgress"
             ? null
@@ -189,7 +184,7 @@ public class DailyMysteryService(AppDbContext db)
 
         var (streak, maxStreak) = await ComputeStreakAsync(attempt.UserId, challenge.Date);
 
-        return new DailyMysteryStateDto(status, guessedIds.Count, MaxAttempts - guessedIds.Count, showBranch, rows, answerDto, streak, maxStreak);
+        return new DailyMysteryStateDto(status, guessedIds.Count, showBranch, rows, answerDto, streak, maxStreak);
     }
 
     private static DailyGuessRowDto BuildRow(

@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { useDailyMysteryStatus } from '../../hooks/useDailyMysteryStatus'
-import { MAX_ATTEMPTS } from '../../utils/dailyMystery'
 
 export default function DailyMysteryBanner() {
   const navigate = useNavigate()
@@ -23,11 +22,9 @@ export default function DailyMysteryBanner() {
         <p className="text-sm font-bold text-gray-900">Le Membre Mystère</p>
         <p className="text-xs text-gray-500 mt-0.5">
           {finished
-            ? state.status === 'solved'
-              ? `Trouvé en ${state.attemptsUsed}/${MAX_ATTEMPTS} · reviens demain`
-              : "Raté aujourd'hui · reviens demain"
+            ? `Trouvé en ${state.attemptsUsed} essai${state.attemptsUsed > 1 ? 's' : ''} · reviens demain`
             : state.attemptsUsed > 0
-              ? `Essai ${state.attemptsUsed}/${MAX_ATTEMPTS} en cours`
+              ? `Essai ${state.attemptsUsed} en cours`
               : 'Devine le membre mystère du jour'}
         </p>
       </div>

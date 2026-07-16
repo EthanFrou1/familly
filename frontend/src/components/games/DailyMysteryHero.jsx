@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { useDailyMysteryStatus } from '../../hooks/useDailyMysteryStatus'
-import { MAX_ATTEMPTS } from '../../utils/dailyMystery'
 
 export default function DailyMysteryHero({ unlocked, minMembers }) {
   const navigate = useNavigate()
@@ -16,7 +15,7 @@ export default function DailyMysteryHero({ unlocked, minMembers }) {
       <div className="text-5xl text-center mt-1 mb-2">🔮</div>
       <h2 className="text-xl font-black text-white text-center mt-1">Le Membre Mystère</h2>
       <p className="text-sm text-white/75 font-medium text-center mt-2 mb-1">
-        Un membre mystère à deviner en {MAX_ATTEMPTS} essais. Un par jour, pour toute la famille !
+        Un membre mystère à deviner, autant d'essais que nécessaire. Un par jour, pour toute la famille !
       </p>
 
       {!unlocked && (
@@ -26,7 +25,7 @@ export default function DailyMysteryHero({ unlocked, minMembers }) {
       {unlocked && finished && (
         <div className="mt-3 rounded-2xl bg-white/10 py-3.5 text-center">
           <p className="text-sm font-black text-white">
-            {state.status === 'solved' ? `✅ Trouvé en ${state.attemptsUsed}/${MAX_ATTEMPTS}` : "❌ Raté aujourd'hui"}
+            ✅ Trouvé en {state.attemptsUsed} essai{state.attemptsUsed > 1 ? 's' : ''}
           </p>
           <p className="text-xs text-white/60 mt-0.5">Reviens demain pour un nouveau mystère</p>
         </div>
@@ -39,7 +38,7 @@ export default function DailyMysteryHero({ unlocked, minMembers }) {
           className="w-full rounded-2xl bg-primary text-white font-black text-base py-4 flex items-center justify-center gap-2 shadow-lg shadow-primary/30 active:bg-primary-dark mt-2 disabled:opacity-50"
         >
           <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-          {state?.attemptsUsed > 0 ? `Continuer (essai ${state.attemptsUsed}/${MAX_ATTEMPTS})` : 'Jouer'}
+          {state?.attemptsUsed > 0 ? `Continuer (essai ${state.attemptsUsed})` : 'Jouer'}
         </button>
       )}
     </div>

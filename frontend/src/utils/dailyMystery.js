@@ -1,5 +1,4 @@
 export const MIN_MEMBERS_TO_UNLOCK = 8
-export const MAX_ATTEMPTS = 15
 
 // Ordre d'affichage des colonnes de la grille. `branch` est masquée dynamiquement
 // par le backend (showBranchColumn) si la famille n'a qu'une seule branche/aucune.
@@ -20,7 +19,7 @@ export function buildShareText(state) {
     columns.map(c => CELL_EMOJI[row[c.key]?.status] ?? '⬜').join('')
   )
 
-  const result = state.status === 'solved' ? `Réussi en ${state.attemptsUsed}/${MAX_ATTEMPTS}` : `Raté (${MAX_ATTEMPTS}/${MAX_ATTEMPTS})`
+  const result = `Réussi en ${state.attemptsUsed} essai${state.attemptsUsed > 1 ? 's' : ''}`
   const streakLine = state.streak > 0 ? `🔥 ${state.streak} jour${state.streak > 1 ? 's' : ''} de suite` : null
 
   return ['🔮 Le Membre Mystère', result, ...(streakLine ? [streakLine] : []), '', ...lines].join('\n')
