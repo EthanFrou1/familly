@@ -230,7 +230,9 @@ public class DailyMysteryService(AppDbContext db)
         if (gap is null) return new DailyGuessCellDto("gray", null);
         if (gap == 0) return new DailyGuessCellDto("green", null);
 
-        var direction = gap > 0 ? "up" : "down";
+        // gap > 0 : la réponse est un descendant du membre proposé (génération plus jeune, donc "en bas" de l'arbre).
+        // gap < 0 : la réponse est un ancêtre (génération plus ancienne, donc "en haut" de l'arbre).
+        var direction = gap > 0 ? "down" : "up";
         return new DailyGuessCellDto(Math.Abs(gap.Value) == 1 ? "yellow" : "gray", direction);
     }
 
