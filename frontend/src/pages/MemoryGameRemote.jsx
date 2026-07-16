@@ -304,7 +304,7 @@ export default function MemoryGameRemote() {
             ))}
           </div>
 
-          {isHost && <ChallengeButton gameType="memory" roomCode={roomCode} />}
+          {isHost && <ChallengeButton gameType="memory" roomCode={roomCode} excludedMemberIds={players.map(p => p.memberId)} />}
 
           {isHost ? (
             <button

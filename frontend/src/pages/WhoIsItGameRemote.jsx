@@ -294,7 +294,7 @@ export default function WhoIsItGameRemote() {
             ))}
           </div>
 
-          {isHost && <ChallengeButton gameType="quiwho" roomCode={roomCode} />}
+          {isHost && <ChallengeButton gameType="quiwho" roomCode={roomCode} excludedMemberIds={players.map(p => p.memberId)} />}
 
           {isHost ? (
             <button

@@ -242,7 +242,7 @@ export default function SuperlativeGameRemote() {
             ))}
           </div>
 
-          {isHost && <ChallengeButton gameType="superlative" roomCode={roomCode} />}
+          {isHost && <ChallengeButton gameType="superlative" roomCode={roomCode} excludedMemberIds={players.map(p => p.memberId)} />}
 
           {isHost ? (
             <button
