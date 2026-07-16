@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import confetti from 'canvas-confetti'
 import { useAuth } from '../hooks/useAuth'
+import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight'
 import { useMembers } from '../store/MembersContext'
 import { dailyMysteryApi } from '../services/api'
 import { MAX_ATTEMPTS, buildShareText } from '../utils/dailyMystery'
@@ -23,6 +24,7 @@ export default function DailyMysteryGame() {
   const [copied, setCopied] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const confettiFiredRef = useRef(false)
+  const vh = useVisualViewportHeight()
 
   useEffect(() => {
     dailyMysteryApi.getTodayLeaderboard()
@@ -86,7 +88,7 @@ export default function DailyMysteryGame() {
         : 'Voir mon résultat'
 
     return (
-      <div className="h-full flex flex-col bg-surface">
+      <div className="flex flex-col bg-surface" style={{ height: vh }}>
         <div className="shrink-0">
           <MysteryHeader onBack={() => navigate('/games')} subtitle="Qui a déjà relevé le défi aujourd'hui ?" />
         </div>
@@ -121,7 +123,7 @@ export default function DailyMysteryGame() {
 
   if (loading) {
     return (
-      <div className="h-full bg-surface">
+      <div className="bg-surface" style={{ height: vh }}>
         <MysteryHeader onBack={() => setStep('lobby')} />
       </div>
     )
@@ -129,7 +131,7 @@ export default function DailyMysteryGame() {
 
   if (!state) {
     return (
-      <div className="h-full bg-surface">
+      <div className="bg-surface" style={{ height: vh }}>
         <MysteryHeader onBack={() => setStep('lobby')} />
         <p className="text-center text-sm font-semibold text-gray-400 mt-10">
           Impossible de charger le défi du jour. Réessaie plus tard.
@@ -141,7 +143,7 @@ export default function DailyMysteryGame() {
   const finished = state.status !== 'inProgress'
 
   return (
-    <div className="h-full flex flex-col bg-surface">
+    <div className="flex flex-col bg-surface" style={{ height: vh }}>
       <div className="shrink-0">
         <MysteryHeader
           onBack={() => setStep('lobby')}

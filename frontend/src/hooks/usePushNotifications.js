@@ -8,6 +8,12 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
 }
 
+// Site installé en PWA (mode standalone) : requis sur iOS pour recevoir des push,
+// et utilisé pour ne cibler les défis qu'aux membres réellement joignables.
+function isStandaloneDisplay() {
+  return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true
+}
+
 export function usePushNotifications() {
   const [permission, setPermission] = useState(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
@@ -30,7 +36,7 @@ export function usePushNotifications() {
             applicationServerKey: urlBase64ToUint8Array(data.key),
           })
           const json = newSub.toJSON()
-          await pushApi.subscribe(json.endpoint, json.keys.p256dh, json.keys.auth)
+          await pushApi.subscribe(json.endpoint, json.keys.p256dh, json.keys.auth, isStandaloneDisplay())
           setSubscribed(true)
         } catch { /* silencieux */ }
       }
@@ -59,7 +65,7 @@ export function usePushNotifications() {
       })
 
       const json = sub.toJSON()
-      await pushApi.subscribe(json.endpoint, json.keys.p256dh, json.keys.auth)
+      await pushApi.subscribe(json.endpoint, json.keys.p256dh, json.keys.auth, isStandaloneDisplay())
       setSubscribed(true)
     } catch (e) {
       console.error('Push subscribe error', e)

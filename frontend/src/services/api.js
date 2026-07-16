@@ -188,10 +188,12 @@ export const dailyMysteryApi = {
 
 export const pushApi = {
   getVapidPublicKey: () => api.get('/push/vapid-public-key'),
-  subscribe: (endpoint, p256dh, auth) => api.post('/push/subscribe', { endpoint, p256dh, auth }),
+  subscribe: (endpoint, p256dh, auth, isStandalone) => api.post('/push/subscribe', { endpoint, p256dh, auth, isStandalone }),
   unsubscribe: (endpoint) => api.delete('/push/unsubscribe', { data: { endpoint } }),
   sendTest: (userIds) => api.post('/push/test', { userIds }),
   getSubscribers: () => api.get('/push/subscribers'),
+  getChallengeableMembers: () => api.get('/push/challengeable-members'),
+  sendChallenge: (targetUserIds, gameType, roomCode) => api.post('/push/challenge', { targetUserIds, gameType, roomCode }),
 }
 
 export default api

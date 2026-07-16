@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useUiChrome } from '../store/UiChromeContext'
 import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
@@ -10,6 +10,7 @@ import GameResultsScreen from '../components/games/GameResultsScreen'
 import DotsIcon from '../components/games/DotsIcon'
 import PlayerScoreBar from '../components/games/PlayerScoreBar'
 import Avatar from '../components/shared/Avatar'
+import ChallengeButton from '../components/games/ChallengeButton'
 
 const ROUND_PRESETS = [
   { label: 'Court', value: 8, emoji: '🌱', minRequired: 2 },
@@ -20,13 +21,15 @@ const ROUND_PRESETS = [
 export default function SuperlativeGameRemote() {
   const navigate = useNavigate()
   const location = useLocation()
-  const autoJoinCode = location.state?.autoJoinCode
+  const [searchParams] = useSearchParams()
+  const autoJoinCode = location.state?.autoJoinCode || searchParams.get('code')
   const { user } = useAuth()
   const { setHideChrome } = useUiChrome()
 
   const [step, setStep] = useState('menu')
   const [error, setError] = useState('')
   const [connecting, setConnecting] = useState(false)
+  const [roomCode, setRoomCode] = useState('')
 
   const [players, setPlayers] = useState([])
   const [roundCount, setRoundCount] = useState(0)
@@ -146,6 +149,7 @@ export default function SuperlativeGameRemote() {
       const res = await gameHub.createRoom('superlative')
       if (!res.success) { setError(res.error); return }
       setPlayers(res.players)
+      setRoomCode(res.code)
       setStep('lobby')
     } catch {
       setError('Impossible de créer la partie.')
@@ -164,6 +168,7 @@ export default function SuperlativeGameRemote() {
       const res = await gameHub.joinRoom(codeToJoin.toUpperCase())
       if (!res.success) { setError(res.error); return }
       setPlayers(res.players)
+      setRoomCode(res.code)
       setStep('lobby')
     } catch {
       setError('Impossible de rejoindre la partie.')
@@ -235,6 +240,8 @@ export default function SuperlativeGameRemote() {
               </div>
             ))}
           </div>
+
+          {isHost && <ChallengeButton gameType="superlative" roomCode={roomCode} />}
 
           {isHost ? (
             <button
