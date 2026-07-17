@@ -29,7 +29,7 @@ public static class QuizQuestionGenerator
         for (var i = 0; i < targets.Count; i++)
         {
             var target = targets[i];
-            var distractors = Shuffle(membersWithPhoto.Where(m => m.Id != target.Id).ToList()).Take(OptionsPerQuestion - 1);
+            var distractors = PickDistractors(membersWithPhoto, target);
             var options = Shuffle(new[] { target }.Concat(distractors).ToList())
                 .Select(m => new QuizOption { Key = m.Id.ToString(), Label = $"{m.FirstName} {m.LastName}" })
                 .ToList();
@@ -44,6 +44,22 @@ public static class QuizQuestionGenerator
         }
 
         return questions;
+    }
+
+    // Un seul prénom masculin/féminin au milieu de leurres de l'autre genre trahirait la bonne
+    // réponse : on pioche d'abord les leurres dans le même genre que le sujet, et on ne complète
+    // avec le reste que si le pool same-gender est trop petit pour remplir les options.
+    private static List<MemberInfo> PickDistractors(List<MemberInfo> pool, MemberInfo target)
+    {
+        var others = pool.Where(m => m.Id != target.Id).ToList();
+        if (string.IsNullOrWhiteSpace(target.Gender))
+            return Shuffle(others).Take(OptionsPerQuestion - 1).ToList();
+
+        var sameGender = Shuffle(others.Where(m => string.Equals(m.Gender, target.Gender, StringComparison.OrdinalIgnoreCase)).ToList());
+        if (sameGender.Count >= OptionsPerQuestion - 1) return sameGender.Take(OptionsPerQuestion - 1).ToList();
+
+        var rest = Shuffle(others.Where(m => !string.Equals(m.Gender, target.Gender, StringComparison.OrdinalIgnoreCase)).ToList());
+        return sameGender.Concat(rest).Take(OptionsPerQuestion - 1).ToList();
     }
 
     // Port de buildRelationshipRounds (frontend/src/utils/relationshipGame.js).
