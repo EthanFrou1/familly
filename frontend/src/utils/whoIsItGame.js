@@ -21,7 +21,7 @@ export function buildWhoIsItRounds(members, questionCount, excludeMemberIds = []
   const targets = shuffle(targetPool).slice(0, Math.min(questionCount, targetPool.length))
 
   return targets.map((target, i) => {
-    const distractors = shuffle(fullPool.filter(m => m.id !== target.id)).slice(0, OPTIONS_PER_QUESTION - 1)
+    const distractors = pickDistractors(fullPool, target)
     const options = shuffle([target, ...distractors]).map(m => ({ memberId: m.id, name: `${m.firstName} ${m.lastName}` }))
 
     return {
@@ -31,4 +31,18 @@ export function buildWhoIsItRounds(members, questionCount, excludeMemberIds = []
       options,
     }
   })
+}
+
+// Un seul prénom masculin/féminin au milieu de leurres de l'autre genre trahirait la bonne
+// réponse : on pioche d'abord les leurres dans le même genre que la cible, et on ne complète
+// avec le reste que si le pool same-gender est trop petit pour remplir les options.
+function pickDistractors(pool, target) {
+  const others = pool.filter(m => m.id !== target.id)
+  if (!target.gender) return shuffle(others).slice(0, OPTIONS_PER_QUESTION - 1)
+
+  const sameGender = shuffle(others.filter(m => m.gender === target.gender))
+  if (sameGender.length >= OPTIONS_PER_QUESTION - 1) return sameGender.slice(0, OPTIONS_PER_QUESTION - 1)
+
+  const rest = shuffle(others.filter(m => m.gender !== target.gender))
+  return [...sameGender, ...rest].slice(0, OPTIONS_PER_QUESTION - 1)
 }
