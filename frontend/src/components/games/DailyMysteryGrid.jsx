@@ -11,11 +11,11 @@ const CELL_STYLES = {
 const ARROWS = { up: '↑', down: '↓' }
 const NAME_COL_WIDTH = 64
 
-export default function DailyMysteryGrid({ rows, showBranchColumn }) {
+export default function DailyMysteryGrid({ rows, showBranchColumn, pendingGuess }) {
   const columns = ATTRIBUTE_COLUMNS.filter(c => c.key !== 'branch' || showBranchColumn)
   const gridTemplateColumns = `${NAME_COL_WIDTH}px repeat(${columns.length}, 1fr)`
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && !pendingGuess) {
     return (
       <p className="text-xs font-semibold text-gray-400 text-center py-6">
         Fais ta première proposition pour voir apparaître les indices.
@@ -76,7 +76,35 @@ export default function DailyMysteryGrid({ rows, showBranchColumn }) {
             })}
           </div>
         ))}
+
+        {pendingGuess && (
+          <div
+            className="items-center animate-[mystery-cell-in_320ms_ease-out_both]"
+            style={{ display: 'grid', gridTemplateColumns, gap: '4px' }}
+          >
+            <div className="flex items-center gap-1 min-w-0">
+              <Avatar src={pendingGuess.profilePictureUrl} name={`${pendingGuess.firstName} ${pendingGuess.lastName}`} size="xs" />
+              <span className="text-[10px] font-bold text-gray-700 truncate">{pendingGuess.firstName}</span>
+            </div>
+            <div
+              className="h-9 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center"
+              style={{ gridColumn: `span ${columns.length}` }}
+            >
+              <TypingDots />
+            </div>
+          </div>
+        )}
       </div>
     </div>
+  )
+}
+
+function TypingDots() {
+  return (
+    <span className="flex items-center gap-1">
+      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+      <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+    </span>
   )
 }
