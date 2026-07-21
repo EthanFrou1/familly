@@ -29,7 +29,7 @@ export default function DailyMysteryLegendSheet({ showBranchColumn, onClose }) {
 
         <div className="rounded-2xl bg-gray-50 p-4 space-y-2.5">
           <LegendRow color="bg-green-500" label="Trouvé / identique à la réponse" />
-          <LegendRow color="bg-amber-300" label="Proche (génération voisine ou même pays)" />
+          <LegendRow color="bg-amber-300" label="Proche (génération voisine ou ville à moins de 500km)" />
           <LegendRow color="bg-red-400" label="Différent" />
           <p className="text-xs text-gray-500 pt-1">
             ↑ / ↓ indiquent si la réponse est plus jeune/récente ou plus âgée/ancienne que le membre proposé.

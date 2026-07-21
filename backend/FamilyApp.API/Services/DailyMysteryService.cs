@@ -16,7 +16,12 @@ public class DailyMysteryService(AppDbContext db)
 
     public record MemberInfo(
         Guid Id, string FirstName, string LastName, string? Gender, Guid? FamilyId,
-        DateTime? BirthDate, bool IsAlive, string? City, string? Country, string? ProfilePictureUrl);
+        DateTime? BirthDate, bool IsAlive, string? City, string? Country,
+        double? Latitude, double? Longitude, string? ProfilePictureUrl);
+
+    // Seuil "Proche" pour la case Ville : deux villes du même pays mais séparées de 800km
+    // (ex. Lille/Marseille) n'ont rien de proche, d'où l'usage de la distance réelle plutôt que le pays.
+    private const double CityProximityKm = 500;
 
     public static DateOnly GetParisToday()
     {
@@ -199,7 +204,7 @@ public class DailyMysteryService(AppDbContext db)
         var guessedIds = JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? [];
 
         var members = await db.Members
-            .Select(m => new MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.IsAlive, m.City, m.Country, m.ProfilePictureUrl))
+            .Select(m => new MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.IsAlive, m.City, m.Country, m.Latitude, m.Longitude, m.ProfilePictureUrl))
             .ToListAsync();
         var memberMap = members.ToDictionary(m => m.Id);
 
@@ -235,7 +240,7 @@ public class DailyMysteryService(AppDbContext db)
     {
         var generation = BuildGenerationCell(relations, guess.Id, answer.Id);
         var birthYear = BuildNumericCell(guess.BirthDate?.Year, answer.BirthDate?.Year);
-        var city = BuildCityCell(guess.City, guess.Country, answer.City, answer.Country);
+        var city = BuildCityCell(guess, answer);
         var gender = new DailyGuessCellDto(Eq(guess.Gender, answer.Gender) ? "green" : "gray", null);
         var alive = new DailyGuessCellDto(guess.IsAlive == answer.IsAlive ? "green" : "gray", null);
         DailyGuessCellDto? branch = showBranch
@@ -260,12 +265,33 @@ public class DailyMysteryService(AppDbContext db)
         return new DailyGuessCellDto("gray", answerValue > guessValue ? "up" : "down", value);
     }
 
-    private static DailyGuessCellDto BuildCityCell(string? guessCity, string? guessCountry, string? answerCity, string? answerCountry)
+    private static DailyGuessCellDto BuildCityCell(MemberInfo guess, MemberInfo answer)
     {
-        if (Eq(guessCity, answerCity)) return new DailyGuessCellDto("green", null);
-        if (Eq(guessCountry, answerCountry)) return new DailyGuessCellDto("yellow", null);
-        return new DailyGuessCellDto("gray", null);
+        if (Eq(guess.City, answer.City)) return new DailyGuessCellDto("green", null);
+
+        if (guess.Latitude is not null && guess.Longitude is not null && answer.Latitude is not null && answer.Longitude is not null)
+        {
+            var distanceKm = HaversineDistanceKm(guess.Latitude.Value, guess.Longitude.Value, answer.Latitude.Value, answer.Longitude.Value);
+            return new DailyGuessCellDto(distanceKm <= CityProximityKm ? "yellow" : "gray", null);
+        }
+
+        // Fiches non géocodées (anciennes données sans coordonnées) : le pays reste le seul repère disponible.
+        return new DailyGuessCellDto(Eq(guess.Country, answer.Country) ? "yellow" : "gray", null);
     }
+
+    private static double HaversineDistanceKm(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double earthRadiusKm = 6371;
+        var dLat = DegreesToRadians(lat2 - lat1);
+        var dLon = DegreesToRadians(lon2 - lon1);
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(DegreesToRadians(lat1)) * Math.Cos(DegreesToRadians(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return earthRadiusKm * c;
+    }
+
+    private static double DegreesToRadians(double degrees) => degrees * Math.PI / 180;
 
     private static DailyGuessCellDto BuildGenerationCell(List<RelationshipLabelService.RelationInfo> relations, Guid guessId, Guid answerId)
     {
@@ -279,8 +305,11 @@ public class DailyMysteryService(AppDbContext db)
         return new DailyGuessCellDto(Math.Abs(gap.Value) == 1 ? "yellow" : "gray", direction);
     }
 
-    // BFS signé sur les relations ParentChild uniquement : +1 en descendant vers un enfant,
-    // -1 en remontant vers un parent. Renvoie l'écart de génération de toId par rapport à fromId.
+    // BFS signé sur toutes les relations : +1/-1 en traversant un lien ParentChild (enfant/parent),
+    // 0 en traversant conjoint/ex/partenaire/fratrie (même génération). Sans ce dernier cas, deux
+    // membres reliés uniquement via un·e conjoint·e (branches rapportées par mariage) n'avaient
+    // aucun chemin ParentChild direct et ressortaient "Différent" alors qu'ils sont de la même génération.
+    // Renvoie l'écart de génération de toId par rapport à fromId.
     private static int? GetGenerationGap(List<RelationshipLabelService.RelationInfo> relations, Guid fromId, Guid toId)
     {
         if (fromId == toId) return 0;
@@ -294,7 +323,7 @@ public class DailyMysteryService(AppDbContext db)
             var (id, depth) = queue.Dequeue();
             if (Math.Abs(depth) >= 8) continue;
 
-            var adjacent = relations.Where(r => r.Type == RelationType.ParentChild && (r.MemberAId == id || r.MemberBId == id));
+            var adjacent = relations.Where(r => r.MemberAId == id || r.MemberBId == id);
 
             foreach (var rel in adjacent)
             {
@@ -302,7 +331,7 @@ public class DailyMysteryService(AppDbContext db)
                 var nextId = isA ? rel.MemberBId : rel.MemberAId;
                 if (visited.Contains(nextId)) continue;
 
-                var nextDepth = depth + (isA ? 1 : -1);
+                var nextDepth = rel.Type == RelationType.ParentChild ? depth + (isA ? 1 : -1) : depth;
                 if (nextId == toId) return nextDepth;
 
                 visited.Add(nextId);
