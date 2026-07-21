@@ -28,6 +28,13 @@ public class DailyMysteryService(AppDbContext db)
         return DateOnly.FromDateTime(parisNow);
     }
 
+    // Lundi de la semaine contenant `date` (convention française/ISO 8601 : la semaine commence le lundi).
+    private static DateOnly GetStartOfWeek(DateOnly date)
+    {
+        var daysSinceMonday = ((int)date.DayOfWeek + 6) % 7; // Monday=0 ... Sunday=6
+        return date.AddDays(-daysSinceMonday);
+    }
+
     public async Task<DailyChallenge> GetOrCreateTodayChallengeAsync()
     {
         var today = GetParisToday();
@@ -109,6 +116,13 @@ public class DailyMysteryService(AppDbContext db)
             .Select(u => new { u.Id, u.Member })
             .ToListAsync();
 
+        // Nombre d'essais minimum parmi les tentatives déjà résolues aujourd'hui : sert à repérer
+        // le(s) plus rapide(s) pour l'aperçu de points (égalité incluse, comme GetPointsLeaderboardAsync).
+        var minSolvedAttempts = attempts.Where(a => a.Solved)
+            .Select(a => (JsonSerializer.Deserialize<List<Guid>>(a.GuessesJson) ?? []).Count)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+
         var participants = new List<DailyMysteryParticipantDto>();
         foreach (var attempt in attempts)
         {
@@ -118,10 +132,13 @@ public class DailyMysteryService(AppDbContext db)
             var guessedIds = JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? [];
             var status = attempt.Solved ? "solved" : "inProgress";
             var (streak, _) = await ComputeStreakAsync(attempt.UserId, challenge.Date);
+            int? pointsPreview = attempt.Solved
+                ? (guessedIds.Count == minSolvedAttempts ? FirstPlacePoints : OtherSolvedPoints)
+                : null;
 
             participants.Add(new DailyMysteryParticipantDto(
                 um.Member.Id, um.Member.FirstName, um.Member.LastName, um.Member.ProfilePictureUrl,
-                status, guessedIds.Count, streak));
+                status, guessedIds.Count, streak, pointsPreview));
         }
 
         return participants
@@ -176,14 +193,18 @@ public class DailyMysteryService(AppDbContext db)
     private const int FirstPlacePoints = 3;
     private const int OtherSolvedPoints = 1;
 
-    // Classement par points, toutes dates confondues. Le défi du jour en cours est exclu : de nouveaux
-    // essais peuvent encore arriver, ses points ne sont pas définitifs tant que le jour n'est pas terminé.
+    // Classement par points remis à zéro chaque semaine (lundi-dimanche) : ne compte que les jours
+    // de la semaine en cours. Comme rien n'est stocké (tout est recalculé à la lecture), le "reset"
+    // se fait tout seul dès qu'on change de semaine, sans tâche planifiée ni suppression de données.
+    // Le défi du jour en cours est exclu : de nouveaux essais peuvent encore arriver, ses points ne
+    // sont pas définitifs tant que le jour n'est pas terminé.
     public async Task<List<DailyMysteryPointsLeaderboardEntryDto>> GetPointsLeaderboardAsync()
     {
         var today = GetParisToday();
+        var weekStart = GetStartOfWeek(today);
 
         var pastChallengeIds = await db.DailyChallenges
-            .Where(c => c.Date < today)
+            .Where(c => c.Date >= weekStart && c.Date < today)
             .Select(c => c.Id)
             .ToListAsync();
 
