@@ -239,11 +239,9 @@ public class DailyMysteryService(AppDbContext db)
         var generation = BuildGenerationCell(relations, guess.Id, answer.Id);
         var birthYear = BuildNumericCell(guess.BirthDate?.Year, answer.BirthDate?.Year);
         var city = BuildCityCell(guess, answer);
-        var gender = new DailyGuessCellDto(Eq(guess.Gender, answer.Gender) ? "green" : "gray", null);
+        var gender = BuildGenderCell(guess.Gender, answer.Gender);
         var alive = new DailyGuessCellDto(guess.IsAlive == answer.IsAlive ? "green" : "gray", null);
-        DailyGuessCellDto? branch = showBranch
-            ? new DailyGuessCellDto(guess.FamilyId == answer.FamilyId ? "green" : "gray", null)
-            : null;
+        DailyGuessCellDto? branch = showBranch ? BuildBranchCell(guess.FamilyId, answer.FamilyId) : null;
 
         return new DailyGuessRowDto(
             guess.Id, guess.FirstName, guess.LastName, guess.ProfilePictureUrl,
@@ -258,9 +256,22 @@ public class DailyMysteryService(AppDbContext db)
     private static DailyGuessCellDto BuildNumericCell(int? guessValue, int? answerValue)
     {
         var value = guessValue?.ToString();
-        if (guessValue is null || answerValue is null) return new DailyGuessCellDto("gray", null, value);
+        if (guessValue is null || answerValue is null) return new DailyGuessCellDto("unknown", null, value);
         if (guessValue == answerValue) return new DailyGuessCellDto("green", null, value);
         return new DailyGuessCellDto("gray", answerValue > guessValue ? "up" : "down", value);
+    }
+
+    private static DailyGuessCellDto BuildGenderCell(string? guessGender, string? answerGender)
+    {
+        if (string.IsNullOrWhiteSpace(guessGender) || string.IsNullOrWhiteSpace(answerGender))
+            return new DailyGuessCellDto("unknown", null);
+        return new DailyGuessCellDto(Eq(guessGender, answerGender) ? "green" : "gray", null);
+    }
+
+    private static DailyGuessCellDto BuildBranchCell(Guid? guessFamilyId, Guid? answerFamilyId)
+    {
+        if (guessFamilyId is null || answerFamilyId is null) return new DailyGuessCellDto("unknown", null);
+        return new DailyGuessCellDto(guessFamilyId == answerFamilyId ? "green" : "gray", null);
     }
 
     // "Proche" se base sur le département français (déduit du code postal) plutôt que sur le pays :
@@ -295,7 +306,7 @@ public class DailyMysteryService(AppDbContext db)
     private static DailyGuessCellDto BuildGenerationCell(List<RelationshipLabelService.RelationInfo> relations, Guid guessId, Guid answerId)
     {
         var gap = GetGenerationGap(relations, guessId, answerId);
-        if (gap is null) return new DailyGuessCellDto("gray", null);
+        if (gap is null) return new DailyGuessCellDto("unknown", null);
         if (gap == 0) return new DailyGuessCellDto("green", null);
 
         // gap > 0 : la réponse est un descendant du membre proposé (génération plus jeune, donc "en bas" de l'arbre).
