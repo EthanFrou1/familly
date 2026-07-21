@@ -16,12 +16,10 @@ public class DailyMysteryService(AppDbContext db)
 
     public record MemberInfo(
         Guid Id, string FirstName, string LastName, string? Gender, Guid? FamilyId,
-        DateTime? BirthDate, bool IsAlive, string? City, string? Country,
-        double? Latitude, double? Longitude, string? ProfilePictureUrl);
+        DateTime? BirthDate, bool IsAlive, string? City, string? Country, string? PostalCode,
+        string? ProfilePictureUrl);
 
-    // Seuil "Proche" pour la case Ville : deux villes du même pays mais séparées de 800km
-    // (ex. Lille/Marseille) n'ont rien de proche, d'où l'usage de la distance réelle plutôt que le pays.
-    private const double CityProximityKm = 500;
+    private static readonly HashSet<string> FrenchCountryLabels = new(StringComparer.OrdinalIgnoreCase) { "france" };
 
     public static DateOnly GetParisToday()
     {
@@ -204,7 +202,7 @@ public class DailyMysteryService(AppDbContext db)
         var guessedIds = JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? [];
 
         var members = await db.Members
-            .Select(m => new MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.IsAlive, m.City, m.Country, m.Latitude, m.Longitude, m.ProfilePictureUrl))
+            .Select(m => new MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.IsAlive, m.City, m.Country, m.PostalCode, m.ProfilePictureUrl))
             .ToListAsync();
         var memberMap = members.ToDictionary(m => m.Id);
 
@@ -265,33 +263,34 @@ public class DailyMysteryService(AppDbContext db)
         return new DailyGuessCellDto("gray", answerValue > guessValue ? "up" : "down", value);
     }
 
+    // "Proche" se base sur le département français (déduit du code postal) plutôt que sur le pays :
+    // deux villes du même pays mais à des centaines de km (Lille/Marseille) n'ont rien de proche.
+    // Si l'un des deux membres n'est pas rattaché à un département identifiable (pays hors France,
+    // ou code postal manquant), la comparaison est "unknown" plutôt qu'un faux "Différent".
     private static DailyGuessCellDto BuildCityCell(MemberInfo guess, MemberInfo answer)
     {
         if (Eq(guess.City, answer.City)) return new DailyGuessCellDto("green", null);
 
-        if (guess.Latitude is not null && guess.Longitude is not null && answer.Latitude is not null && answer.Longitude is not null)
-        {
-            var distanceKm = HaversineDistanceKm(guess.Latitude.Value, guess.Longitude.Value, answer.Latitude.Value, answer.Longitude.Value);
-            return new DailyGuessCellDto(distanceKm <= CityProximityKm ? "yellow" : "gray", null);
-        }
+        var guessDept = GetFrenchDepartment(guess.Country, guess.PostalCode);
+        var answerDept = GetFrenchDepartment(answer.Country, answer.PostalCode);
+        if (guessDept is null || answerDept is null) return new DailyGuessCellDto("unknown", null);
 
-        // Fiches non géocodées (anciennes données sans coordonnées) : le pays reste le seul repère disponible.
-        return new DailyGuessCellDto(Eq(guess.Country, answer.Country) ? "yellow" : "gray", null);
+        return new DailyGuessCellDto(guessDept == answerDept ? "yellow" : "gray", null);
     }
 
-    private static double HaversineDistanceKm(double lat1, double lon1, double lat2, double lon2)
+    // Le code du département est déduit des 2 premiers chiffres du code postal (3 pour les DOM/COM :
+    // 971 Guadeloupe, 972 Martinique, ... 988 Nouvelle-Calédonie). Pas besoin d'un référentiel complet
+    // des départements/régions : seule l'égalité entre deux membres compte pour ce jeu.
+    private static string? GetFrenchDepartment(string? country, string? postalCode)
     {
-        const double earthRadiusKm = 6371;
-        var dLat = DegreesToRadians(lat2 - lat1);
-        var dLon = DegreesToRadians(lon2 - lon1);
-        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                Math.Cos(DegreesToRadians(lat1)) * Math.Cos(DegreesToRadians(lat2)) *
-                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-        return earthRadiusKm * c;
-    }
+        if (string.IsNullOrWhiteSpace(country) || !FrenchCountryLabels.Contains(country.Trim())) return null;
+        if (string.IsNullOrWhiteSpace(postalCode)) return null;
 
-    private static double DegreesToRadians(double degrees) => degrees * Math.PI / 180;
+        var digits = postalCode.Trim();
+        if (digits.Length < 2) return null;
+        if (digits.Length >= 3 && (digits.StartsWith("97") || digits.StartsWith("98"))) return digits[..3];
+        return digits[..2];
+    }
 
     private static DailyGuessCellDto BuildGenerationCell(List<RelationshipLabelService.RelationInfo> relations, Guid guessId, Guid answerId)
     {

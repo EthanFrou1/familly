@@ -5,6 +5,7 @@ const CELL_STYLES = {
   green: 'bg-green-500 text-white border-green-600/30',
   yellow: 'bg-amber-300 text-amber-900 border-amber-400/50',
   gray: 'bg-red-400 text-white border-red-500/30',
+  unknown: 'bg-gray-200 text-gray-500 border-gray-300',
 }
 
 const ARROWS = { up: '↑', down: '↓' }
@@ -66,7 +67,9 @@ export default function DailyMysteryGrid({ rows, showBranchColumn }) {
                       {cell.direction && <span className="text-[9px]">{ARROWS[cell.direction]}</span>}
                     </>
                   ) : (
-                    <span className="text-sm font-black">{cell.direction ? ARROWS[cell.direction] : row.isCorrect ? '✓' : ''}</span>
+                    <span className="text-sm font-black">
+                      {cell.status === 'unknown' ? '?' : cell.direction ? ARROWS[cell.direction] : row.isCorrect ? '✓' : ''}
+                    </span>
                   )}
                 </div>
               )

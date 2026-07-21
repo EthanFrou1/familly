@@ -153,6 +153,7 @@ export default function DailyMysteryGame() {
           <LegendDot className="bg-green-500" label="Trouvé" />
           <LegendDot className="bg-amber-300" label="Proche" />
           <LegendDot className="bg-red-400" label="Différent" />
+          <LegendDot className="bg-gray-200" label="Non défini" />
         </div>
         {state.maxStreak > 0 && (
           <span className="ml-auto text-xs font-semibold text-gray-400">Record : {state.maxStreak} 🔥</span>
