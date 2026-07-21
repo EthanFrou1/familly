@@ -109,6 +109,13 @@ public class DailyMysteryService(AppDbContext db)
             .Select(u => new { u.Id, u.Member })
             .ToListAsync();
 
+        // Nombre d'essais minimum parmi les tentatives déjà résolues aujourd'hui : sert à repérer
+        // le(s) plus rapide(s) pour l'aperçu de points (égalité incluse, comme GetPointsLeaderboardAsync).
+        var minSolvedAttempts = attempts.Where(a => a.Solved)
+            .Select(a => (JsonSerializer.Deserialize<List<Guid>>(a.GuessesJson) ?? []).Count)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+
         var participants = new List<DailyMysteryParticipantDto>();
         foreach (var attempt in attempts)
         {
@@ -118,10 +125,13 @@ public class DailyMysteryService(AppDbContext db)
             var guessedIds = JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? [];
             var status = attempt.Solved ? "solved" : "inProgress";
             var (streak, _) = await ComputeStreakAsync(attempt.UserId, challenge.Date);
+            int? pointsPreview = attempt.Solved
+                ? (guessedIds.Count == minSolvedAttempts ? FirstPlacePoints : OtherSolvedPoints)
+                : null;
 
             participants.Add(new DailyMysteryParticipantDto(
                 um.Member.Id, um.Member.FirstName, um.Member.LastName, um.Member.ProfilePictureUrl,
-                status, guessedIds.Count, streak));
+                status, guessedIds.Count, streak, pointsPreview));
         }
 
         return participants

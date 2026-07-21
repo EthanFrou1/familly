@@ -42,6 +42,8 @@ public record DailyMysteryStateDto(
 );
 
 // Status: "inProgress" | "solved". Streak : jours consécutifs résolus pour ce membre.
+// PointsPreview : points que rapporterait le jour s'il se terminait maintenant (null si pas encore
+// résolu) — le jour n'est définitif qu'une fois passé, voir GetPointsLeaderboardAsync.
 public record DailyMysteryParticipantDto(
     Guid MemberId,
     string FirstName,
@@ -49,7 +51,8 @@ public record DailyMysteryParticipantDto(
     string? ProfilePictureUrl,
     string Status,
     int AttemptsUsed,
-    int Streak
+    int Streak,
+    int? PointsPreview
 );
 
 // Classement toutes dates confondues, même forme que le leaderboard générique des autres jeux

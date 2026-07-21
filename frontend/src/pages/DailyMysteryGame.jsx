@@ -109,9 +109,14 @@ export default function DailyMysteryGame() {
                 Personne n'a encore relevé le défi aujourd'hui. Sois le premier ! 🚀
               </p>
             ) : (
-              participants.map(p => (
-                <ParticipantRow key={p.memberId} p={p} isMe={p.memberId === user?.memberId} />
-              ))
+              <>
+                <p className="text-xs font-semibold text-gray-400 px-0.5">
+                  Points définitifs à la fin de la journée — encore modifiables si quelqu'un fait mieux.
+                </p>
+                {participants.map(p => (
+                  <ParticipantRow key={p.memberId} p={p} isMe={p.memberId === user?.memberId} />
+                ))}
+              </>
             )
           ) : (
             loadingPoints ? (
@@ -350,6 +355,8 @@ function PointsRow({ e, rank, isMe }) {
 }
 
 function ParticipantRow({ p, isMe }) {
+  const isFirst = p.pointsPreview === FIRST_PLACE_POINTS
+
   return (
     <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${isMe ? 'bg-primary/10 border border-primary/30' : 'bg-white shadow-sm'}`}>
       <Avatar src={p.profilePictureUrl} name={`${p.firstName} ${p.lastName}`} size="sm" />
@@ -359,11 +366,22 @@ function ParticipantRow({ p, isMe }) {
         </p>
         <p className="text-xs text-gray-500">{(STATUS_LABELS[p.status] ?? STATUS_LABELS.inProgress)(p)}</p>
       </div>
-      {p.streak > 0 && (
-        <span className="shrink-0 text-xs font-bold text-amber-700 bg-amber-100 rounded-full px-2.5 py-1">
-          🔥 {p.streak}
-        </span>
-      )}
+      <div className="shrink-0 flex flex-col items-end gap-1">
+        {p.pointsPreview != null && (
+          <span
+            className={`text-xs font-bold rounded-full px-2.5 py-1 ${
+              isFirst ? 'bg-amber-100 text-amber-700' : 'bg-primary/10 text-primary'
+            }`}
+          >
+            {isFirst && '🏆 '}+{p.pointsPreview} pt{p.pointsPreview > 1 ? 's' : ''}
+          </span>
+        )}
+        {p.streak > 0 && (
+          <span className="text-xs font-bold text-amber-700 bg-amber-100 rounded-full px-2.5 py-1">
+            🔥 {p.streak}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
