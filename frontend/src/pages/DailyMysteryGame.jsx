@@ -8,13 +8,19 @@ import DailyMysteryGrid from '../components/games/DailyMysteryGrid'
 import DailyMysteryLegendSheet from '../components/games/DailyMysteryLegendSheet'
 import Avatar from '../components/shared/Avatar'
 
+const FIRST_PLACE_POINTS = 3
+const OTHER_SOLVED_POINTS = 1
+
 export default function DailyMysteryGame() {
   const { user } = useAuth()
   const { members } = useMembers()
   const navigate = useNavigate()
   const [step, setStep] = useState('lobby')
+  const [lobbyTab, setLobbyTab] = useState('today')
   const [participants, setParticipants] = useState(null)
   const [loadingParticipants, setLoadingParticipants] = useState(true)
+  const [pointsLeaderboard, setPointsLeaderboard] = useState(null)
+  const [loadingPoints, setLoadingPoints] = useState(true)
   const [state, setState] = useState(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -28,6 +34,11 @@ export default function DailyMysteryGame() {
       .then(({ data }) => setParticipants(data))
       .catch(() => setParticipants([]))
       .finally(() => setLoadingParticipants(false))
+
+    dailyMysteryApi.getPointsLeaderboard()
+      .then(({ data }) => setPointsLeaderboard(data))
+      .catch(() => setPointsLeaderboard([]))
+      .finally(() => setLoadingPoints(false))
   }, [])
 
   useEffect(() => {
@@ -84,17 +95,41 @@ export default function DailyMysteryGame() {
           <MysteryHeader onBack={() => navigate('/games')} subtitle="Qui a déjà relevé le défi aujourd'hui ?" />
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 space-y-2">
-          {loadingParticipants ? (
-            <p className="text-center text-sm font-semibold text-gray-400 py-10">Chargement…</p>
-          ) : participants.length === 0 ? (
-            <p className="text-center text-sm font-semibold text-gray-400 py-10">
-              Personne n'a encore relevé le défi aujourd'hui. Sois le premier ! 🚀
-            </p>
+        <div className="shrink-0 flex gap-2 px-4 pt-4">
+          <TabButton active={lobbyTab === 'today'} onClick={() => setLobbyTab('today')}>Aujourd'hui</TabButton>
+          <TabButton active={lobbyTab === 'global'} onClick={() => setLobbyTab('global')}>Classement global</TabButton>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-3 space-y-2">
+          {lobbyTab === 'today' ? (
+            loadingParticipants ? (
+              <p className="text-center text-sm font-semibold text-gray-400 py-10">Chargement…</p>
+            ) : participants.length === 0 ? (
+              <p className="text-center text-sm font-semibold text-gray-400 py-10">
+                Personne n'a encore relevé le défi aujourd'hui. Sois le premier ! 🚀
+              </p>
+            ) : (
+              participants.map(p => (
+                <ParticipantRow key={p.memberId} p={p} isMe={p.memberId === user?.memberId} />
+              ))
+            )
           ) : (
-            participants.map(p => (
-              <ParticipantRow key={p.memberId} p={p} isMe={p.memberId === user?.memberId} />
-            ))
+            loadingPoints ? (
+              <p className="text-center text-sm font-semibold text-gray-400 py-10">Chargement…</p>
+            ) : pointsLeaderboard.length === 0 ? (
+              <p className="text-center text-sm font-semibold text-gray-400 py-10">
+                Aucun point marqué pour l'instant. Reviens demain !
+              </p>
+            ) : (
+              <>
+                <p className="text-xs font-semibold text-gray-400 px-0.5">
+                  🏆 {FIRST_PLACE_POINTS} pts pour le/les plus rapide(s) du jour, {OTHER_SOLVED_POINTS} pt pour les autres réussites.
+                </p>
+                {pointsLeaderboard.map((e, i) => (
+                  <PointsRow key={e.memberId} e={e} rank={i + 1} isMe={e.memberId === user?.memberId} />
+                ))}
+              </>
+            )
           )}
         </div>
 
@@ -278,6 +313,40 @@ function LegendDot({ className, label }) {
 const STATUS_LABELS = {
   solved: p => `✅ Trouvé en ${p.attemptsUsed} essai${p.attemptsUsed > 1 ? 's' : ''}`,
   inProgress: p => `⏳ En cours (essai ${p.attemptsUsed})`,
+}
+
+function TabButton({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors ${
+        active ? 'bg-primary text-white' : 'bg-white text-gray-600 shadow-sm'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function PointsRow({ e, rank, isMe }) {
+  return (
+    <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${isMe ? 'bg-primary/10 border border-primary/30' : 'bg-white shadow-sm'}`}>
+      <span className="w-5 shrink-0 text-center text-sm font-bold text-gray-400">{rank}</span>
+      <Avatar src={e.profilePictureUrl} name={`${e.firstName} ${e.lastName}`} size="sm" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-gray-800 truncate">
+          {e.firstName} {e.lastName}{isMe ? ' (toi)' : ''}
+        </p>
+        <p className="text-xs text-gray-500">
+          {e.daysWon > 0 && `🏆 ${e.daysWon} victoire${e.daysWon > 1 ? 's' : ''} · `}
+          {e.daysPlayed} jour{e.daysPlayed > 1 ? 's' : ''} joué{e.daysPlayed > 1 ? 's' : ''}
+        </p>
+      </div>
+      <span className="shrink-0 text-xs font-bold text-primary bg-primary/10 rounded-full px-2.5 py-1">
+        {e.totalPoints} pt{e.totalPoints > 1 ? 's' : ''}
+      </span>
+    </div>
+  )
 }
 
 function ParticipantRow({ p, isMe }) {

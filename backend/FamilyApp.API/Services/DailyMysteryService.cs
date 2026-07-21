@@ -170,6 +170,75 @@ public class DailyMysteryService(AppDbContext db)
             .ToList();
     }
 
+    // Barème du jour : le(s) plus rapide(s) (nombre d'essais minimum parmi les gagnants) touchent
+    // FirstPlacePoints chacun, tous les autres gagnants touchent OtherSolvedPoints. En cas d'égalité
+    // sur le nombre d'essais, tout le monde à égalité reçoit les points de première place.
+    private const int FirstPlacePoints = 3;
+    private const int OtherSolvedPoints = 1;
+
+    // Classement par points, toutes dates confondues. Le défi du jour en cours est exclu : de nouveaux
+    // essais peuvent encore arriver, ses points ne sont pas définitifs tant que le jour n'est pas terminé.
+    public async Task<List<DailyMysteryPointsLeaderboardEntryDto>> GetPointsLeaderboardAsync()
+    {
+        var today = GetParisToday();
+
+        var pastChallengeIds = await db.DailyChallenges
+            .Where(c => c.Date < today)
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        var solvedAttempts = await db.DailyChallengeAttempts
+            .Where(a => a.Solved && pastChallengeIds.Contains(a.DailyChallengeId))
+            .ToListAsync();
+
+        var userIds = solvedAttempts.Select(a => a.UserId).Distinct().ToList();
+        var memberByUser = (await db.Users
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.Member })
+                .ToListAsync())
+            .ToDictionary(x => x.Id, x => x.Member);
+
+        var points = new Dictionary<Guid, int>();
+        var daysWon = new Dictionary<Guid, int>();
+        var daysPlayed = new Dictionary<Guid, int>();
+
+        foreach (var group in solvedAttempts.GroupBy(a => a.DailyChallengeId))
+        {
+            var dayResults = group
+                .Where(a => memberByUser.ContainsKey(a.UserId))
+                .Select(a => (
+                    MemberId: memberByUser[a.UserId].Id,
+                    AttemptsUsed: (JsonSerializer.Deserialize<List<Guid>>(a.GuessesJson) ?? []).Count))
+                .ToList();
+            if (dayResults.Count == 0) continue;
+
+            var minAttempts = dayResults.Min(r => r.AttemptsUsed);
+            foreach (var (memberId, attemptsUsed) in dayResults)
+            {
+                var isFirst = attemptsUsed == minAttempts;
+                points[memberId] = points.GetValueOrDefault(memberId) + (isFirst ? FirstPlacePoints : OtherSolvedPoints);
+                daysPlayed[memberId] = daysPlayed.GetValueOrDefault(memberId) + 1;
+                if (isFirst) daysWon[memberId] = daysWon.GetValueOrDefault(memberId) + 1;
+            }
+        }
+
+        var memberInfoById = memberByUser.Values
+            .GroupBy(m => m.Id)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        return points
+            .Select(kv =>
+            {
+                var member = memberInfoById[kv.Key];
+                return new DailyMysteryPointsLeaderboardEntryDto(
+                    member.Id, member.FirstName, member.LastName, member.ProfilePictureUrl,
+                    kv.Value, daysWon.GetValueOrDefault(kv.Key), daysPlayed.GetValueOrDefault(kv.Key));
+            })
+            .OrderByDescending(e => e.TotalPoints)
+            .ThenByDescending(e => e.DaysWon)
+            .ToList();
+    }
+
     public async Task<DailyMysteryStateDto> SubmitGuessAsync(Guid userId, Guid memberId)
     {
         if (!await db.Members.AnyAsync(m => m.Id == memberId))
