@@ -312,7 +312,7 @@ function LegendDot({ className, label }) {
 
 const STATUS_LABELS = {
   solved: p => `✅ Trouvé en ${p.attemptsUsed} essai${p.attemptsUsed > 1 ? 's' : ''}`,
-  inProgress: p => `⏳ En cours (essai ${p.attemptsUsed})`,
+  inProgress: p => `🕓 Pas encore trouvé (essai ${p.attemptsUsed})`,
 }
 
 function TabButton({ active, onClick, children }) {
