@@ -66,8 +66,9 @@ public record DailyMysteryLeaderboardEntryDto(
     double WinRate
 );
 
-// Classement par points toutes dates confondues (jour en cours exclu, non définitif).
-// DaysWon : nombre de jours où le membre fait partie du/des plus rapide(s) (égalité incluse).
+// Classement par points remis à zéro chaque semaine (lundi-dimanche ; jour en cours exclu, non
+// définitif). DaysWon : nombre de jours de la semaine où le membre fait partie du/des plus
+// rapide(s) (égalité incluse). DaysPlayed : nombre de jours de la semaine où il a résolu le défi.
 public record DailyMysteryPointsLeaderboardEntryDto(
     Guid MemberId,
     string FirstName,

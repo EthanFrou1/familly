@@ -97,7 +97,7 @@ export default function DailyMysteryGame() {
 
         <div className="shrink-0 flex gap-2 px-4 pt-4">
           <TabButton active={lobbyTab === 'today'} onClick={() => setLobbyTab('today')}>Aujourd'hui</TabButton>
-          <TabButton active={lobbyTab === 'global'} onClick={() => setLobbyTab('global')}>Classement global</TabButton>
+          <TabButton active={lobbyTab === 'week'} onClick={() => setLobbyTab('week')}>Cette semaine</TabButton>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-3 space-y-2">
@@ -123,12 +123,12 @@ export default function DailyMysteryGame() {
               <p className="text-center text-sm font-semibold text-gray-400 py-10">Chargement…</p>
             ) : pointsLeaderboard.length === 0 ? (
               <p className="text-center text-sm font-semibold text-gray-400 py-10">
-                Aucun point marqué pour l'instant. Reviens demain !
+                Aucun point marqué cette semaine. Reviens demain !
               </p>
             ) : (
               <>
                 <p className="text-xs font-semibold text-gray-400 px-0.5">
-                  🏆 {FIRST_PLACE_POINTS} pts pour le/les plus rapide(s) du jour, {OTHER_SOLVED_POINTS} pt pour les autres réussites.
+                  🏆 {FIRST_PLACE_POINTS} pts pour le/les plus rapide(s) du jour, {OTHER_SOLVED_POINTS} pt pour les autres réussites. Remis à zéro chaque lundi.
                 </p>
                 {pointsLeaderboard.map((e, i) => (
                   <PointsRow key={e.memberId} e={e} rank={i + 1} isMe={e.memberId === user?.memberId} />
@@ -333,11 +333,21 @@ function TabButton({ active, onClick, children }) {
   )
 }
 
+function CrownedAvatar({ crowned, ...avatarProps }) {
+  if (!crowned) return <Avatar {...avatarProps} />
+  return (
+    <span className="relative inline-block shrink-0">
+      <Avatar {...avatarProps} />
+      <span className="absolute -top-2.5 -right-1.5 text-sm rotate-12 select-none" aria-hidden="true">👑</span>
+    </span>
+  )
+}
+
 function PointsRow({ e, rank, isMe }) {
   return (
     <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${isMe ? 'bg-primary/10 border border-primary/30' : 'bg-white shadow-sm'}`}>
       <span className="w-5 shrink-0 text-center text-sm font-bold text-gray-400">{rank}</span>
-      <Avatar src={e.profilePictureUrl} name={`${e.firstName} ${e.lastName}`} size="sm" />
+      <CrownedAvatar crowned={rank === 1} src={e.profilePictureUrl} name={`${e.firstName} ${e.lastName}`} size="sm" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-gray-800 truncate">
           {e.firstName} {e.lastName}{isMe ? ' (toi)' : ''}
@@ -359,7 +369,7 @@ function ParticipantRow({ p, isMe }) {
 
   return (
     <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${isMe ? 'bg-primary/10 border border-primary/30' : 'bg-white shadow-sm'}`}>
-      <Avatar src={p.profilePictureUrl} name={`${p.firstName} ${p.lastName}`} size="sm" />
+      <CrownedAvatar crowned={isFirst} src={p.profilePictureUrl} name={`${p.firstName} ${p.lastName}`} size="sm" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-gray-800 truncate">
           {p.firstName} {p.lastName}{isMe ? ' (toi)' : ''}
