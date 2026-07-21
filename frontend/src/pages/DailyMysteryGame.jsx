@@ -19,6 +19,7 @@ export default function DailyMysteryGame() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [pendingGuess, setPendingGuess] = useState(null)
   const [showLegend, setShowLegend] = useState(false)
   const confettiFiredRef = useRef(false)
 
@@ -57,13 +58,16 @@ export default function DailyMysteryGame() {
 
   async function handleGuess(memberId) {
     if (submitting) return
+    const member = members.find(m => m.id === memberId)
     setSubmitting(true)
     setSearch('')
+    setPendingGuess(member ?? null)
     try {
       const { data } = await dailyMysteryApi.guess(memberId)
       setState(data)
     } catch {}
     setSubmitting(false)
+    setPendingGuess(null)
   }
 
   if (step === 'lobby') {
@@ -153,6 +157,7 @@ export default function DailyMysteryGame() {
           <LegendDot className="bg-green-500" label="Trouvé" />
           <LegendDot className="bg-amber-300" label="Proche" />
           <LegendDot className="bg-red-400" label="Différent" />
+          <LegendDot className="bg-gray-200" label="Non défini" />
         </div>
         {state.maxStreak > 0 && (
           <span className="ml-auto text-xs font-semibold text-gray-400">Record : {state.maxStreak} 🔥</span>
@@ -189,7 +194,7 @@ export default function DailyMysteryGame() {
       )}
 
       <div className="flex-1 min-h-0 px-4 pb-4">
-        <DailyMysteryGrid rows={state.rows} showBranchColumn={state.showBranchColumn} />
+        <DailyMysteryGrid rows={state.rows} showBranchColumn={state.showBranchColumn} pendingGuess={pendingGuess} />
       </div>
 
       {finished && (

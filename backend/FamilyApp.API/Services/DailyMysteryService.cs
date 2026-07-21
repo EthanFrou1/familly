@@ -16,7 +16,10 @@ public class DailyMysteryService(AppDbContext db)
 
     public record MemberInfo(
         Guid Id, string FirstName, string LastName, string? Gender, Guid? FamilyId,
-        DateTime? BirthDate, bool IsAlive, string? City, string? Country, string? ProfilePictureUrl);
+        DateTime? BirthDate, bool IsAlive, string? City, string? Country, string? PostalCode,
+        string? ProfilePictureUrl);
+
+    private static readonly HashSet<string> FrenchCountryLabels = new(StringComparer.OrdinalIgnoreCase) { "france" };
 
     public static DateOnly GetParisToday()
     {
@@ -199,7 +202,7 @@ public class DailyMysteryService(AppDbContext db)
         var guessedIds = JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? [];
 
         var members = await db.Members
-            .Select(m => new MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.IsAlive, m.City, m.Country, m.ProfilePictureUrl))
+            .Select(m => new MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.IsAlive, m.City, m.Country, m.PostalCode, m.ProfilePictureUrl))
             .ToListAsync();
         var memberMap = members.ToDictionary(m => m.Id);
 
@@ -235,12 +238,10 @@ public class DailyMysteryService(AppDbContext db)
     {
         var generation = BuildGenerationCell(relations, guess.Id, answer.Id);
         var birthYear = BuildNumericCell(guess.BirthDate?.Year, answer.BirthDate?.Year);
-        var city = BuildCityCell(guess.City, guess.Country, answer.City, answer.Country);
-        var gender = new DailyGuessCellDto(Eq(guess.Gender, answer.Gender) ? "green" : "gray", null);
+        var city = BuildCityCell(guess, answer);
+        var gender = BuildGenderCell(guess.Gender, answer.Gender);
         var alive = new DailyGuessCellDto(guess.IsAlive == answer.IsAlive ? "green" : "gray", null);
-        DailyGuessCellDto? branch = showBranch
-            ? new DailyGuessCellDto(guess.FamilyId == answer.FamilyId ? "green" : "gray", null)
-            : null;
+        DailyGuessCellDto? branch = showBranch ? BuildBranchCell(guess.FamilyId, answer.FamilyId) : null;
 
         return new DailyGuessRowDto(
             guess.Id, guess.FirstName, guess.LastName, guess.ProfilePictureUrl,
@@ -255,22 +256,57 @@ public class DailyMysteryService(AppDbContext db)
     private static DailyGuessCellDto BuildNumericCell(int? guessValue, int? answerValue)
     {
         var value = guessValue?.ToString();
-        if (guessValue is null || answerValue is null) return new DailyGuessCellDto("gray", null, value);
+        if (guessValue is null || answerValue is null) return new DailyGuessCellDto("unknown", null, value);
         if (guessValue == answerValue) return new DailyGuessCellDto("green", null, value);
         return new DailyGuessCellDto("gray", answerValue > guessValue ? "up" : "down", value);
     }
 
-    private static DailyGuessCellDto BuildCityCell(string? guessCity, string? guessCountry, string? answerCity, string? answerCountry)
+    private static DailyGuessCellDto BuildGenderCell(string? guessGender, string? answerGender)
     {
-        if (Eq(guessCity, answerCity)) return new DailyGuessCellDto("green", null);
-        if (Eq(guessCountry, answerCountry)) return new DailyGuessCellDto("yellow", null);
-        return new DailyGuessCellDto("gray", null);
+        if (string.IsNullOrWhiteSpace(guessGender) || string.IsNullOrWhiteSpace(answerGender))
+            return new DailyGuessCellDto("unknown", null);
+        return new DailyGuessCellDto(Eq(guessGender, answerGender) ? "green" : "gray", null);
+    }
+
+    private static DailyGuessCellDto BuildBranchCell(Guid? guessFamilyId, Guid? answerFamilyId)
+    {
+        if (guessFamilyId is null || answerFamilyId is null) return new DailyGuessCellDto("unknown", null);
+        return new DailyGuessCellDto(guessFamilyId == answerFamilyId ? "green" : "gray", null);
+    }
+
+    // "Proche" se base sur le département français (déduit du code postal) plutôt que sur le pays :
+    // deux villes du même pays mais à des centaines de km (Lille/Marseille) n'ont rien de proche.
+    // Si l'un des deux membres n'est pas rattaché à un département identifiable (pays hors France,
+    // ou code postal manquant), la comparaison est "unknown" plutôt qu'un faux "Différent".
+    private static DailyGuessCellDto BuildCityCell(MemberInfo guess, MemberInfo answer)
+    {
+        if (Eq(guess.City, answer.City)) return new DailyGuessCellDto("green", null);
+
+        var guessDept = GetFrenchDepartment(guess.Country, guess.PostalCode);
+        var answerDept = GetFrenchDepartment(answer.Country, answer.PostalCode);
+        if (guessDept is null || answerDept is null) return new DailyGuessCellDto("unknown", null);
+
+        return new DailyGuessCellDto(guessDept == answerDept ? "yellow" : "gray", null);
+    }
+
+    // Le code du département est déduit des 2 premiers chiffres du code postal (3 pour les DOM/COM :
+    // 971 Guadeloupe, 972 Martinique, ... 988 Nouvelle-Calédonie). Pas besoin d'un référentiel complet
+    // des départements/régions : seule l'égalité entre deux membres compte pour ce jeu.
+    private static string? GetFrenchDepartment(string? country, string? postalCode)
+    {
+        if (string.IsNullOrWhiteSpace(country) || !FrenchCountryLabels.Contains(country.Trim())) return null;
+        if (string.IsNullOrWhiteSpace(postalCode)) return null;
+
+        var digits = postalCode.Trim();
+        if (digits.Length < 2) return null;
+        if (digits.Length >= 3 && (digits.StartsWith("97") || digits.StartsWith("98"))) return digits[..3];
+        return digits[..2];
     }
 
     private static DailyGuessCellDto BuildGenerationCell(List<RelationshipLabelService.RelationInfo> relations, Guid guessId, Guid answerId)
     {
         var gap = GetGenerationGap(relations, guessId, answerId);
-        if (gap is null) return new DailyGuessCellDto("gray", null);
+        if (gap is null) return new DailyGuessCellDto("unknown", null);
         if (gap == 0) return new DailyGuessCellDto("green", null);
 
         // gap > 0 : la réponse est un descendant du membre proposé (génération plus jeune, donc "en bas" de l'arbre).
@@ -279,8 +315,11 @@ public class DailyMysteryService(AppDbContext db)
         return new DailyGuessCellDto(Math.Abs(gap.Value) == 1 ? "yellow" : "gray", direction);
     }
 
-    // BFS signé sur les relations ParentChild uniquement : +1 en descendant vers un enfant,
-    // -1 en remontant vers un parent. Renvoie l'écart de génération de toId par rapport à fromId.
+    // BFS signé sur toutes les relations : +1/-1 en traversant un lien ParentChild (enfant/parent),
+    // 0 en traversant conjoint/ex/partenaire/fratrie (même génération). Sans ce dernier cas, deux
+    // membres reliés uniquement via un·e conjoint·e (branches rapportées par mariage) n'avaient
+    // aucun chemin ParentChild direct et ressortaient "Différent" alors qu'ils sont de la même génération.
+    // Renvoie l'écart de génération de toId par rapport à fromId.
     private static int? GetGenerationGap(List<RelationshipLabelService.RelationInfo> relations, Guid fromId, Guid toId)
     {
         if (fromId == toId) return 0;
@@ -294,7 +333,7 @@ public class DailyMysteryService(AppDbContext db)
             var (id, depth) = queue.Dequeue();
             if (Math.Abs(depth) >= 8) continue;
 
-            var adjacent = relations.Where(r => r.Type == RelationType.ParentChild && (r.MemberAId == id || r.MemberBId == id));
+            var adjacent = relations.Where(r => r.MemberAId == id || r.MemberBId == id);
 
             foreach (var rel in adjacent)
             {
@@ -302,7 +341,7 @@ public class DailyMysteryService(AppDbContext db)
                 var nextId = isA ? rel.MemberBId : rel.MemberAId;
                 if (visited.Contains(nextId)) continue;
 
-                var nextDepth = depth + (isA ? 1 : -1);
+                var nextDepth = rel.Type == RelationType.ParentChild ? depth + (isA ? 1 : -1) : depth;
                 if (nextId == toId) return nextDepth;
 
                 visited.Add(nextId);
