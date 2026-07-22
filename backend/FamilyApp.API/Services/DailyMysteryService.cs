@@ -203,7 +203,7 @@ public class DailyMysteryService(AppDbContext db)
     // Barème du jour : le(s) plus rapide(s) (nombre d'essais minimum parmi les gagnants) touchent
     // FirstPlacePoints chacun, tous les autres gagnants touchent OtherSolvedPoints. En cas d'égalité
     // sur le nombre d'essais, tout le monde à égalité reçoit les points de première place.
-    private const int FirstPlacePoints = 3;
+    private const int FirstPlacePoints = 2;
     private const int OtherSolvedPoints = 1;
 
     // Classement par points remis à zéro chaque semaine (lundi-dimanche) : ne compte que les jours
