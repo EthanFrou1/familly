@@ -4,10 +4,9 @@ import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { matchesSearch, normalize } from '../utils/normalize'
 import { gamesApi } from '../services/api'
-import { shuffle } from '../utils/shuffle'
 import { PLAYER_COLORS } from '../utils/memoryGame'
 import {
-  assignRoles, checkWinner, maxUndercoverCount, MIN_PLAYERS,
+  assignRoles, buildSpeakingOrder, checkWinner, maxUndercoverCount, MIN_PLAYERS,
   ROLE_CIVILIAN, ROLE_UNDERCOVER, ROLE_MRWHITE,
 } from '../utils/undercoverGame'
 import GameModeScreen from '../components/games/GameModeScreen'
@@ -76,7 +75,7 @@ export default function UndercoverGame() {
 
   function handleNextReveal() {
     if (revealIndex + 1 >= players.length) {
-      setSpeakingOrder(shuffle(players))
+      setSpeakingOrder(buildSpeakingOrder(players))
       setSpeakerIndex(0)
       setStep('speaking')
     } else {
@@ -132,7 +131,7 @@ export default function UndercoverGame() {
 
   function handleContinueFromEliminated() {
     if (winner) { setStep('results'); return }
-    setSpeakingOrder(shuffle(players.filter(p => !p.eliminated)))
+    setSpeakingOrder(buildSpeakingOrder(players.filter(p => !p.eliminated)))
     setSpeakerIndex(0)
     setStep('speaking')
   }

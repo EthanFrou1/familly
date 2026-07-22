@@ -52,6 +52,17 @@ export function assignRoles(players, undercoverCount, mrWhiteCount) {
   })
 }
 
+// Mr. White n'a aucun mot : le faire parler en premier ne lui laisse rien sur quoi bluffer.
+// Règle de maison courante reproduite ici : jamais en première place de l'ordre de parole.
+export function buildSpeakingOrder(players) {
+  const order = shuffle(players)
+  if (order.length > 1 && order[0].role === ROLE_MRWHITE) {
+    const swapIndex = 1 + Math.floor(Math.random() * (order.length - 1))
+    ;[order[0], order[swapIndex]] = [order[swapIndex], order[0]]
+  }
+  return order
+}
+
 // Vérifie les conditions de victoire parmi les joueurs encore vivants.
 // Renvoie 'civilians' | 'undercover' | null (partie continue).
 export function checkWinner(alivePlayers) {
