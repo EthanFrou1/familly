@@ -59,6 +59,7 @@ builder.Services.AddScoped<PushNotificationService>();
 builder.Services.AddScoped<DuplicateDetectionService>();
 builder.Services.AddScoped<RelationValidationService>();
 builder.Services.AddScoped<DailyMysteryService>();
+builder.Services.AddScoped<FamilleEnOrService>();
 builder.Services.AddHostedService<PhotoCleanupService>();
 builder.Services.AddHostedService<BirthdayNotificationService>();
 builder.Services.AddSingleton<GameSessionStore>();

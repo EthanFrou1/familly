@@ -60,4 +60,10 @@ export const gameHub = {
   revealNextClue: () => getConnection().invoke('RevealNextClue'),
   forceResolveRound: () => getConnection().invoke('ForceResolveRound'),
   continueRound: () => getConnection().invoke('ContinueRound'),
+  assignTeam: (memberId, teamIndex) => getConnection().invoke('AssignTeam', memberId, teamIndex),
+  startFamilleEnOrGame: (roundCount) => getConnection().invoke('StartFamilleEnOrGame', roundCount),
+  buzz: () => getConnection().invoke('Buzz'),
+  submitTeamAnswer: (text) => getConnection().invoke('SubmitTeamAnswer', text),
+  forceResolveFamilleEnOrRound: () => getConnection().invoke('ForceResolveFamilleEnOrRound'),
+  continueFamilleEnOrRound: () => getConnection().invoke('ContinueFamilleEnOrRound'),
 }

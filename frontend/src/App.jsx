@@ -26,6 +26,9 @@ import RelationshipGameRemote from './pages/RelationshipGameRemote'
 import SuperlativeGameRemote from './pages/SuperlativeGameRemote'
 import WhoAmIGameRemote from './pages/WhoAmIGameRemote'
 import DailyMysteryGame from './pages/DailyMysteryGame'
+import FamilleEnOrSurvey from './pages/FamilleEnOrSurvey'
+import FamilleEnOrAdmin from './pages/FamilleEnOrAdmin'
+import FamilleEnOrGameRemote from './pages/FamilleEnOrGameRemote'
 import Leaderboard from './pages/Leaderboard'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
@@ -107,9 +110,12 @@ function ProtectedLayoutContent() {
           <Route path="/games/superlative/remote" element={<SuperlativeGameRemote />} />
           <Route path="/games/whoami/remote" element={<WhoAmIGameRemote />} />
           <Route path="/games/daily-mystery" element={<DailyMysteryGame />} />
+          <Route path="/games/famillenor/survey" element={<FamilleEnOrSurvey />} />
+          <Route path="/games/famillenor/remote" element={<FamilleEnOrGameRemote />} />
           <Route path="/games/leaderboard" element={<Leaderboard />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/duplicates" element={<Duplicates />} />
+          <Route path="/admin/famillenor" element={<FamilleEnOrAdmin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

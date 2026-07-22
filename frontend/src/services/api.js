@@ -189,6 +189,17 @@ export const dailyMysteryApi = {
   guess: (memberId) => api.post('/daily-mystery/guess', { memberId }),
 }
 
+export const familleEnOrApi = {
+  getQuestions: () => api.get('/famille-en-or/questions'),
+  submitAnswer: (key, text) => api.post(`/famille-en-or/questions/${key}/answer`, { text }),
+  getAdminQuestionDetail: (key) => api.get(`/famille-en-or/admin/questions/${key}/answers`),
+  createGroup: (key, answerIds, label) => api.post(`/famille-en-or/admin/questions/${key}/groups`, { answerIds, label }),
+  updateGroup: (groupId, label, answerIds) => api.put(`/famille-en-or/admin/groups/${groupId}`, { label, answerIds }),
+  deleteAnswer: (answerId) => api.delete(`/famille-en-or/admin/answers/${answerId}`),
+  markReady: (key) => api.post(`/famille-en-or/admin/questions/${key}/ready`),
+  markUnready: (key) => api.post(`/famille-en-or/admin/questions/${key}/unready`),
+}
+
 export const pushApi = {
   getVapidPublicKey: () => api.get('/push/vapid-public-key'),
   subscribe: (endpoint, p256dh, auth, isStandalone) => api.post('/push/subscribe', { endpoint, p256dh, auth, isStandalone }),

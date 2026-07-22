@@ -144,7 +144,7 @@ export default function Admin() {
       </div>
 
       {/* Quick access: Duplicates */}
-      <div className="px-4 pt-3">
+      <div className="px-4 pt-3 space-y-2">
         <button
           onClick={() => navigate('/admin/duplicates')}
           className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 active:scale-[0.99] transition-transform"
@@ -154,6 +154,22 @@ export default function Admin() {
             <div className="text-left">
               <p className="text-sm font-semibold text-gray-900">Doublons détectés</p>
               <p className="text-xs text-gray-400">Vérifier les membres probablement en doublon</p>
+            </div>
+          </div>
+          <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        <button
+          onClick={() => navigate('/admin/famillenor')}
+          className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-100 active:scale-[0.99] transition-transform"
+        >
+          <div className="flex items-center gap-3">
+            <span className="h-9 w-9 rounded-xl bg-amber-50 flex items-center justify-center text-lg">💰</span>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-gray-900">Famille en Or — curation</p>
+              <p className="text-xs text-gray-400">Regrouper les réponses du sondage par question</p>
             </div>
           </div>
           <svg className="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
