@@ -105,7 +105,20 @@ public class DailyMysteryService(AppDbContext db)
     public async Task<List<DailyMysteryParticipantDto>> GetTodayParticipantsAsync()
     {
         var challenge = await GetOrCreateTodayChallengeAsync();
+        return await GetParticipantsForChallengeAsync(challenge);
+    }
 
+    // Résultats de la veille (défi figé, ses points ne peuvent plus bouger) : renvoie null s'il n'y
+    // avait pas encore de défi hier (ex. tout premier jour d'utilisation de l'app).
+    public async Task<List<DailyMysteryParticipantDto>?> GetYesterdayParticipantsAsync()
+    {
+        var yesterday = GetParisToday().AddDays(-1);
+        var challenge = await db.DailyChallenges.FirstOrDefaultAsync(c => c.Date == yesterday);
+        return challenge is null ? null : await GetParticipantsForChallengeAsync(challenge);
+    }
+
+    private async Task<List<DailyMysteryParticipantDto>> GetParticipantsForChallengeAsync(DailyChallenge challenge)
+    {
         var attempts = await db.DailyChallengeAttempts
             .Where(a => a.DailyChallengeId == challenge.Id)
             .ToListAsync();
@@ -116,8 +129,8 @@ public class DailyMysteryService(AppDbContext db)
             .Select(u => new { u.Id, u.Member })
             .ToListAsync();
 
-        // Nombre d'essais minimum parmi les tentatives déjà résolues aujourd'hui : sert à repérer
-        // le(s) plus rapide(s) pour l'aperçu de points (égalité incluse, comme GetPointsLeaderboardAsync).
+        // Nombre d'essais minimum parmi les tentatives résolues ce jour-là : sert à repérer le(s)
+        // plus rapide(s) pour l'aperçu de points (égalité incluse, comme GetPointsLeaderboardAsync).
         var minSolvedAttempts = attempts.Where(a => a.Solved)
             .Select(a => (JsonSerializer.Deserialize<List<Guid>>(a.GuessesJson) ?? []).Count)
             .DefaultIfEmpty(int.MaxValue)
