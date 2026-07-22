@@ -253,7 +253,7 @@ export default function UndercoverGame() {
           >
             {speakerIndex + 1 >= speakingOrder.length ? 'Tout le monde est passé, voter' : 'Joueur suivant'}
           </button>
-          <AliveRoster players={alivePlayers} memberById={memberById} highlightUid={speaker.uid} />
+          <AliveRoster players={speakingOrder} memberById={memberById} highlightUid={speaker.uid} speakerIndex={speakerIndex} />
         </div>
       </div>
     )
@@ -471,18 +471,31 @@ function UndercoverPlayerSlot({ index, isSelf, slot, member, candidates, onChang
   )
 }
 
-function AliveRoster({ players, memberById, highlightUid }) {
+// `players` doit être dans l'ordre de parole (speakingOrder), pas juste la liste des vivants,
+// pour que l'ordre affiché soit exploitable dès le début du tour.
+function AliveRoster({ players, memberById, highlightUid, speakerIndex }) {
   return (
     <div className="w-full flex flex-wrap gap-2 justify-center">
-      {players.map(p => (
-        <div
-          key={p.uid}
-          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 ${p.uid === highlightUid ? 'bg-primary text-white' : 'bg-white shadow-sm'}`}
-        >
-          <Avatar member={memberById(p.memberId)} name={p.name} size="xs" />
-          <span className="text-xs font-semibold">{p.name.split(' ')[0]}</span>
-        </div>
-      ))}
+      {players.map((p, i) => {
+        const isCurrent = p.uid === highlightUid
+        const alreadySpoke = speakerIndex != null && i < speakerIndex
+        return (
+          <div
+            key={p.uid}
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 ${
+              isCurrent ? 'bg-primary text-white' : alreadySpoke ? 'bg-gray-100 text-gray-400' : 'bg-white shadow-sm'
+            }`}
+          >
+            <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+              isCurrent ? 'bg-white/25 text-white' : 'bg-gray-200 text-gray-500'
+            }`}>
+              {i + 1}
+            </span>
+            <Avatar member={memberById(p.memberId)} name={p.name} size="xs" />
+            <span className="text-xs font-semibold">{p.name.split(' ')[0]}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }

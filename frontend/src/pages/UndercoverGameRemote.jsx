@@ -33,6 +33,7 @@ export default function UndercoverGameRemote() {
   const [myRole, setMyRole] = useState(null)
   const [myWord, setMyWord] = useState(null)
   const [aliveMemberIds, setAliveMemberIds] = useState([])
+  const [speakingOrder, setSpeakingOrder] = useState([])
   const [phase, setPhase] = useState('clue')
   const [currentSpeakerMemberId, setCurrentSpeakerMemberId] = useState(null)
   const [voteProgress, setVoteProgress] = useState({ voted: 0, total: 0 })
@@ -93,6 +94,7 @@ export default function UndercoverGameRemote() {
       onHubEvent('UndercoverGameStarting', (payload) => {
         setPlayers(payload.players)
         setAliveMemberIds(payload.aliveMemberIds)
+        setSpeakingOrder(payload.speakingOrder)
         setCurrentSpeakerMemberId(payload.currentSpeakerMemberId)
         setPhase('clue')
         setMyVote(null)
@@ -133,6 +135,7 @@ export default function UndercoverGameRemote() {
       onHubEvent('UndercoverMrWhiteGuessResolved', (payload) => setMrWhiteGuessResult(payload)),
       onHubEvent('UndercoverNextRound', (payload) => {
         setAliveMemberIds(payload.aliveMemberIds)
+        setSpeakingOrder(payload.speakingOrder)
         setCurrentSpeakerMemberId(payload.currentSpeakerMemberId)
         setPhase('clue')
         setMyVote(null)
@@ -397,6 +400,32 @@ export default function UndercoverGameRemote() {
                   Joueur suivant
                 </button>
               )}
+
+              <div className="mt-6 flex flex-wrap gap-2 justify-center">
+                {speakingOrder.map((memberId, i) => {
+                  const p = players.find(pl => pl.memberId === memberId)
+                  if (!p) return null
+                  const isCurrent = memberId === currentSpeakerMemberId
+                  const speakerIdx = speakingOrder.indexOf(currentSpeakerMemberId)
+                  const alreadySpoke = speakerIdx >= 0 && i < speakerIdx
+                  return (
+                    <div
+                      key={memberId}
+                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 ${
+                        isCurrent ? 'bg-primary text-white' : alreadySpoke ? 'bg-gray-100 text-gray-400' : 'bg-white shadow-sm'
+                      }`}
+                    >
+                      <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                        isCurrent ? 'bg-white/25 text-white' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {i + 1}
+                      </span>
+                      <Avatar src={p.profilePictureUrl} name={p.name} size="xs" />
+                      <span className="text-xs font-semibold">{p.name.split(' ')[0]}</span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 
