@@ -7,6 +7,7 @@ import { dailyMysteryApi } from '../services/api'
 import DailyMysteryGrid from '../components/games/DailyMysteryGrid'
 import DailyMysteryLegendSheet from '../components/games/DailyMysteryLegendSheet'
 import Avatar from '../components/shared/Avatar'
+import { matchesSearch } from '../utils/normalize'
 
 const FIRST_PLACE_POINTS = 3
 const OTHER_SOLVED_POINTS = 1
@@ -59,11 +60,11 @@ export default function DailyMysteryGame() {
   const guessedIds = useMemo(() => new Set((state?.rows ?? []).map(r => r.memberId)), [state])
 
   const suggestions = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = search.trim()
     if (!q) return []
     return members
       .filter(m => !guessedIds.has(m.id))
-      .filter(m => `${m.firstName} ${m.lastName}`.toLowerCase().includes(q))
+      .filter(m => matchesSearch(`${m.firstName} ${m.lastName}`, q))
       .slice(0, 6)
   }, [search, members, guessedIds])
 
