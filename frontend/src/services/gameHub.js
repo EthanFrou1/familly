@@ -66,4 +66,10 @@ export const gameHub = {
   submitTeamAnswer: (text) => getConnection().invoke('SubmitTeamAnswer', text),
   forceResolveFamilleEnOrRound: () => getConnection().invoke('ForceResolveFamilleEnOrRound'),
   continueFamilleEnOrRound: () => getConnection().invoke('ContinueFamilleEnOrRound'),
+  startUndercoverGame: (undercoverCount, mrWhiteCount) => getConnection().invoke('StartUndercoverGame', undercoverCount, mrWhiteCount),
+  advanceUndercoverTurn: () => getConnection().invoke('AdvanceUndercoverTurn'),
+  submitUndercoverVote: (targetMemberId) => getConnection().invoke('SubmitUndercoverVote', targetMemberId),
+  forceResolveUndercoverVote: () => getConnection().invoke('ForceResolveUndercoverVote'),
+  submitMrWhiteGuess: (guess) => getConnection().invoke('SubmitMrWhiteGuess', guess),
+  continueUndercoverRound: () => getConnection().invoke('ContinueUndercoverRound'),
 }
