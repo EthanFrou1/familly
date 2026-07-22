@@ -45,9 +45,12 @@ PWA mobile-first privée pour une famille (~100 membres), accès sur invitation 
   - [x] Reconnexion tolérée en salon d'attente (avant lancement) : un même membre qui revient remplace son entrée fantôme au lieu d'être rejeté (utile après mise en arrière-plan/fermeture de la PWA)
   - [x] Défier des membres par notification push directement depuis le salon d'attente (lien direct vers la partie en cours) — uniquement les membres avec notifs activées **et** app installée en PWA (voir notes techniques)
   - [x] Chrono en direct pendant la partie (mm:ss, aligné sur le temps final sauvegardé)
-- [x] **Le Membre Mystère** — jeu quotidien façon Wordle (un membre à deviner par jour, pour toute la famille), essais illimités, grille de comparaison (génération, année de naissance, ville, sexe, famille, vivant/décédé), streak (jours consécutifs résolus) + record, classement dédié tous jours confondus (parties jouées/résolues, taux de réussite)
+- [x] **Le Membre Mystère** — jeu quotidien façon Wordle (un membre à deviner par jour, pour toute la famille), essais illimités, grille de comparaison (génération, année de naissance, ville [par département français, "non défini" hors France plutôt qu'un faux "différent"], sexe, famille, vivant/décédé), streak (jours consécutifs résolus) + record, classement dédié tous jours confondus (parties jouées/résolues, taux de réussite)
+  - [x] Lobby à onglets : Aujourd'hui (essais en cours) / Hier (résultats définitifs de la veille) / Cette semaine (points) — CTA masqué une fois le défi du jour déjà résolu
+  - [x] Classement à points remis à zéro chaque lundi : 2 pts pour qui trouve en le moins d'essais ce jour-là (égalité incluse), 1 pt pour les autres réussites — jour en cours toujours exclu tant qu'il n'est pas terminé (jamais de points provisoires)
 - [x] Classements : par jeu + classement global (moyenne des taux de victoire) + classement Membre Mystère (agrégé séparément, hors GameResult), podium (couronne 1er, médailles 2e/3e), tag "Vous"
-- [x] Historique des parties (Jeux → dernière partie + historique dépliable)
+- [x] Recherche de membre insensible aux accents (utilitaire `matchesSearch`) partout où on cherche un membre : jeux, arbre, fiches membres, admin, familles
+- [x] Historique des parties (Jeux → dernière partie + historique dépliable, limité aux 15 plus récentes tous jeux confondus)
 - [x] Stats sur le profil membre (parties jouées, victoires, défaites, meilleur temps sur Memory)
 - [x] Stats fun sur la Home ("Le boss du Memory", "Lanterne rouge")
 
