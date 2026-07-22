@@ -9,7 +9,7 @@ import DailyMysteryLegendSheet from '../components/games/DailyMysteryLegendSheet
 import Avatar from '../components/shared/Avatar'
 import { matchesSearch } from '../utils/normalize'
 
-const FIRST_PLACE_POINTS = 3
+const FIRST_PLACE_POINTS = 2
 const OTHER_SOLVED_POINTS = 1
 
 export default function DailyMysteryGame() {
