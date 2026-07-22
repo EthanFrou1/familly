@@ -1154,6 +1154,19 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         }),
     };
 
+    // Mr. White n'a aucun mot : le faire parler en premier ne lui laisse rien sur quoi bluffer.
+    // Règle de maison courante reproduite ici : jamais en première place de l'ordre de parole.
+    private static List<Guid> BuildUndercoverSpeakingOrder(GameSession session, List<Guid> aliveIds)
+    {
+        var order = aliveIds.OrderBy(_ => Random.Shared.Next()).ToList();
+        if (order.Count > 1 && session.UndercoverRoles[order[0]] == UndercoverRole.MrWhite)
+        {
+            var swapIndex = 1 + Random.Shared.Next(order.Count - 1);
+            (order[0], order[swapIndex]) = (order[swapIndex], order[0]);
+        }
+        return order;
+    }
+
     // Insensible à la casse et aux accents (comme l'utilitaire frontend utils/normalize.js), pour
     // que "crepes"/"Crêpes"/"crêpe " matchent tous le même libellé de groupe.
     private static string NormalizeAnswer(string s) =>
@@ -1201,7 +1214,7 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
             }
 
             session.UndercoverAliveMemberIds = session.Players.Select(p => p.MemberId).ToList();
-            session.UndercoverSpeakingOrder = session.UndercoverAliveMemberIds.OrderBy(_ => Random.Shared.Next()).ToList();
+            session.UndercoverSpeakingOrder = BuildUndercoverSpeakingOrder(session, session.UndercoverAliveMemberIds);
             session.UndercoverSpeakerIndex = 0;
             session.UndercoverPhase = "clue";
             session.UndercoverVotes.Clear();
@@ -1516,7 +1529,7 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
             lock (session)
             {
                 if (session.UndercoverPhase != "eliminated") return;
-                session.UndercoverSpeakingOrder = session.UndercoverAliveMemberIds.OrderBy(_ => Random.Shared.Next()).ToList();
+                session.UndercoverSpeakingOrder = BuildUndercoverSpeakingOrder(session, session.UndercoverAliveMemberIds);
                 session.UndercoverSpeakerIndex = 0;
                 session.UndercoverPhase = "clue";
 
