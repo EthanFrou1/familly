@@ -49,6 +49,7 @@ export default function GamesLobby() {
       .then(responses => {
         const merged = responses.flatMap(r => r.data)
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 15)
         setRecentResults(merged)
       })
       .catch(() => {})
