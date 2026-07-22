@@ -379,7 +379,7 @@ function PersonFocusSheet({ members, onSelect, onClose }) {
   }, [members, search])
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div ref={sheetRef} className="relative bg-white rounded-t-2xl max-h-[70vh] flex flex-col shadow-2xl" style={{ transition: 'transform 0.15s, max-height 0.15s' }}>
         {/* Handle */}
