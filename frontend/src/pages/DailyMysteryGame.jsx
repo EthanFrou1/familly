@@ -20,6 +20,8 @@ export default function DailyMysteryGame() {
   const [lobbyTab, setLobbyTab] = useState('today')
   const [participants, setParticipants] = useState(null)
   const [loadingParticipants, setLoadingParticipants] = useState(true)
+  const [yesterdayParticipants, setYesterdayParticipants] = useState(null)
+  const [loadingYesterday, setLoadingYesterday] = useState(true)
   const [pointsLeaderboard, setPointsLeaderboard] = useState(null)
   const [loadingPoints, setLoadingPoints] = useState(true)
   const [state, setState] = useState(null)
@@ -35,6 +37,11 @@ export default function DailyMysteryGame() {
       .then(({ data }) => setParticipants(data))
       .catch(() => setParticipants([]))
       .finally(() => setLoadingParticipants(false))
+
+    dailyMysteryApi.getYesterdayLeaderboard()
+      .then(({ data }) => setYesterdayParticipants(data))
+      .catch(() => setYesterdayParticipants([]))
+      .finally(() => setLoadingYesterday(false))
 
     dailyMysteryApi.getPointsLeaderboard()
       .then(({ data }) => setPointsLeaderboard(data))
@@ -88,7 +95,7 @@ export default function DailyMysteryGame() {
       ? 'Lancer le jeu'
       : myEntry.status === 'inProgress'
         ? `Continuer (essai ${myEntry.attemptsUsed})`
-        : 'Voir mon résultat'
+        : null
 
     return (
       <div className="h-full flex flex-col bg-surface">
@@ -98,6 +105,7 @@ export default function DailyMysteryGame() {
 
         <div className="shrink-0 flex gap-2 px-4 pt-4">
           <TabButton active={lobbyTab === 'today'} onClick={() => setLobbyTab('today')}>Aujourd'hui</TabButton>
+          <TabButton active={lobbyTab === 'yesterday'} onClick={() => setLobbyTab('yesterday')}>Hier</TabButton>
           <TabButton active={lobbyTab === 'week'} onClick={() => setLobbyTab('week')}>Cette semaine</TabButton>
         </div>
 
@@ -119,6 +127,23 @@ export default function DailyMysteryGame() {
                 ))}
               </>
             )
+          ) : lobbyTab === 'yesterday' ? (
+            loadingYesterday ? (
+              <p className="text-center text-sm font-semibold text-gray-400 py-10">Chargement…</p>
+            ) : !yesterdayParticipants || yesterdayParticipants.length === 0 ? (
+              <p className="text-center text-sm font-semibold text-gray-400 py-10">
+                Personne n'a relevé le défi hier.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs font-semibold text-gray-400 px-0.5">
+                  Résultats définitifs d'hier — {FIRST_PLACE_POINTS} pts pour qui a trouvé en le moins d'essais, {OTHER_SOLVED_POINTS} pt pour les autres réussites.
+                </p>
+                {yesterdayParticipants.map(p => (
+                  <ParticipantRow key={p.memberId} p={p} isMe={p.memberId === user?.memberId} />
+                ))}
+              </>
+            )
           ) : (
             loadingPoints ? (
               <p className="text-center text-sm font-semibold text-gray-400 py-10">Chargement…</p>
@@ -129,7 +154,7 @@ export default function DailyMysteryGame() {
             ) : (
               <>
                 <p className="text-xs font-semibold text-gray-400 px-0.5">
-                  🏆 {FIRST_PLACE_POINTS} pts pour le/les plus rapide(s) du jour, {OTHER_SOLVED_POINTS} pt pour les autres réussites. Remis à zéro chaque lundi.
+                  🏆 {FIRST_PLACE_POINTS} pts pour qui a trouvé en le moins d'essais ce jour-là, {OTHER_SOLVED_POINTS} pt pour les autres réussites. Remis à zéro chaque lundi.
                 </p>
                 {pointsLeaderboard.map((e, i) => (
                   <PointsRow key={e.memberId} e={e} rank={i + 1} isMe={e.memberId === user?.memberId} />
@@ -139,14 +164,16 @@ export default function DailyMysteryGame() {
           )}
         </div>
 
-        <div className="shrink-0 px-4 pb-4 pt-2">
-          <button
-            onClick={() => setStep('game')}
-            className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
-          >
-            {ctaLabel}
-          </button>
-        </div>
+        {ctaLabel && (
+          <div className="shrink-0 px-4 pb-4 pt-2">
+            <button
+              onClick={() => setStep('game')}
+              className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
+            >
+              {ctaLabel}
+            </button>
+          </div>
+        )}
 
         <div className="shrink-0 h-6" />
       </div>

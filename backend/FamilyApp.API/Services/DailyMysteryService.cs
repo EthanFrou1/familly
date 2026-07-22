@@ -105,7 +105,20 @@ public class DailyMysteryService(AppDbContext db)
     public async Task<List<DailyMysteryParticipantDto>> GetTodayParticipantsAsync()
     {
         var challenge = await GetOrCreateTodayChallengeAsync();
+        return await GetParticipantsForChallengeAsync(challenge);
+    }
 
+    // Résultats de la veille (défi figé, ses points ne peuvent plus bouger) : renvoie null s'il n'y
+    // avait pas encore de défi hier (ex. tout premier jour d'utilisation de l'app).
+    public async Task<List<DailyMysteryParticipantDto>?> GetYesterdayParticipantsAsync()
+    {
+        var yesterday = GetParisToday().AddDays(-1);
+        var challenge = await db.DailyChallenges.FirstOrDefaultAsync(c => c.Date == yesterday);
+        return challenge is null ? null : await GetParticipantsForChallengeAsync(challenge);
+    }
+
+    private async Task<List<DailyMysteryParticipantDto>> GetParticipantsForChallengeAsync(DailyChallenge challenge)
+    {
         var attempts = await db.DailyChallengeAttempts
             .Where(a => a.DailyChallengeId == challenge.Id)
             .ToListAsync();
@@ -116,8 +129,8 @@ public class DailyMysteryService(AppDbContext db)
             .Select(u => new { u.Id, u.Member })
             .ToListAsync();
 
-        // Nombre d'essais minimum parmi les tentatives déjà résolues aujourd'hui : sert à repérer
-        // le(s) plus rapide(s) pour l'aperçu de points (égalité incluse, comme GetPointsLeaderboardAsync).
+        // Nombre d'essais minimum parmi les tentatives résolues ce jour-là : sert à repérer le(s)
+        // plus rapide(s) pour l'aperçu de points (égalité incluse, comme GetPointsLeaderboardAsync).
         var minSolvedAttempts = attempts.Where(a => a.Solved)
             .Select(a => (JsonSerializer.Deserialize<List<Guid>>(a.GuessesJson) ?? []).Count)
             .DefaultIfEmpty(int.MaxValue)
@@ -366,17 +379,22 @@ public class DailyMysteryService(AppDbContext db)
 
     // "Proche" se base sur le département français (déduit du code postal) plutôt que sur le pays :
     // deux villes du même pays mais à des centaines de km (Lille/Marseille) n'ont rien de proche.
-    // Si l'un des deux membres n'est pas rattaché à un département identifiable (pays hors France,
-    // ou code postal manquant), la comparaison est "unknown" plutôt qu'un faux "Différent".
+    // Le département n'est calculable qu'en France : hors de France (ou code postal manquant), on ne
+    // peut pas dire "Proche", mais on sait déjà que les villes diffèrent (sinon Eq aurait matché) dès
+    // qu'elles sont toutes les deux renseignées : "unknown" est réservé au cas où l'une des deux villes
+    // est vraiment absente, pas au cas où on ne peut juste pas affiner en "Proche".
     private static DailyGuessCellDto BuildCityCell(MemberInfo guess, MemberInfo answer)
     {
         if (Eq(guess.City, answer.City)) return new DailyGuessCellDto("green", null);
+        if (string.IsNullOrWhiteSpace(guess.City) || string.IsNullOrWhiteSpace(answer.City))
+            return new DailyGuessCellDto("unknown", null);
 
         var guessDept = GetFrenchDepartment(guess.Country, guess.PostalCode);
         var answerDept = GetFrenchDepartment(answer.Country, answer.PostalCode);
-        if (guessDept is null || answerDept is null) return new DailyGuessCellDto("unknown", null);
+        if (guessDept is not null && answerDept is not null)
+            return new DailyGuessCellDto(guessDept == answerDept ? "yellow" : "gray", null);
 
-        return new DailyGuessCellDto(guessDept == answerDept ? "yellow" : "gray", null);
+        return new DailyGuessCellDto("gray", null);
     }
 
     // Le code du département est déduit des 2 premiers chiffres du code postal (3 pour les DOM/COM :
