@@ -22,6 +22,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<GameResult> GameResults => Set<GameResult>();
     public DbSet<DailyChallenge> DailyChallenges => Set<DailyChallenge>();
     public DbSet<DailyChallengeAttempt> DailyChallengeAttempts => Set<DailyChallengeAttempt>();
+    public DbSet<FamilleEnOrAnswer> FamilleEnOrAnswers => Set<FamilleEnOrAnswer>();
+    public DbSet<FamilleEnOrAnswerGroup> FamilleEnOrAnswerGroups => Set<FamilleEnOrAnswerGroup>();
+    public DbSet<FamilleEnOrQuestionState> FamilleEnOrQuestionStates => Set<FamilleEnOrQuestionState>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -136,6 +139,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(a => new { a.DailyChallengeId, a.UserId }).IsUnique();
             e.HasOne(a => a.DailyChallenge).WithMany().HasForeignKey(a => a.DailyChallengeId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<FamilleEnOrAnswerGroup>(e =>
+        {
+            e.HasKey(g => g.Id);
+            e.Property(g => g.Label).HasMaxLength(200).IsRequired();
+        });
+
+        b.Entity<FamilleEnOrAnswer>(e =>
+        {
+            e.HasKey(a => a.Id);
+            e.HasIndex(a => new { a.QuestionKey, a.MemberId }).IsUnique();
+            e.HasOne(a => a.Member).WithMany().HasForeignKey(a => a.MemberId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(a => a.Group).WithMany().HasForeignKey(a => a.GroupId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<FamilleEnOrQuestionState>(e =>
+        {
+            e.HasKey(s => s.QuestionKey);
         });
     }
 }

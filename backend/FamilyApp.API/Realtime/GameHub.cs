@@ -1,25 +1,29 @@
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using FamilyApp.API.Data;
 using FamilyApp.API.DTOs;
 using FamilyApp.API.Models;
+using FamilyApp.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace FamilyApp.API.Realtime;
 
-public record PlayerDto(Guid MemberId, string Name, string? ProfilePictureUrl, int ColorIndex, bool IsHost, int Score);
+public record PlayerDto(Guid MemberId, string Name, string? ProfilePictureUrl, int ColorIndex, bool IsHost, int Score, int? TeamIndex);
 
 [Authorize]
-public class GameHub(AppDbContext db, GameSessionStore store) : Hub
+public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService famillenorService) : Hub
 {
     private const int MinPlayers = 2;
     private const int DefaultMaxPlayers = 4;
+    private const int FamilleEnOrMinPlayersPerTeam = 2;
     private static readonly Dictionary<string, int> MaxPlayersByGameType = new()
     {
         ["superlative"] = 10,
         ["whoami"] = 10,
+        ["famillenor"] = 8,
     };
 
     private static int MaxPlayersFor(string gameType) => MaxPlayersByGameType.GetValueOrDefault(gameType, DefaultMaxPlayers);
@@ -100,6 +104,27 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
         if (session is not null) await HandleLeaveAsync(session, Context.ConnectionId);
+    }
+
+    // (famillenor) L'hôte assigne chaque joueur à l'équipe 0 ou 1 avant de lancer la partie.
+    public async Task AssignTeam(Guid memberId, int teamIndex)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || session.Started || teamIndex is not (0 or 1)) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        List<PlayerDto> playerDtos;
+        lock (session)
+        {
+            var target = session.Players.FirstOrDefault(p => p.MemberId == memberId);
+            if (target is null) return;
+            target.TeamIndex = teamIndex;
+            playerDtos = ToPlayerDtos(session);
+        }
+
+        await Clients.Group(session.Code).SendAsync("PlayerJoined", playerDtos);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -824,6 +849,315 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         }
     }
 
+    // Démarre "Une Famille en Or" : contrairement aux autres jeux, les joueurs sont répartis en 2
+    // équipes (assignées en lobby via AssignTeam) et chaque round passe par plusieurs phases
+    // (face-off, contrôle, vol) au lieu d'une simple soumission simultanée — voir SubmitTeamAnswer.
+    public async Task StartFamilleEnOrGame(int roundCount)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || session.Started || session.GameType != "famillenor") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        var team0Count = session.Players.Count(p => p.TeamIndex == 0);
+        var team1Count = session.Players.Count(p => p.TeamIndex == 1);
+        if (team0Count < FamilleEnOrMinPlayersPerTeam || team1Count < FamilleEnOrMinPlayersPerTeam)
+            return;
+
+        var rounds = await famillenorService.PickRandomReadyRoundsAsync(roundCount);
+        if (rounds.Count == 0) return;
+
+        object payload;
+        lock (session)
+        {
+            session.FamilleEnOrRounds = rounds;
+            session.FamilleEnOrRoundIndex = 0;
+            session.FamilleEnOrTeamRepIndex.Clear();
+            session.Started = true;
+            session.StartedAt = DateTime.UtcNow;
+            foreach (var p in session.Players) p.Score = 0;
+
+            session.FamilleEnOrPhase = "faceoff";
+            session.FamilleEnOrControllingTeamIndex = null;
+            session.FamilleEnOrStrikes = 0;
+            session.FamilleEnOrRoundPot = 0;
+            session.FamilleEnOrFaceOffMemberIds = PickFaceOffReps(session);
+
+            payload = new
+            {
+                players = ToPlayerDtos(session),
+                roundCount = rounds.Count,
+                round = ToPublicFamilleEnOrRound(rounds[0]),
+                faceOffMemberIds = session.FamilleEnOrFaceOffMemberIds,
+            };
+        }
+
+        await Clients.Group(session.Code).SendAsync("FamilleEnOrRoundStarting", payload);
+        await BroadcastRoomsChangedAsync();
+    }
+
+    // Le premier des 2 représentants du face-off à appeler Buzz() gagne la main pour son équipe
+    // (pas de "deuxième chance" pour l'autre représentant — simplification assumée, voir le plan).
+    public async Task Buzz()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused || session.GameType != "famillenor") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null) return;
+
+        object? payload = null;
+        lock (session)
+        {
+            if (session.FamilleEnOrPhase != "faceoff") return;
+            if (!session.FamilleEnOrFaceOffMemberIds.Contains(caller.MemberId)) return;
+            if (session.FamilleEnOrControllingTeamIndex is not null) return;
+
+            session.FamilleEnOrControllingTeamIndex = caller.TeamIndex;
+            session.FamilleEnOrPhase = "control";
+            payload = new { winnerMemberId = caller.MemberId, teamIndex = caller.TeamIndex };
+        }
+
+        if (payload is not null) await Clients.Group(session.Code).SendAsync("BuzzWon", payload);
+    }
+
+    // Soumission de réponse pendant le contrôle (n'importe quel membre de l'équipe qui a la main)
+    // ou pendant le vol (n'importe quel membre de l'équipe adverse, un seul essai collectif).
+    public async Task SubmitTeamAnswer(string text)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused || session.GameType != "famillenor") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || caller.TeamIndex is null) return;
+
+        object? revealPayload = null;
+        object? strikePayload = null;
+        object? stealPhasePayload = null;
+        object? resolvedPayload = null;
+
+        lock (session)
+        {
+            if (session.FamilleEnOrRoundIndex >= session.FamilleEnOrRounds.Count) return;
+            var round = session.FamilleEnOrRounds[session.FamilleEnOrRoundIndex];
+            var normalized = NormalizeAnswer(text);
+            if (normalized.Length == 0) return;
+
+            if (session.FamilleEnOrPhase == "control")
+            {
+                if (caller.TeamIndex != session.FamilleEnOrControllingTeamIndex) return;
+
+                var slotIndex = round.Slots.FindIndex(s => !s.Revealed && NormalizeAnswer(s.Label) == normalized);
+                if (slotIndex >= 0)
+                {
+                    round.Slots[slotIndex].Revealed = true;
+                    session.FamilleEnOrRoundPot += round.Slots[slotIndex].Points;
+                    var allRevealed = round.Slots.All(s => s.Revealed);
+                    revealPayload = new
+                    {
+                        slotIndex,
+                        label = round.Slots[slotIndex].Label,
+                        points = round.Slots[slotIndex].Points,
+                        pot = session.FamilleEnOrRoundPot,
+                        allRevealed,
+                    };
+
+                    if (allRevealed)
+                        resolvedPayload = ResolveFamilleEnOrRoundLocked(session, session.FamilleEnOrControllingTeamIndex!.Value, session.FamilleEnOrRoundPot, round);
+                }
+                else
+                {
+                    session.FamilleEnOrStrikes++;
+                    strikePayload = new { strikes = session.FamilleEnOrStrikes };
+                    if (session.FamilleEnOrStrikes >= 3)
+                    {
+                        session.FamilleEnOrPhase = "steal";
+                        stealPhasePayload = new { stealingTeamIndex = 1 - session.FamilleEnOrControllingTeamIndex!.Value };
+                    }
+                }
+            }
+            else if (session.FamilleEnOrPhase == "steal")
+            {
+                var stealingTeamIndex = 1 - session.FamilleEnOrControllingTeamIndex!.Value;
+                if (caller.TeamIndex != stealingTeamIndex) return;
+
+                var matched = round.Slots.Any(s => !s.Revealed && NormalizeAnswer(s.Label) == normalized);
+                var totalPoints = round.Slots.Sum(s => s.Points);
+
+                resolvedPayload = matched
+                    ? ResolveFamilleEnOrRoundLocked(session, stealingTeamIndex, totalPoints, round)
+                    : ResolveFamilleEnOrRoundLocked(session, session.FamilleEnOrControllingTeamIndex!.Value, session.FamilleEnOrRoundPot, round);
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        if (revealPayload is not null) await Clients.Group(session.Code).SendAsync("AnswerRevealed", revealPayload);
+        if (strikePayload is not null) await Clients.Group(session.Code).SendAsync("StrikeAdded", strikePayload);
+        if (stealPhasePayload is not null) await Clients.Group(session.Code).SendAsync("StealPhase", stealPhasePayload);
+        if (resolvedPayload is not null) await Clients.Group(session.Code).SendAsync("FamilleEnOrRoundResolved", resolvedPayload);
+    }
+
+    // Résout le round en cours : crédite les points à l'équipe gagnante (tous ses membres reçoivent
+    // le même score cumulé, qui sert directement de Score final par joueur à la sauvegarde du
+    // résultat) et révèle le plateau complet. Doit être appelée à l'intérieur d'un lock(session).
+    private static object ResolveFamilleEnOrRoundLocked(GameSession session, int winningTeamIndex, int points, FamilleEnOrRound round)
+    {
+        foreach (var p in session.Players.Where(p => p.TeamIndex == winningTeamIndex)) p.Score += points;
+
+        var isLastRound = session.FamilleEnOrRoundIndex + 1 >= session.FamilleEnOrRounds.Count;
+        session.FamilleEnOrRoundIndex++;
+        if (isLastRound) session.Finished = true;
+
+        return new
+        {
+            winningTeamIndex,
+            pointsAwarded = points,
+            slots = round.Slots.Select(s => new { label = s.Label, points = s.Points }),
+            isLastRound,
+        };
+    }
+
+    // Échappatoire hôte si le round est bloqué (ex. personne ne buzz) : résout avec le pot actuel,
+    // au bénéfice de l'équipe au contrôle si une équipe a effectivement buzzé, sinon personne.
+    public async Task ForceResolveFamilleEnOrRound()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused || session.GameType != "famillenor") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        object? resolvedPayload = null;
+        lock (session)
+        {
+            if (session.FamilleEnOrRoundIndex >= session.FamilleEnOrRounds.Count) return;
+            var round = session.FamilleEnOrRounds[session.FamilleEnOrRoundIndex];
+            var winningTeamIndex = session.FamilleEnOrControllingTeamIndex ?? 0;
+            resolvedPayload = ResolveFamilleEnOrRoundLocked(session, winningTeamIndex, session.FamilleEnOrRoundPot, round);
+        }
+        if (resolvedPayload is not null) await Clients.Group(session.Code).SendAsync("FamilleEnOrRoundResolved", resolvedPayload);
+    }
+
+    // L'hôte décide quand enchaîner (round suivant ou résultats finaux), comme ContinueRound.
+    public async Task ContinueFamilleEnOrRound()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.GameType != "famillenor") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        if (session.Finished)
+        {
+            GameResult? resultToSave = null;
+            object? finishedPayload = null;
+
+            lock (session)
+            {
+                if (session.ResultSaved) return;
+                session.ResultSaved = true;
+
+                var durationSeconds = session.StartedAt is null ? 0 : (int)((DateTime.UtcNow - session.StartedAt.Value).TotalSeconds - session.PausedSeconds);
+
+                // Contrairement aux jeux individuels : le score est partagé par équipe (tous les
+                // coéquipiers ont le même total), donc "égalité" ne veut dire quelque chose qu'au
+                // niveau des 2 équipes, pas du nombre de joueurs à égalité de score.
+                var team0Score = session.Players.FirstOrDefault(p => p.TeamIndex == 0)?.Score ?? 0;
+                var team1Score = session.Players.FirstOrDefault(p => p.TeamIndex == 1)?.Score ?? 0;
+                var winnerName = team0Score == team1Score ? null : (team0Score > team1Score ? "Équipe 1" : "Équipe 2");
+
+                var playersJson = JsonSerializer.Serialize(session.Players
+                    .Select(p => new GamePlayerScoreDto(p.Name, p.Score, p.MemberId, false)));
+
+                resultToSave = new GameResult
+                {
+                    GameType = session.GameType,
+                    PairsCount = session.FamilleEnOrRounds.Count,
+                    PlayerCount = session.Players.Count,
+                    PlayersJson = playersJson,
+                    WinnerName = winnerName,
+                    DurationSeconds = durationSeconds,
+                    PlayedByUserId = Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!),
+                };
+
+                finishedPayload = new
+                {
+                    players = session.Players.Select(p => new { memberId = p.MemberId, name = p.Name, score = p.Score, colorIndex = p.ColorIndex, teamIndex = p.TeamIndex }),
+                    durationSeconds,
+                    winnerName,
+                };
+            }
+
+            if (resultToSave is not null)
+            {
+                db.GameResults.Add(resultToSave);
+                await db.SaveChangesAsync();
+            }
+            if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
+        }
+        else
+        {
+            object? nextRoundPayload = null;
+            lock (session)
+            {
+                if (session.FamilleEnOrRoundIndex >= session.FamilleEnOrRounds.Count) return;
+                session.FamilleEnOrPhase = "faceoff";
+                session.FamilleEnOrControllingTeamIndex = null;
+                session.FamilleEnOrStrikes = 0;
+                session.FamilleEnOrRoundPot = 0;
+                session.FamilleEnOrFaceOffMemberIds = PickFaceOffReps(session);
+
+                nextRoundPayload = new
+                {
+                    round = ToPublicFamilleEnOrRound(session.FamilleEnOrRounds[session.FamilleEnOrRoundIndex]),
+                    faceOffMemberIds = session.FamilleEnOrFaceOffMemberIds,
+                };
+            }
+            if (nextRoundPayload is not null) await Clients.Group(session.Code).SendAsync("FamilleEnOrNextRound", nextRoundPayload);
+        }
+    }
+
+    // Choisit les 2 représentants du prochain face-off, un par équipe, par rotation dans le
+    // roster (pour que ce ne soit pas toujours les 2 mêmes joueurs qui buzzent). Doit être appelée
+    // à l'intérieur d'un lock(session).
+    private static List<Guid> PickFaceOffReps(GameSession session)
+    {
+        var reps = new List<Guid>();
+        for (var team = 0; team < 2; team++)
+        {
+            var roster = session.Players.Where(p => p.TeamIndex == team).OrderBy(p => p.ColorIndex).ToList();
+            if (roster.Count == 0) continue;
+            var idx = session.FamilleEnOrTeamRepIndex.GetValueOrDefault(team) % roster.Count;
+            session.FamilleEnOrTeamRepIndex[team] = idx + 1;
+            reps.Add(roster[idx].MemberId);
+        }
+        return reps;
+    }
+
+    // Ne révèle jamais le label/les points d'un slot non encore trouvé (sinon la réponse est
+    // visible dans l'onglet réseau du navigateur).
+    private static object ToPublicFamilleEnOrRound(FamilleEnOrRound round) => new
+    {
+        questionKey = round.QuestionKey,
+        prompt = round.Prompt,
+        slots = round.Slots.Select(s => new
+        {
+            label = s.Revealed ? s.Label : null,
+            points = s.Revealed ? s.Points : (int?)null,
+            revealed = s.Revealed,
+        }),
+    };
+
+    // Insensible à la casse et aux accents (comme l'utilitaire frontend utils/normalize.js), pour
+    // que "crepes"/"Crêpes"/"crêpe " matchent tous le même libellé de groupe.
+    private static string NormalizeAnswer(string s) =>
+        string.Concat(s.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD)
+            .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark));
+
     public async Task PlayAgain()
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
@@ -852,6 +1186,14 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
             session.PausedAt = null;
             session.PausedSeconds = 0;
             session.PausedByColorIndex = null;
+            session.FamilleEnOrRounds = [];
+            session.FamilleEnOrRoundIndex = 0;
+            session.FamilleEnOrPhase = "faceoff";
+            session.FamilleEnOrControllingTeamIndex = null;
+            session.FamilleEnOrStrikes = 0;
+            session.FamilleEnOrRoundPot = 0;
+            session.FamilleEnOrFaceOffMemberIds = [];
+            session.FamilleEnOrTeamRepIndex.Clear();
             foreach (var p in session.Players) p.Score = 0;
         }
 
@@ -892,7 +1234,7 @@ public class GameHub(AppDbContext db, GameSessionStore store) : Hub
         Clients.All.SendAsync("RoomsChanged", BuildOpenRoomsPayload());
 
     private static List<PlayerDto> ToPlayerDtos(GameSession session) =>
-        [.. session.Players.Select(p => new PlayerDto(p.MemberId, p.Name, p.ProfilePictureUrl, p.ColorIndex, p.IsHost, p.Score))];
+        [.. session.Players.Select(p => new PlayerDto(p.MemberId, p.Name, p.ProfilePictureUrl, p.ColorIndex, p.IsHost, p.Score, p.TeamIndex))];
 
     private async Task<(Guid MemberId, string Name, string? Photo)> ResolveCallerAsync()
     {

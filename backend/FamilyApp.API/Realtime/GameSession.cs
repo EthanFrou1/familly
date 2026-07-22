@@ -9,6 +9,8 @@ public class SessionPlayer
     public int ColorIndex { get; set; }
     public int Score { get; set; }
     public bool IsHost { get; set; }
+    // (famillenor) Équipe assignée en lobby avant lancement, null tant que l'hôte ne l'a pas choisie.
+    public int? TeamIndex { get; set; }
 }
 
 public class DeckCard
@@ -48,6 +50,23 @@ public class SimRound
     public required string CorrectKey { get; set; }
 }
 
+// Une catégorie de réponses équivalentes pour une question "Une Famille en Or", triée par points
+// décroissants dans FamilleEnOrRound.Slots. Le Label ne doit jamais être envoyé au client tant que
+// Revealed est false (sinon la réponse est visible dans l'onglet réseau du navigateur).
+public class FamilleEnOrSlot
+{
+    public required string Label { get; set; }
+    public required int Points { get; set; }
+    public bool Revealed { get; set; }
+}
+
+public class FamilleEnOrRound
+{
+    public required string QuestionKey { get; set; }
+    public required string Prompt { get; set; }
+    public required List<FamilleEnOrSlot> Slots { get; set; }
+}
+
 public class GameSession
 {
     public required string Code { get; set; }
@@ -80,4 +99,19 @@ public class GameSession
     public Dictionary<Guid, int> PlayerHintCounts { get; set; } = [];
     public Dictionary<Guid, string?> PendingAnswers { get; set; } = [];
     public bool ResultSaved { get; set; }
+
+    // (famillenor) Rounds piochés une fois pour toutes au lancement (voir StartFamilleEnOrGame) :
+    // une re-curation admin pendant la partie n'affecte jamais une partie déjà en cours.
+    public List<FamilleEnOrRound> FamilleEnOrRounds { get; set; } = [];
+    public int FamilleEnOrRoundIndex { get; set; }
+    public string FamilleEnOrPhase { get; set; } = "faceoff"; // "faceoff" | "control" | "steal"
+    public int? FamilleEnOrControllingTeamIndex { get; set; }
+    public int FamilleEnOrStrikes { get; set; }
+    // Points déjà sécurisés ce round (réponses révélées pendant le contrôle) : ce que garde
+    // l'équipe au contrôle si le vol échoue ensuite.
+    public int FamilleEnOrRoundPot { get; set; }
+    public List<Guid> FamilleEnOrFaceOffMemberIds { get; set; } = [];
+    // Index du prochain représentant à désigner dans le roster de chaque équipe (rotation), clé =
+    // TeamIndex (0 ou 1).
+    public Dictionary<int, int> FamilleEnOrTeamRepIndex { get; set; } = [];
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMembers } from '../store/MembersContext'
-import { gamesApi } from '../services/api'
+import { gamesApi, familleEnOrApi } from '../services/api'
 import { membersWithPhoto, MIN_PAIRS_TO_UNLOCK } from '../utils/memoryGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_WHOISIT } from '../utils/whoIsItGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_RELATIONSHIP } from '../utils/relationshipGame'
@@ -15,6 +15,8 @@ import DailyMysteryHero from '../components/games/DailyMysteryHero'
 import Avatar from '../components/shared/Avatar'
 
 const MIN_MEMBERS_FOR_SUPERLATIVE = 3
+const MIN_MEMBERS_FOR_FAMILLENOR = 4
+const MIN_READY_QUESTIONS_FOR_FAMILLENOR = 4
 
 const TABS = [
   { key: 'games', label: 'Jeux' },
@@ -33,6 +35,7 @@ export default function GamesLobby() {
   const [recentResults, setRecentResults] = useState([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [openRooms, setOpenRooms] = useState([])
+  const [famillenorReadyCount, setFamillenorReadyCount] = useState(0)
 
   const photoCount = membersWithPhoto(members).length
   const unlocked = photoCount >= MIN_PAIRS_TO_UNLOCK
@@ -41,6 +44,7 @@ export default function GamesLobby() {
   const superlativeUnlocked = members.length >= MIN_MEMBERS_FOR_SUPERLATIVE
   const whoAmIUnlocked = eligibleSubjectsCount(members) >= MIN_SUBJECTS_TO_UNLOCK
   const dailyMysteryUnlocked = members.length >= MIN_MEMBERS_FOR_DAILY_MYSTERY
+  const famillenorPlayable = members.length >= MIN_MEMBERS_FOR_FAMILLENOR && famillenorReadyCount >= MIN_READY_QUESTIONS_FOR_FAMILLENOR
   const fanMembers = membersWithPhoto(members).slice(0, 3)
   const memberById = new Map(members.map(m => [m.id, m]))
 
@@ -52,6 +56,10 @@ export default function GamesLobby() {
           .slice(0, 15)
         setRecentResults(merged)
       })
+      .catch(() => {})
+
+    familleEnOrApi.getQuestions()
+      .then(({ data }) => setFamillenorReadyCount(data.filter(q => q.isReady).length))
       .catch(() => {})
   }, [])
 
@@ -188,6 +196,26 @@ export default function GamesLobby() {
               lockedHint="Complétez plus de profils (bio, métier, sport...) pour débloquer"
               onPlay={() => navigate('/games/whoami/remote')}
             />
+
+            <button
+              onClick={() => navigate(famillenorPlayable ? '/games/famillenor/remote' : '/games/famillenor/survey')}
+              className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-4 shadow-sm active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-center gap-4 text-left">
+                <span className="h-12 w-12 shrink-0 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">💰</span>
+                <div>
+                  <h2 className="font-extrabold text-gray-800">Une Famille en Or</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {famillenorPlayable
+                      ? '2 équipes s\'affrontent sur un sondage familial. 4 à 8 joueurs !'
+                      : `Réponds au sondage pour débloquer (${famillenorReadyCount}/${MIN_READY_QUESTIONS_FOR_FAMILLENOR} questions prêtes)`}
+                  </p>
+                </div>
+              </div>
+              <svg className="h-4 w-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
 
             {latestResult && (
               <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
