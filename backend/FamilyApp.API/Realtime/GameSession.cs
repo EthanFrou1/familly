@@ -67,6 +67,8 @@ public class FamilleEnOrRound
     public required List<FamilleEnOrSlot> Slots { get; set; }
 }
 
+public enum UndercoverRole { Civilian, Undercover, MrWhite }
+
 public class GameSession
 {
     public required string Code { get; set; }
@@ -114,4 +116,21 @@ public class GameSession
     // Index du prochain représentant à désigner dans le roster de chaque équipe (rotation), clé =
     // TeamIndex (0 ou 1).
     public Dictionary<int, int> FamilleEnOrTeamRepIndex { get; set; } = [];
+
+    // (undercover) Rôles/mots attribués une fois pour toutes au lancement. Word est null pour
+    // Mr. White — ne jamais envoyer à un autre joueur que son propriétaire (voir StartUndercoverGame).
+    public Dictionary<Guid, UndercoverRole> UndercoverRoles { get; set; } = [];
+    public Dictionary<Guid, string?> UndercoverWords { get; set; } = [];
+    public List<Guid> UndercoverAliveMemberIds { get; set; } = [];
+    // Ordre de parole du tour d'indices en cours, recalculé à partir des vivants à chaque nouveau
+    // tour (voir StartUndercoverGame / ContinueUndercoverRound).
+    public List<Guid> UndercoverSpeakingOrder { get; set; } = [];
+    public int UndercoverSpeakerIndex { get; set; }
+    public Dictionary<Guid, Guid> UndercoverVotes { get; set; } = [];
+    public string UndercoverPhase { get; set; } = "clue"; // "clue" | "vote" | "mrwhite-guess"
+    public Guid? UndercoverPendingMrWhiteGuesserId { get; set; }
+    // Camp gagnant une fois Finished (utilisé par ContinueUndercoverRound pour construire le
+    // GameResult) : "civilians" | "undercover" | "mrwhite".
+    public string? UndercoverWinningSide { get; set; }
+    public Guid? UndercoverSoloWinnerMemberId { get; set; }
 }

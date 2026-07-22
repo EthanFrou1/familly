@@ -7,6 +7,7 @@ import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_WHOISIT } from '../utils/whoIs
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_RELATIONSHIP } from '../utils/relationshipGame'
 import { MIN_SUBJECTS_TO_UNLOCK, eligibleSubjectsCount } from '../utils/whoAmIGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_DAILY_MYSTERY } from '../utils/dailyMystery'
+import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_UNDERCOVER } from '../utils/undercoverGame'
 import { GAMES, GAME_LABELS, GAME_UNIT_LABELS } from '../utils/gameRegistry'
 import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
 import OpenRoomsList from '../components/games/OpenRoomsList'
@@ -45,6 +46,7 @@ export default function GamesLobby() {
   const whoAmIUnlocked = eligibleSubjectsCount(members) >= MIN_SUBJECTS_TO_UNLOCK
   const dailyMysteryUnlocked = members.length >= MIN_MEMBERS_FOR_DAILY_MYSTERY
   const famillenorPlayable = members.length >= MIN_MEMBERS_FOR_FAMILLENOR && famillenorReadyCount >= MIN_READY_QUESTIONS_FOR_FAMILLENOR
+  const undercoverUnlocked = members.length >= MIN_MEMBERS_FOR_UNDERCOVER
   const fanMembers = membersWithPhoto(members).slice(0, 3)
   const memberById = new Map(members.map(m => [m.id, m]))
 
@@ -216,6 +218,15 @@ export default function GamesLobby() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </button>
+
+            <GameCard
+              emoji="🎭"
+              title="Undercover"
+              description="Rôles secrets, indices à voix haute et vote pour démasquer les undercover. En local ou à distance."
+              unlocked={undercoverUnlocked}
+              lockedHint={`${MIN_MEMBERS_FOR_UNDERCOVER} membres min. pour débloquer`}
+              onPlay={() => navigate('/games/undercover')}
+            />
 
             {latestResult && (
               <div className="rounded-2xl bg-white shadow-sm overflow-hidden">

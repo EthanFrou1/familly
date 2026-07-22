@@ -54,6 +54,13 @@ PWA mobile-first privée pour une famille (~100 membres), accès sur invitation 
   - [x] Lobby avec répartition manuelle des joueurs en 2 équipes (min. 2 par équipe) avant de choisir le nombre de manches
   - [x] Manche à 3 phases : face-off (buzzer, le premier arrivé prend la main pour son équipe), contrôle (l'équipe propose des réponses, 3 fautes = perte de la main), vol (l'équipe adverse tente un essai unique sur la banque restante)
   - [x] Carte de jeu dans la lobby à CTA dynamique : "Répondre au sondage" tant qu'il n'y a pas assez de questions prêtes, "Jouer" une fois débloqué
+- [x] **Undercover** — déduction sociale à rôles cachés (civils/undercover/Mr. White), **local et à distance**
+  - [x] Indices donnés à voix haute (l'appli ne gère que l'ordre de parole, aucun texte d'indice tapé/affiché)
+  - [x] Écran de configuration : l'hôte choisit le nombre d'undercover et de Mr. White (0 ou 1) avant de lancer
+  - [x] Révélation privée du rôle une seule fois au lancement : tap pour voir/cacher avant de passer le téléphone (local) ou message privé au démarrage (à distance)
+  - [x] Vote d'élimination simultané (à distance) ou à main levée avec sélection par l'hôte (local) ; égalité = personne n'est éliminé
+  - [x] Mr. White éliminé a une tentative pour deviner le mot des civils et gagner quand même
+  - [x] Victoire : civils si tous les undercover/Mr. White sont éliminés, undercover si leurs vivants ≥ civils vivants
 - [x] Classements : par jeu + classement global (moyenne des taux de victoire) + classement Membre Mystère (agrégé séparément, hors GameResult), podium (couronne 1er, médailles 2e/3e), tag "Vous"
 - [x] Recherche de membre insensible aux accents (utilitaire `matchesSearch`) partout où on cherche un membre : jeux, arbre, fiches membres, admin, familles
 - [x] Historique des parties (Jeux → dernière partie + historique dépliable, limité aux 15 plus récentes tous jeux confondus)

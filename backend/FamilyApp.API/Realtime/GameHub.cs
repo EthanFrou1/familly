@@ -19,11 +19,13 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
     private const int MinPlayers = 2;
     private const int DefaultMaxPlayers = 4;
     private const int FamilleEnOrMinPlayersPerTeam = 2;
+    private const int UndercoverMinPlayers = 4;
     private static readonly Dictionary<string, int> MaxPlayersByGameType = new()
     {
         ["superlative"] = 10,
         ["whoami"] = 10,
         ["famillenor"] = 8,
+        ["undercover"] = 10,
     };
 
     private static int MaxPlayersFor(string gameType) => MaxPlayersByGameType.GetValueOrDefault(gameType, DefaultMaxPlayers);
@@ -1158,6 +1160,377 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         string.Concat(s.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD)
             .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark));
 
+    // Assigne rôles/mots et lance la partie. Contrairement aux autres StartX, chaque joueur reçoit
+    // son propre rôle en message privé (Clients.Client), jamais dans le broadcast public — sinon le
+    // rôle des autres serait visible dans l'onglet réseau du navigateur.
+    public async Task StartUndercoverGame(int undercoverCount, int mrWhiteCount)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || session.Started || session.GameType != "undercover") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost || session.Players.Count < UndercoverMinPlayers) return;
+
+        var civilianCount = session.Players.Count - undercoverCount - mrWhiteCount;
+        if (undercoverCount < 1 || mrWhiteCount < 0 || civilianCount < 2) return;
+
+        var pair = UndercoverWordBank.PickRandom();
+        var shuffled = session.Players.Select(p => p.MemberId).OrderBy(_ => Random.Shared.Next()).ToList();
+
+        object publicPayload;
+        var privateSends = new List<(string ConnectionId, object Payload)>();
+
+        lock (session)
+        {
+            session.UndercoverRoles.Clear();
+            session.UndercoverWords.Clear();
+
+            var i = 0;
+            for (; i < undercoverCount; i++) session.UndercoverRoles[shuffled[i]] = UndercoverRole.Undercover;
+            for (; i < undercoverCount + mrWhiteCount; i++) session.UndercoverRoles[shuffled[i]] = UndercoverRole.MrWhite;
+            for (; i < shuffled.Count; i++) session.UndercoverRoles[shuffled[i]] = UndercoverRole.Civilian;
+
+            foreach (var (memberId, role) in session.UndercoverRoles)
+            {
+                session.UndercoverWords[memberId] = role switch
+                {
+                    UndercoverRole.Civilian => pair.Civilian,
+                    UndercoverRole.Undercover => pair.Undercover,
+                    _ => null,
+                };
+            }
+
+            session.UndercoverAliveMemberIds = session.Players.Select(p => p.MemberId).ToList();
+            session.UndercoverSpeakingOrder = session.UndercoverAliveMemberIds.OrderBy(_ => Random.Shared.Next()).ToList();
+            session.UndercoverSpeakerIndex = 0;
+            session.UndercoverPhase = "clue";
+            session.UndercoverVotes.Clear();
+            session.UndercoverPendingMrWhiteGuesserId = null;
+            session.UndercoverWinningSide = null;
+            session.UndercoverSoloWinnerMemberId = null;
+            session.Started = true;
+            session.StartedAt = DateTime.UtcNow;
+            session.Finished = false;
+            session.ResultSaved = false;
+            foreach (var p in session.Players) p.Score = 0;
+
+            foreach (var p in session.Players)
+            {
+                var role = session.UndercoverRoles[p.MemberId];
+                var word = session.UndercoverWords[p.MemberId];
+                privateSends.Add((p.ConnectionId, new { role = role.ToString(), word }));
+            }
+
+            publicPayload = new
+            {
+                players = ToPlayerDtos(session),
+                aliveMemberIds = session.UndercoverAliveMemberIds,
+                speakingOrder = session.UndercoverSpeakingOrder,
+                currentSpeakerMemberId = session.UndercoverSpeakingOrder[0],
+            };
+        }
+
+        foreach (var (connectionId, payload) in privateSends)
+            await Clients.Client(connectionId).SendAsync("YourUndercoverRole", payload);
+
+        await Clients.Group(session.Code).SendAsync("UndercoverGameStarting", publicPayload);
+        await BroadcastRoomsChangedAsync();
+    }
+
+    // L'hôte fait avancer le tour d'indices (donnés à voix haute, rien à taper) jusqu'à ce que
+    // tous les vivants soient passés, puis bascule en phase de vote.
+    public async Task AdvanceUndercoverTurn()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused || session.GameType != "undercover") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        object? payload = null;
+        lock (session)
+        {
+            if (session.UndercoverPhase != "clue" || session.UndercoverSpeakingOrder.Count == 0) return;
+
+            session.UndercoverSpeakerIndex++;
+            if (session.UndercoverSpeakerIndex >= session.UndercoverSpeakingOrder.Count)
+            {
+                session.UndercoverPhase = "vote";
+                payload = new { phase = "vote" };
+            }
+            else
+            {
+                payload = new { phase = "clue", currentSpeakerMemberId = session.UndercoverSpeakingOrder[session.UndercoverSpeakerIndex] };
+            }
+        }
+        if (payload is not null) await Clients.Group(session.Code).SendAsync("UndercoverTurnAdvanced", payload);
+    }
+
+    // Vote d'élimination simultané (même mécanisme que SubmitAnswer/PendingAnswers pour
+    // superlative) : chaque vivant vote en privé, résolution automatique une fois tous les
+    // vivants votés.
+    public async Task SubmitUndercoverVote(Guid targetMemberId)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused || session.GameType != "undercover") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null) return;
+
+        bool shouldResolve;
+        object? progressPayload = null;
+
+        lock (session)
+        {
+            if (session.UndercoverPhase != "vote") return;
+            if (!session.UndercoverAliveMemberIds.Contains(caller.MemberId)) return;
+            if (!session.UndercoverAliveMemberIds.Contains(targetMemberId)) return;
+
+            session.UndercoverVotes[caller.MemberId] = targetMemberId;
+            progressPayload = new { voted = session.UndercoverVotes.Count, total = session.UndercoverAliveMemberIds.Count };
+            shouldResolve = session.UndercoverVotes.Count >= session.UndercoverAliveMemberIds.Count;
+        }
+
+        await Clients.Group(session.Code).SendAsync("UndercoverVoteProgress", progressPayload);
+        if (shouldResolve) await ResolveUndercoverVoteAsync(session);
+    }
+
+    // L'hôte force la résolution du vote (ex: certains joueurs ne votent pas). Sans aucun vote,
+    // se comporte comme une égalité (personne n'est éliminé).
+    public async Task ForceResolveUndercoverVote()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused || session.GameType != "undercover") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        await ResolveUndercoverVoteAsync(session);
+    }
+
+    private async Task ResolveUndercoverVoteAsync(GameSession session)
+    {
+        object? payload = null;
+        lock (session)
+        {
+            if (session.UndercoverPhase != "vote") return;
+
+            var tally = new Dictionary<Guid, int>();
+            foreach (var target in session.UndercoverVotes.Values)
+                tally[target] = tally.GetValueOrDefault(target) + 1;
+
+            var maxVotes = tally.Count == 0 ? 0 : tally.Values.Max();
+            var topTargets = tally.Where(kv => kv.Value == maxVotes).Select(kv => kv.Key).ToList();
+            var votesSnapshot = session.UndercoverVotes.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value.ToString());
+            session.UndercoverVotes.Clear();
+
+            if (topTargets.Count != 1)
+            {
+                // Égalité : personne n'est éliminé. Reste en pause ("eliminated") le temps que
+                // l'hôte relance le tour suivant via ContinueUndercoverRound, comme une vraie
+                // élimination — laisse le temps à la table de voir/commenter le résultat du vote.
+                session.UndercoverPhase = "eliminated";
+                payload = new { tie = true, votes = votesSnapshot, eliminatedMemberId = (Guid?)null, awaitingMrWhiteGuess = false, finished = false, winningSide = (string?)null };
+            }
+            else
+            {
+                payload = BuildEliminationPayloadLocked(session, topTargets[0], votesSnapshot);
+            }
+        }
+        if (payload is not null) await Clients.Group(session.Code).SendAsync("UndercoverVoteResolved", payload);
+    }
+
+    // Doit être appelée à l'intérieur d'un lock(session). Retire l'éliminé des vivants, révèle
+    // son rôle/mot à tous, et soit ouvre la fenêtre de devinette Mr. White soit vérifie
+    // directement les conditions de victoire.
+    private static object BuildEliminationPayloadLocked(GameSession session, Guid eliminatedId, Dictionary<string, string> votesSnapshot)
+    {
+        session.UndercoverAliveMemberIds.Remove(eliminatedId);
+
+        var role = session.UndercoverRoles[eliminatedId];
+        var word = session.UndercoverWords[eliminatedId];
+
+        if (role == UndercoverRole.MrWhite)
+        {
+            session.UndercoverPhase = "mrwhite-guess";
+            session.UndercoverPendingMrWhiteGuesserId = eliminatedId;
+        }
+        else
+        {
+            CheckWinConditionLocked(session);
+            session.UndercoverPhase = "eliminated";
+        }
+
+        return new
+        {
+            tie = false,
+            eliminatedMemberId = eliminatedId,
+            role = role.ToString(),
+            word,
+            votes = votesSnapshot,
+            awaitingMrWhiteGuess = role == UndercoverRole.MrWhite,
+            finished = session.Finished,
+            winningSide = session.UndercoverWinningSide,
+        };
+    }
+
+    // Doit être appelée à l'intérieur d'un lock(session), seulement après une élimination (pas
+    // pendant une devinette Mr. White en attente) : tous les undercover+Mr. White éliminés →
+    // civils gagnent ; undercover+Mr. White vivants ≥ civils vivants → undercover gagnent.
+    private static void CheckWinConditionLocked(GameSession session)
+    {
+        var aliveRoles = session.UndercoverAliveMemberIds.Select(id => session.UndercoverRoles[id]).ToList();
+        var aliveCivilians = aliveRoles.Count(r => r == UndercoverRole.Civilian);
+        var aliveThreats = aliveRoles.Count(r => r != UndercoverRole.Civilian);
+
+        if (aliveThreats == 0)
+        {
+            session.Finished = true;
+            session.UndercoverWinningSide = "civilians";
+        }
+        else if (aliveThreats >= aliveCivilians)
+        {
+            session.Finished = true;
+            session.UndercoverWinningSide = "undercover";
+        }
+    }
+
+    // Le Mr. White qui vient d'être éliminé a une unique tentative pour deviner le mot des civils
+    // et gagner quand même, quel que soit l'état de la partie sinon.
+    public async Task SubmitMrWhiteGuess(string guess)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Paused || session.GameType != "undercover") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null) return;
+
+        object? payload = null;
+        lock (session)
+        {
+            if (session.UndercoverPhase != "mrwhite-guess" || session.UndercoverPendingMrWhiteGuesserId != caller.MemberId) return;
+
+            var civilianWord = session.UndercoverWords.First(kv => session.UndercoverRoles[kv.Key] == UndercoverRole.Civilian).Value;
+            var correct = NormalizeAnswer(guess) == NormalizeAnswer(civilianWord ?? "");
+            session.UndercoverPendingMrWhiteGuesserId = null;
+
+            if (correct)
+            {
+                session.Finished = true;
+                session.UndercoverWinningSide = "mrwhite";
+                session.UndercoverSoloWinnerMemberId = caller.MemberId;
+            }
+            else
+            {
+                CheckWinConditionLocked(session);
+            }
+            session.UndercoverPhase = "eliminated";
+
+            payload = new { correct, civilianWord, finished = session.Finished, winningSide = session.UndercoverWinningSide };
+        }
+        if (payload is not null) await Clients.Group(session.Code).SendAsync("UndercoverMrWhiteGuessResolved", payload);
+    }
+
+    // L'hôte décide quand enchaîner (nouveau tour d'indices ou résultats finaux), comme
+    // ContinueRound — laisse le temps à la table de commenter la révélation avant de continuer.
+    public async Task ContinueUndercoverRound()
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.GameType != "undercover") return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        if (session.Finished)
+        {
+            GameResult? resultToSave = null;
+            object? finishedPayload = null;
+
+            lock (session)
+            {
+                if (session.ResultSaved) return;
+                session.ResultSaved = true;
+
+                var durationSeconds = session.StartedAt is null ? 0 : (int)((DateTime.UtcNow - session.StartedAt.Value).TotalSeconds - session.PausedSeconds);
+                string winnerName;
+
+                if (session.UndercoverWinningSide == "mrwhite")
+                {
+                    var soloWinner = session.Players.First(p => p.MemberId == session.UndercoverSoloWinnerMemberId);
+                    foreach (var p in session.Players) p.Score = 0;
+                    soloWinner.Score = 1;
+                    winnerName = $"{soloWinner.Name} (Mr. White)";
+                }
+                else
+                {
+                    var civiliansWin = session.UndercoverWinningSide == "civilians";
+                    foreach (var p in session.Players)
+                    {
+                        var isCivilian = session.UndercoverRoles[p.MemberId] == UndercoverRole.Civilian;
+                        p.Score = (civiliansWin == isCivilian) ? 1 : 0;
+                    }
+                    winnerName = civiliansWin ? "Les civils" : "Les undercover";
+                }
+
+                var playersJson = JsonSerializer.Serialize(session.Players
+                    .Select(p => new GamePlayerScoreDto(p.Name, p.Score, p.MemberId, false)));
+
+                resultToSave = new GameResult
+                {
+                    GameType = session.GameType,
+                    PairsCount = 1,
+                    PlayerCount = session.Players.Count,
+                    PlayersJson = playersJson,
+                    WinnerName = winnerName,
+                    DurationSeconds = durationSeconds,
+                    PlayedByUserId = Guid.Parse(Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!),
+                };
+
+                finishedPayload = new
+                {
+                    players = session.Players.Select(p => new
+                    {
+                        memberId = p.MemberId,
+                        name = p.Name,
+                        score = p.Score,
+                        colorIndex = p.ColorIndex,
+                        role = session.UndercoverRoles[p.MemberId].ToString(),
+                        word = session.UndercoverWords[p.MemberId],
+                    }),
+                    durationSeconds,
+                    winnerName,
+                    winningSide = session.UndercoverWinningSide,
+                };
+            }
+
+            if (resultToSave is not null)
+            {
+                db.GameResults.Add(resultToSave);
+                await db.SaveChangesAsync();
+            }
+            if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
+        }
+        else
+        {
+            object? nextRoundPayload = null;
+            lock (session)
+            {
+                if (session.UndercoverPhase != "eliminated") return;
+                session.UndercoverSpeakingOrder = session.UndercoverAliveMemberIds.OrderBy(_ => Random.Shared.Next()).ToList();
+                session.UndercoverSpeakerIndex = 0;
+                session.UndercoverPhase = "clue";
+
+                nextRoundPayload = new
+                {
+                    aliveMemberIds = session.UndercoverAliveMemberIds,
+                    speakingOrder = session.UndercoverSpeakingOrder,
+                    currentSpeakerMemberId = session.UndercoverSpeakingOrder[0],
+                };
+            }
+            if (nextRoundPayload is not null) await Clients.Group(session.Code).SendAsync("UndercoverNextRound", nextRoundPayload);
+        }
+    }
+
     public async Task PlayAgain()
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
@@ -1194,6 +1567,16 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
             session.FamilleEnOrRoundPot = 0;
             session.FamilleEnOrFaceOffMemberIds = [];
             session.FamilleEnOrTeamRepIndex.Clear();
+            session.UndercoverRoles.Clear();
+            session.UndercoverWords.Clear();
+            session.UndercoverAliveMemberIds = [];
+            session.UndercoverSpeakingOrder = [];
+            session.UndercoverSpeakerIndex = 0;
+            session.UndercoverVotes.Clear();
+            session.UndercoverPhase = "clue";
+            session.UndercoverPendingMrWhiteGuesserId = null;
+            session.UndercoverWinningSide = null;
+            session.UndercoverSoloWinnerMemberId = null;
             foreach (var p in session.Players) p.Score = 0;
         }
 

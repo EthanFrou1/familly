@@ -29,6 +29,8 @@ import DailyMysteryGame from './pages/DailyMysteryGame'
 import FamilleEnOrSurvey from './pages/FamilleEnOrSurvey'
 import FamilleEnOrAdmin from './pages/FamilleEnOrAdmin'
 import FamilleEnOrGameRemote from './pages/FamilleEnOrGameRemote'
+import UndercoverGame from './pages/UndercoverGame'
+import UndercoverGameRemote from './pages/UndercoverGameRemote'
 import Leaderboard from './pages/Leaderboard'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
@@ -112,6 +114,8 @@ function ProtectedLayoutContent() {
           <Route path="/games/daily-mystery" element={<DailyMysteryGame />} />
           <Route path="/games/famillenor/survey" element={<FamilleEnOrSurvey />} />
           <Route path="/games/famillenor/remote" element={<FamilleEnOrGameRemote />} />
+          <Route path="/games/undercover" element={<UndercoverGame />} />
+          <Route path="/games/undercover/remote" element={<UndercoverGameRemote />} />
           <Route path="/games/leaderboard" element={<Leaderboard />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/duplicates" element={<Duplicates />} />
