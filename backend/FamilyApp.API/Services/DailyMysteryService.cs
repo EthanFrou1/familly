@@ -366,17 +366,22 @@ public class DailyMysteryService(AppDbContext db)
 
     // "Proche" se base sur le département français (déduit du code postal) plutôt que sur le pays :
     // deux villes du même pays mais à des centaines de km (Lille/Marseille) n'ont rien de proche.
-    // Si l'un des deux membres n'est pas rattaché à un département identifiable (pays hors France,
-    // ou code postal manquant), la comparaison est "unknown" plutôt qu'un faux "Différent".
+    // Le département n'est calculable qu'en France : hors de France (ou code postal manquant), on ne
+    // peut pas dire "Proche", mais on sait déjà que les villes diffèrent (sinon Eq aurait matché) dès
+    // qu'elles sont toutes les deux renseignées : "unknown" est réservé au cas où l'une des deux villes
+    // est vraiment absente, pas au cas où on ne peut juste pas affiner en "Proche".
     private static DailyGuessCellDto BuildCityCell(MemberInfo guess, MemberInfo answer)
     {
         if (Eq(guess.City, answer.City)) return new DailyGuessCellDto("green", null);
+        if (string.IsNullOrWhiteSpace(guess.City) || string.IsNullOrWhiteSpace(answer.City))
+            return new DailyGuessCellDto("unknown", null);
 
         var guessDept = GetFrenchDepartment(guess.Country, guess.PostalCode);
         var answerDept = GetFrenchDepartment(answer.Country, answer.PostalCode);
-        if (guessDept is null || answerDept is null) return new DailyGuessCellDto("unknown", null);
+        if (guessDept is not null && answerDept is not null)
+            return new DailyGuessCellDto(guessDept == answerDept ? "yellow" : "gray", null);
 
-        return new DailyGuessCellDto(guessDept == answerDept ? "yellow" : "gray", null);
+        return new DailyGuessCellDto("gray", null);
     }
 
     // Le code du département est déduit des 2 premiers chiffres du code postal (3 pour les DOM/COM :
