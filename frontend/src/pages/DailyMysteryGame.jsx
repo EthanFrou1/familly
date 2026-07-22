@@ -129,7 +129,7 @@ export default function DailyMysteryGame() {
             ) : (
               <>
                 <p className="text-xs font-semibold text-gray-400 px-0.5">
-                  🏆 {FIRST_PLACE_POINTS} pts pour le/les plus rapide(s) du jour, {OTHER_SOLVED_POINTS} pt pour les autres réussites. Remis à zéro chaque lundi.
+                  🏆 {FIRST_PLACE_POINTS} pts pour qui a trouvé en le moins d'essais ce jour-là, {OTHER_SOLVED_POINTS} pt pour les autres réussites. Remis à zéro chaque lundi.
                 </p>
                 {pointsLeaderboard.map((e, i) => (
                   <PointsRow key={e.memberId} e={e} rank={i + 1} isMe={e.memberId === user?.memberId} />
