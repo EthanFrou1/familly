@@ -573,6 +573,9 @@ function ThemeCarousel({ themes, index, onChange }) {
   }
 
   const sidePadding = `calc(50% - ${CAROUSEL_CARD_WIDTH / 2}px)`
+  // Suit `progress` (continu) plutôt que `index` (mis à jour avec un debounce de 120ms après
+  // l'arrêt du scroll) pour que les points bougent en même temps que les cartes, pas après coup.
+  const liveIndex = Math.max(0, Math.min(themes.length - 1, Math.round(progress)))
 
   return (
     <div>
@@ -607,7 +610,7 @@ function ThemeCarousel({ themes, index, onChange }) {
         {themes.map((theme, i) => (
           <div
             key={theme.key}
-            className={`h-1.5 rounded-full transition-all ${i === index ? 'w-4 bg-primary' : 'w-1.5 bg-gray-300'}`}
+            className={`h-1.5 rounded-full transition-all ${i === liveIndex ? 'w-4 bg-primary' : 'w-1.5 bg-gray-300'}`}
           />
         ))}
       </div>
