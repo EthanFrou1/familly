@@ -5,6 +5,7 @@ import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
 import useTiltDetector from '../hooks/useTiltDetector'
 import { gamesApi } from '../services/api'
+import { matchesSearch } from '../utils/normalize'
 import { PLAYER_COLORS, formatDuration } from '../utils/memoryGame'
 import { shuffle } from '../utils/shuffle'
 import { THEMES, buildWordPool } from '../utils/foreheadThemes'
@@ -15,6 +16,8 @@ const TEAM_COUNT_OPTIONS = [2, 3, 4]
 const DURATION_OPTIONS = [30, 45, 60]
 const ROUNDS_OPTIONS = [2, 3, 4]
 const IN_ROUND_STEPS = ['ready', 'playing', 'turn-review']
+const MIN_PER_TEAM = 1
+const MAX_PER_TEAM = 8
 
 function lockLandscape() {
   return screen.orientation?.lock?.('landscape').catch(() => {})
@@ -49,10 +52,10 @@ export default function ForeheadGame() {
 
   // --- Configuration (équipes, thèmes, manches) ---
   const [teamCount, setTeamCount] = useState(2)
-  const [memberTeams, setMemberTeams] = useState(() => (user.memberId ? { [user.memberId]: 0 } : {}))
-  const [guests, setGuests] = useState([])
-  const [guestInput, setGuestInput] = useState('')
-  const guestIdRef = useRef(0)
+  const [teamsSlots, setTeamsSlots] = useState(() => [
+    [{ mode: 'member', search: `${user.firstName} ${user.lastName}`, memberId: user.memberId }],
+    [{ mode: 'guest', search: '', memberId: null }],
+  ])
   const [selectedThemes, setSelectedThemes] = useState(() => [THEMES[0].key])
   const [roundDuration, setRoundDuration] = useState(45)
   const [totalRounds, setTotalRounds] = useState(3)
@@ -71,16 +74,14 @@ export default function ForeheadGame() {
   const timeLeftRef = useRef(0)
 
   useEffect(() => {
-    setMemberTeams(prev => {
-      let changed = false
-      const next = {}
-      for (const [id, idx] of Object.entries(prev)) {
-        if (idx < teamCount) next[id] = idx
-        else changed = true
+    setTeamsSlots(prev => {
+      if (prev.length === teamCount) return prev
+      if (prev.length < teamCount) {
+        const additions = Array.from({ length: teamCount - prev.length }, () => [{ mode: 'guest', search: '', memberId: null }])
+        return [...prev, ...additions]
       }
-      return changed ? next : prev
+      return prev.slice(0, teamCount)
     })
-    setGuests(prev => prev.map(g => (g.teamIndex != null && g.teamIndex >= teamCount) ? { ...g, teamIndex: null } : g))
   }, [teamCount])
 
   useEffect(() => {
@@ -90,52 +91,46 @@ export default function ForeheadGame() {
 
   const memberById = id => members.find(m => m.id === id)
 
-  const teamsPreview = Array.from({ length: teamCount }, (_, i) => ({
-    index: i,
-    label: `Équipe ${i + 1}`,
-    color: PLAYER_COLORS[i % PLAYER_COLORS.length],
-    members: [
-      ...members
-        .filter(m => memberTeams[m.id] === i)
-        .map(m => ({ name: `${m.firstName} ${m.lastName}`, memberId: m.id, isGuest: false })),
-      ...guests
-        .filter(g => g.teamIndex === i)
-        .map(g => ({ name: g.name, memberId: null, isGuest: true, guestId: g.id })),
-    ],
-  }))
-  const canContinueTeams = teamsPreview.every(t => t.members.length > 0)
-
-  function cycleMemberTeam(id) {
-    setMemberTeams(prev => {
-      const current = prev[id] ?? null
-      const next = current == null ? 0 : (current + 1 >= teamCount ? null : current + 1)
-      if (next == null) {
-        const { [id]: _removed, ...rest } = prev
-        return rest
-      }
-      return { ...prev, [id]: next }
-    })
+  function addSlot(teamIndex) {
+    setTeamsSlots(prev => prev.map((slots, ti) => (ti === teamIndex && slots.length < MAX_PER_TEAM)
+      ? [...slots, { mode: 'guest', search: '', memberId: null }]
+      : slots))
   }
 
-  function cycleGuestTeam(id) {
-    setGuests(prev => prev.map(g => {
-      if (g.id !== id) return g
-      const current = g.teamIndex
-      const next = current == null ? 0 : (current + 1 >= teamCount ? null : current + 1)
-      return { ...g, teamIndex: next }
+  function removeSlot(teamIndex) {
+    setTeamsSlots(prev => prev.map((slots, ti) => (ti === teamIndex && slots.length > MIN_PER_TEAM)
+      ? slots.slice(0, -1)
+      : slots))
+  }
+
+  function updateSlot(teamIndex, slotIndex, patch) {
+    setTeamsSlots(prev => prev.map((slots, ti) => ti !== teamIndex ? slots : slots.map((s, si) => si === slotIndex ? { ...s, ...patch } : s)))
+  }
+
+  // Un membre déjà lié dans une équipe ne doit pas pouvoir être lié une seconde fois ailleurs.
+  function candidatesFor(teamIndex, slotIndex) {
+    const usedIds = new Set()
+    teamsSlots.forEach((slots, ti) => slots.forEach((s, si) => {
+      if (ti === teamIndex && si === slotIndex) return
+      if (s.mode === 'member' && s.memberId) usedIds.add(s.memberId)
     }))
+    return members.filter(m => !usedIds.has(m.id))
   }
 
-  function handleAddGuest() {
-    const name = guestInput.trim()
-    if (!name) return
-    guestIdRef.current += 1
-    setGuests(prev => [...prev, { id: `guest-${guestIdRef.current}`, name, teamIndex: null }])
-    setGuestInput('')
-  }
-
-  function removeGuest(id) {
-    setGuests(prev => prev.filter(g => g.id !== id))
+  function buildFinalTeams() {
+    return teamsSlots.map((slots, i) => ({
+      index: i,
+      label: `Équipe ${i + 1}`,
+      color: PLAYER_COLORS[i % PLAYER_COLORS.length],
+      score: 0,
+      members: slots.map((slot, si) => {
+        if (slot.mode === 'member' && slot.memberId) {
+          const m = memberById(slot.memberId)
+          return { name: `${m.firstName} ${m.lastName}`, memberId: m.id, isGuest: false }
+        }
+        return { name: slot.search.trim() || `Joueur ${si + 1}`, memberId: null, isGuest: true }
+      }),
+    }))
   }
 
   function toggleTheme(key) {
@@ -143,7 +138,7 @@ export default function ForeheadGame() {
   }
 
   function handleStartGame() {
-    const finalTeams = teamsPreview.map(t => ({ ...t, score: 0 }))
+    const finalTeams = buildFinalTeams()
     wordPoolRef.current = buildWordPool(selectedThemes)
     setTeams(finalTeams)
     setTurnOrder(buildTurnOrder(finalTeams, totalRounds))
@@ -244,55 +239,44 @@ export default function ForeheadGame() {
         <div className="px-4 mt-5 pb-4 space-y-6">
           <OptionPicker label="Nombre d'équipes" options={TEAM_COUNT_OPTIONS} value={teamCount} onChange={setTeamCount} />
 
-          <div>
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2.5">Membres — tape pour assigner une équipe</h2>
-            <div className="flex flex-wrap gap-2">
-              {members.map(m => {
-                const teamIndex = memberTeams[m.id] ?? null
-                const color = teamIndex != null ? PLAYER_COLORS[teamIndex % PLAYER_COLORS.length] : null
-                return (
-                  <MemberTeamChip key={m.id} member={m} teamIndex={teamIndex} color={color} onTap={() => cycleMemberTeam(m.id)} />
-                )
-              })}
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2.5">Invités</h2>
-            <div className="flex items-center gap-2 mb-2.5">
-              <input
-                value={guestInput}
-                onChange={e => setGuestInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddGuest()}
-                placeholder="Nom de l'invité·e"
-                className="flex-1 min-w-0 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:border-primary"
-              />
-              <button onClick={handleAddGuest} className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white active:bg-primary-dark">
-                Ajouter
-              </button>
-            </div>
-            {guests.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {guests.map(g => {
-                  const color = g.teamIndex != null ? PLAYER_COLORS[g.teamIndex % PLAYER_COLORS.length] : null
-                  return (
-                    <GuestTeamChip key={g.id} guest={g} teamIndex={g.teamIndex} color={color} onTap={() => cycleGuestTeam(g.id)} onRemove={() => removeGuest(g.id)} />
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2.5">
-            {teamsPreview.map(t => <TeamPreviewCard key={t.index} team={t} />)}
+          <div className="space-y-5">
+            {teamsSlots.map((slots, ti) => {
+              const color = PLAYER_COLORS[ti % PLAYER_COLORS.length]
+              return (
+                <div key={ti}>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <h2 className={`text-xs font-extrabold uppercase tracking-wide ${color.text}`}>
+                      Équipe {ti + 1} ({slots.length})
+                    </h2>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => removeSlot(ti)} disabled={slots.length <= MIN_PER_TEAM} className="h-7 w-7 rounded-full bg-white shadow-sm text-gray-500 font-black disabled:opacity-30">−</button>
+                      <button onClick={() => addSlot(ti)} disabled={slots.length >= MAX_PER_TEAM} className="h-7 w-7 rounded-full bg-white shadow-sm text-gray-500 font-black disabled:opacity-30">+</button>
+                    </div>
+                  </div>
+                  <div className="space-y-2.5">
+                    {slots.map((slot, si) => (
+                      <ForeheadPlayerSlot
+                        key={si}
+                        index={si}
+                        isSelf={ti === 0 && si === 0}
+                        slot={slot}
+                        member={slot.memberId ? memberById(slot.memberId) : null}
+                        candidates={candidatesFor(ti, si)}
+                        color={color}
+                        onChange={patch => updateSlot(ti, si, patch)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           <button
             onClick={() => setStep('setup-themes')}
-            disabled={!canContinueTeams}
-            className="w-full rounded-2xl bg-dark py-4 text-base font-black text-white shadow-lg shadow-dark/30 active:opacity-90 disabled:opacity-40"
+            className="w-full rounded-2xl bg-dark py-4 text-base font-black text-white shadow-lg shadow-dark/30 active:opacity-90"
           >
-            {canContinueTeams ? 'Continuer' : 'Chaque équipe doit avoir au moins un joueur'}
+            Continuer
           </button>
         </div>
       </div>
@@ -497,58 +481,75 @@ function OptionPicker({ label, options, value, onChange, formatLabel = String })
   )
 }
 
-function MemberTeamChip({ member, teamIndex, color, onTap }) {
-  return (
-    <button
-      type="button"
-      onClick={onTap}
-      className={`flex items-center gap-2 rounded-2xl px-2.5 py-2 border-2 transition-colors ${
-        teamIndex != null ? `${color.border} bg-white` : 'border-transparent bg-white shadow-sm'
-      }`}
-    >
-      <Avatar member={member} size="xs" className={teamIndex != null ? `ring-2 ${color.ring}` : ''} />
-      <span className="text-xs font-semibold text-gray-700 truncate max-w-[80px]">{member.firstName}</span>
-      <span className={`text-[10px] font-bold ${teamIndex != null ? color.text : 'text-gray-300'}`}>
-        {teamIndex != null ? `É${teamIndex + 1}` : '—'}
-      </span>
-    </button>
-  )
-}
+function ForeheadPlayerSlot({ index, isSelf, slot, member, candidates, color, onChange }) {
+  const linked = isSelf || (slot.mode === 'member' && !!slot.memberId)
+  const searching = !isSelf && slot.mode === 'member' && !slot.memberId
 
-function GuestTeamChip({ guest, teamIndex, color, onTap, onRemove }) {
-  return (
-    <div className={`flex items-center gap-1.5 rounded-2xl pl-2.5 pr-1.5 py-2 border-2 transition-colors ${
-      teamIndex != null ? `${color.border} bg-white` : 'border-transparent bg-white shadow-sm'
-    }`}>
-      <button type="button" onClick={onTap} className="flex items-center gap-2 min-w-0">
-        <Avatar name={guest.name} size="xs" className={teamIndex != null ? `ring-2 ${color.ring}` : ''} />
-        <span className="text-xs font-semibold text-gray-700 truncate max-w-[80px]">{guest.name}</span>
-        <span className={`text-[10px] font-bold shrink-0 ${teamIndex != null ? color.text : 'text-gray-300'}`}>
-          {teamIndex != null ? `É${teamIndex + 1}` : '—'}
-        </span>
-      </button>
-      <button type="button" onClick={onRemove} className="shrink-0 h-5 w-5 rounded-full bg-gray-100 text-gray-400 text-xs flex items-center justify-center active:bg-gray-200">
-        ×
-      </button>
-    </div>
-  )
-}
+  const filtered = searching && slot.search.trim()
+    ? candidates.filter(m => matchesSearch(`${m.firstName} ${m.lastName}`, slot.search))
+    : []
 
-function TeamPreviewCard({ team }) {
+  function toggleLink() {
+    if (linked) onChange({ mode: 'guest', memberId: null, search: '' })
+    else if (searching) onChange({ mode: 'guest' })
+    else onChange({ mode: 'member', memberId: null, search: '' })
+  }
+
   return (
-    <div className="rounded-2xl bg-white shadow-sm p-3">
-      <p className={`text-xs font-extrabold uppercase tracking-wide mb-2 ${team.color.text}`}>{team.label} ({team.members.length})</p>
-      {team.members.length === 0 ? (
-        <p className="text-xs text-gray-400">Aucun membre — tape sur un membre ou un invité ci-dessus pour l'ajouter</p>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {team.members.map((m, i) => (
-            <div key={m.memberId ?? m.guestId ?? i} className="flex items-center gap-1 bg-gray-50 rounded-full pl-1 pr-2 py-1">
-              <Avatar name={m.name} size="xs" />
-              <span className="text-[11px] font-semibold text-gray-600 truncate max-w-[70px]">{m.name.split(' ')[0]}</span>
-            </div>
-          ))}
+    <div className="space-y-1.5">
+      <div className={`flex items-center gap-3 bg-white rounded-2xl shadow-sm py-2.5 pl-2.5 pr-3 border-l-4 ${linked ? color.border : 'border-gray-200'}`}>
+        <Avatar member={member} name={slot.search} size="sm" className={linked ? `ring-2 ${color.ring}` : ''} />
+        <div className="flex-1 min-w-0">
+          {linked ? (
+            <p className="font-bold text-sm text-gray-800 truncate">{slot.search}</p>
+          ) : (
+            <input
+              value={slot.search}
+              onChange={e => onChange({ search: e.target.value, memberId: null })}
+              placeholder={`Joueur ${index + 1} — nom libre`}
+              className="w-full bg-transparent text-sm font-semibold text-gray-800 focus:outline-none placeholder:font-medium placeholder:text-gray-400"
+            />
+          )}
         </div>
+        {isSelf ? (
+          <span className="shrink-0 text-[11px] font-bold text-gray-400 bg-gray-100 rounded-full px-3 py-1.5">Vous</span>
+        ) : linked ? (
+          <button type="button" onClick={toggleLink} className="shrink-0 text-[11px] font-bold text-primary bg-primary/10 rounded-full px-3 py-1.5 active:bg-primary/20">
+            Lié ✓
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={toggleLink}
+            className={`shrink-0 text-[11px] font-bold rounded-full px-3 py-1.5 ${searching ? 'bg-gray-200 text-gray-600' : 'bg-primary/10 text-primary'}`}
+          >
+            {searching ? 'Annuler' : 'Lier'}
+          </button>
+        )}
+      </div>
+
+      {searching && (
+        slot.search.trim() ? (
+          filtered.length > 0 ? (
+            <ul className="ml-2 rounded-xl border border-gray-200 bg-white overflow-hidden max-h-40 overflow-y-auto">
+              {filtered.map(m => (
+                <li key={m.id}>
+                  <button
+                    type="button"
+                    onClick={() => onChange({ memberId: m.id, search: `${m.firstName} ${m.lastName}` })}
+                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 active:bg-primary/10"
+                  >
+                    {m.firstName} {m.lastName}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="pl-3 text-xs text-gray-400">Aucun membre trouvé</p>
+          )
+        ) : (
+          <p className="pl-3 text-xs text-gray-400">Tapez un nom pour rechercher un membre à lier</p>
+        )
       )}
     </div>
   )
