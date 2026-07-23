@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
+import { useUiChrome } from '../store/UiChromeContext'
 import useTiltDetector from '../hooks/useTiltDetector'
 import { gamesApi } from '../services/api'
 import { PLAYER_COLORS, formatDuration } from '../utils/memoryGame'
@@ -13,6 +14,15 @@ import Avatar from '../components/shared/Avatar'
 const TEAM_COUNT_OPTIONS = [2, 3, 4]
 const DURATION_OPTIONS = [30, 45, 60]
 const ROUNDS_OPTIONS = [2, 3, 4]
+const IN_ROUND_STEPS = ['ready', 'playing', 'turn-review']
+
+function lockLandscape() {
+  return screen.orientation?.lock?.('landscape').catch(() => {})
+}
+
+function unlockOrientation() {
+  try { screen.orientation?.unlock?.() } catch { /* pas supporté (iOS...) */ }
+}
 
 function buildTurnOrder(teams, totalRounds) {
   const order = []
@@ -32,6 +42,7 @@ export default function ForeheadGame() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { members } = useMembers()
+  const { setHideChrome } = useUiChrome()
   const tilt = useTiltDetector()
 
   const [step, setStep] = useState('setup-teams')
@@ -71,6 +82,11 @@ export default function ForeheadGame() {
     })
     setGuests(prev => prev.map(g => (g.teamIndex != null && g.teamIndex >= teamCount) ? { ...g, teamIndex: null } : g))
   }, [teamCount])
+
+  useEffect(() => {
+    setHideChrome(IN_ROUND_STEPS.includes(step))
+    return () => setHideChrome(false)
+  }, [step, setHideChrome])
 
   const memberById = id => members.find(m => m.id === id)
 
@@ -140,6 +156,7 @@ export default function ForeheadGame() {
     if (tilt.needsPermissionRequest && tilt.permissionState === 'unknown') {
       await tilt.requestPermission()
     }
+    await lockLandscape()
     setStep('playing')
   }
 
@@ -188,6 +205,7 @@ export default function ForeheadGame() {
         if (next <= 0) {
           clearInterval(id)
           tilt.stop()
+          unlockOrientation()
           setStep('turn-review')
           return 0
         }
@@ -215,6 +233,7 @@ export default function ForeheadGame() {
   }
 
   function handleExit() {
+    unlockOrientation()
     navigate('/games')
   }
 
@@ -346,26 +365,26 @@ export default function ForeheadGame() {
     return (
       <div className="h-full flex flex-col bg-gray-50">
         <GameHeader title="Sur le Front" subtitle={`Manche ${manche}/${totalRounds}`} onBack={handleExit} />
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <Avatar member={player.memberId ? memberById(player.memberId) : null} name={player.name} size="lg" className="mb-3" />
+        <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center px-6 landscape:px-10 py-4 text-center">
+          <Avatar member={player.memberId ? memberById(player.memberId) : null} name={player.name} size="lg" className="mb-3 landscape:mb-2 landscape:h-14 landscape:w-14" />
           <span className={`text-[11px] font-bold uppercase tracking-wide rounded-full px-3 py-1 mb-2 ${currentTeam.color.text} bg-gray-100`}>
             {currentTeam.label}
           </span>
-          <p className="text-2xl font-black text-gray-800 mb-4">{player.name}</p>
-          <p className="text-sm text-gray-500 max-w-xs mb-1">
-            Pose le téléphone sur ton front, écran face à ton équipe.
+          <p className="text-2xl landscape:text-xl font-black text-gray-800 mb-4 landscape:mb-2">{player.name}</p>
+          <p className="text-sm text-gray-500 max-w-xs landscape:max-w-sm mb-1">
+            📱 Tourne le téléphone à l'horizontale et pose-le sur ton front, écran face à ton équipe.
           </p>
-          <p className="text-sm text-gray-500 max-w-xs mb-8">
+          <p className="text-sm text-gray-500 max-w-xs landscape:max-w-sm mb-8 landscape:mb-4">
             Baisse la tête pour valider ✅, relève-la pour passer ⏭️.
           </p>
           {tilt.supported === false && (
-            <p className="text-xs text-amber-600 max-w-xs mb-4">
+            <p className="text-xs text-amber-600 max-w-xs landscape:max-w-sm mb-4 landscape:mb-2">
               Capteur non détecté sur cet appareil — utilise les boutons ✅ / ⏭️ pendant la manche.
             </p>
           )}
           <button
             onClick={handleStartTurn}
-            className="w-full max-w-xs rounded-2xl bg-primary py-4 text-sm font-bold text-white shadow-lg active:bg-primary-dark"
+            className="w-full max-w-xs landscape:max-w-sm rounded-2xl bg-primary py-4 landscape:py-3 text-sm font-bold text-white shadow-lg active:bg-primary-dark"
           >
             Je suis prêt·e !
           </button>
@@ -382,21 +401,21 @@ export default function ForeheadGame() {
     return (
       <div className="h-full flex flex-col bg-gray-50">
         <GameHeader title={currentTeam.label} subtitle={`${correctCount} trouvé${correctCount > 1 ? 's' : ''}`} onBack={handleExit} />
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <p className={`text-4xl font-black mb-8 ${timeLeft <= 10 ? 'text-red-500' : 'text-gray-800'}`}>{timeLeft}s</p>
-          <div className="w-full max-w-xs rounded-3xl bg-white shadow-lg p-8 mb-10">
-            <p className="text-3xl font-black text-gray-800">{currentWord}</p>
+        <div className="flex-1 flex flex-col items-center justify-center px-6 landscape:px-10 text-center">
+          <p className={`text-4xl landscape:text-2xl font-black mb-8 landscape:mb-2 ${timeLeft <= 10 ? 'text-red-500' : 'text-gray-800'}`}>{timeLeft}s</p>
+          <div className="w-full max-w-xs landscape:max-w-md rounded-3xl bg-white shadow-lg p-8 landscape:p-4 mb-10 landscape:mb-4">
+            <p className="text-3xl landscape:text-4xl font-black text-gray-800">{currentWord}</p>
           </div>
-          <div className="w-full max-w-xs flex gap-3">
+          <div className="w-full max-w-xs landscape:max-w-md flex gap-3">
             <button
               onClick={() => handleResult('pass')}
-              className="flex-1 rounded-2xl bg-white shadow-sm py-5 text-2xl active:bg-gray-100"
+              className="flex-1 rounded-2xl bg-white shadow-sm py-5 landscape:py-3 text-2xl active:bg-gray-100"
             >
               ⏭️
             </button>
             <button
               onClick={() => handleResult('correct')}
-              className="flex-1 rounded-2xl bg-primary shadow-lg shadow-primary/30 py-5 text-2xl active:bg-primary-dark"
+              className="flex-1 rounded-2xl bg-primary shadow-lg shadow-primary/30 py-5 landscape:py-3 text-2xl active:bg-primary-dark"
             >
               ✅
             </button>

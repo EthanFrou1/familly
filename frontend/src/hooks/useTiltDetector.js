@@ -10,9 +10,31 @@ const needsPermissionRequest = typeof window !== 'undefined'
   && typeof window.DeviceOrientationEvent !== 'undefined'
   && typeof window.DeviceOrientationEvent.requestPermission === 'function'
 
-// Détecte l'inclinaison avant/arrière du téléphone (angle beta) pour un jeu façon
-// "tel sur le front" : baisser le front = beta qui descend sous la ligne de base = correct,
-// relever le front = beta qui monte au-dessus = passe. La zone neutre + le cooldown évitent
+// beta/gamma sont relatifs au châssis physique du téléphone, pas à l'écran affiché : tenu à
+// l'horizontale (mode paysage, la façon normale de coller le tel sur le front), le mouvement
+// d'inclinaison avant/arrière se retrouve sur gamma et non plus sur beta. On lit l'orientation
+// courante de l'écran pour choisir le bon axe (et le bon signe) à chaque évènement.
+function getScreenAngle() {
+  if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.angle === 'number') {
+    return screen.orientation.angle
+  }
+  if (typeof window !== 'undefined' && typeof window.orientation === 'number') {
+    return ((window.orientation % 360) + 360) % 360
+  }
+  return 0
+}
+
+function getTiltValue(event, angle) {
+  switch (angle) {
+    case 90: return -event.gamma
+    case 180: return -event.beta
+    case 270: return event.gamma
+    default: return event.beta
+  }
+}
+
+// Détecte l'inclinaison avant/arrière du téléphone pour un jeu façon "tel sur le front" :
+// baisser le front = correct, relever le front = passe. La zone neutre + le cooldown évitent
 // qu'une seule inclinaison ne déclenche plusieurs fois de suite.
 export default function useTiltDetector() {
   const [supported, setSupported] = useState(null)
@@ -74,7 +96,7 @@ export default function useTiltDetector() {
     let receivedEvent = false
 
     function handleOrientation(event) {
-      if (event.beta == null) return
+      if (event.beta == null || event.gamma == null) return
       receivedEvent = true
       setSupported(true)
       if (supportTimeoutRef.current) {
@@ -82,15 +104,17 @@ export default function useTiltDetector() {
         supportTimeoutRef.current = null
       }
 
+      const tiltValue = getTiltValue(event, getScreenAngle())
+
       if (baselineRef.current == null) {
-        samplesRef.current.push(event.beta)
+        samplesRef.current.push(tiltValue)
         if (samplesRef.current.length >= CALIBRATION_SAMPLES) {
           baselineRef.current = samplesRef.current.reduce((a, b) => a + b, 0) / samplesRef.current.length
         }
         return
       }
 
-      const delta = event.beta - baselineRef.current
+      const delta = tiltValue - baselineRef.current
       const now = Date.now()
 
       if (armedRef.current && now - lastTriggerRef.current > TRIGGER_COOLDOWN_MS) {
