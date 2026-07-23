@@ -319,7 +319,7 @@ export default function ForeheadGame() {
         <div className="flex-1 flex flex-col justify-center overflow-hidden py-6">
           <ThemeCarousel themes={THEMES} index={selectedThemeIndex} onChange={setSelectedThemeIndex} />
         </div>
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-5">
           <button
             onClick={() => setStep('setup-rounds')}
             className="w-full rounded-2xl bg-dark py-4 text-base font-black text-white shadow-lg shadow-dark/30 active:opacity-90"
