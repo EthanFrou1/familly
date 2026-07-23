@@ -10,16 +10,20 @@ export default function BirthdayPopup({ members, onNavigate }) {
   const fired = useRef(false)
 
   const todayBirthdays = members.filter(m => m.daysUntil === 0)
-  const alreadyShown = sessionStorage.getItem('birthday_popup_shown') === 'true'
+  // Clé datée : une PWA installée reste souvent ouverte plusieurs jours sans jamais fermer sa
+  // session, donc un flag sessionStorage non daté ne se réinitialise jamais et bloque le popup
+  // pour tous les anniversaires suivants après le tout premier affiché.
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const alreadyShown = sessionStorage.getItem(`birthday_popup_shown_${todayKey}`) === 'true'
 
   useEffect(() => {
     if (todayBirthdays.length === 0 || dismissed || alreadyShown) return
     const show = setTimeout(() => {
       setVisible(true)
-      sessionStorage.setItem('birthday_popup_shown', 'true')
+      sessionStorage.setItem(`birthday_popup_shown_${todayKey}`, 'true')
     }, 600)
     return () => clearTimeout(show)
-  }, [todayBirthdays.length, dismissed, alreadyShown])
+  }, [todayBirthdays.length, dismissed, alreadyShown, todayKey])
 
   // Auto-dismiss after 6s
   useEffect(() => {
