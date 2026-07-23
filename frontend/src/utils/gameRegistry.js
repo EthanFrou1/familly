@@ -7,6 +7,7 @@ export const GAMES = [
   { key: 'dailymystery', label: 'Membre Mystère', unitLabel: 'essais', fullLabel: 'Le Membre Mystère', emoji: '🔮' },
   { key: 'famillenor', label: 'Famille en Or', unitLabel: 'manches', fullLabel: 'Une Famille en Or', emoji: '💰' },
   { key: 'undercover', label: 'Undercover', unitLabel: 'manches', fullLabel: 'Undercover', emoji: '🎭' },
+  { key: 'surlefront', label: 'Sur le Front', unitLabel: 'manches', fullLabel: 'Sur le Front', emoji: '🙌' },
 ]
 
 export const GAME_LABELS = Object.fromEntries(GAMES.map(g => [g.key, g.label]))

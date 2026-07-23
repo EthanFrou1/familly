@@ -8,6 +8,7 @@ import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_RELATIONSHIP } from '../utils/
 import { MIN_SUBJECTS_TO_UNLOCK, eligibleSubjectsCount } from '../utils/whoAmIGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_DAILY_MYSTERY } from '../utils/dailyMystery'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_UNDERCOVER } from '../utils/undercoverGame'
+import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_FOREHEAD } from '../utils/foreheadThemes'
 import { GAMES, GAME_LABELS, GAME_UNIT_LABELS } from '../utils/gameRegistry'
 import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
 import OpenRoomsList from '../components/games/OpenRoomsList'
@@ -47,6 +48,7 @@ export default function GamesLobby() {
   const dailyMysteryUnlocked = members.length >= MIN_MEMBERS_FOR_DAILY_MYSTERY
   const famillenorPlayable = members.length >= MIN_MEMBERS_FOR_FAMILLENOR && famillenorReadyCount >= MIN_READY_QUESTIONS_FOR_FAMILLENOR
   const undercoverUnlocked = members.length >= MIN_MEMBERS_FOR_UNDERCOVER
+  const foreheadUnlocked = members.length >= MIN_MEMBERS_FOR_FOREHEAD
   const fanMembers = membersWithPhoto(members).slice(0, 3)
   const memberById = new Map(members.map(m => [m.id, m]))
 
@@ -226,6 +228,15 @@ export default function GamesLobby() {
               unlocked={undercoverUnlocked}
               lockedHint={`${MIN_MEMBERS_FOR_UNDERCOVER} membres min. pour débloquer`}
               onPlay={() => navigate('/games/undercover')}
+            />
+
+            <GameCard
+              emoji="🙌"
+              title="Sur le Front"
+              description="Un tel sur le front, incliné vers le bas ou le haut pour faire deviner un max de mots à ton équipe."
+              unlocked={foreheadUnlocked}
+              lockedHint={`${MIN_MEMBERS_FOR_FOREHEAD} membres min. pour débloquer`}
+              onPlay={() => navigate('/games/surlefront')}
             />
 
             {latestResult && (
