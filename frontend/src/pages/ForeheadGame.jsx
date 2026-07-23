@@ -375,11 +375,6 @@ export default function ForeheadGame() {
           <p className="text-sm text-gray-500 max-w-xs landscape:max-w-sm mb-8 landscape:mb-4">
             Baisse la tête pour valider ✅, relève-la pour passer ⏭️.
           </p>
-          {tilt.needsPermissionRequest && tilt.permissionState === 'unknown' && (
-            <p className="text-xs text-gray-400 max-w-xs landscape:max-w-sm mb-4 landscape:mb-2">
-              📲 Ton téléphone va te demander d'autoriser les capteurs de mouvement — accepte pour incliner, ou continue avec les boutons sinon.
-            </p>
-          )}
           {tilt.supported === false && (
             <p className="text-xs text-amber-600 max-w-xs landscape:max-w-sm mb-4 landscape:mb-2">
               Capteur non détecté sur cet appareil — utilise les boutons ✅ / ⏭️ pendant la manche.
