@@ -15,9 +15,10 @@ import Avatar from '../components/shared/Avatar'
 const TEAM_COUNT_OPTIONS = [2, 3, 4]
 const DURATION_OPTIONS = [30, 45, 60]
 const ROUNDS_OPTIONS = [2, 3, 4]
-const IN_ROUND_STEPS = ['ready', 'playing', 'turn-review']
+const IN_ROUND_STEPS = ['ready', 'countdown', 'playing', 'turn-review']
 const MIN_PER_TEAM = 1
 const MAX_PER_TEAM = 8
+const COUNTDOWN_SECONDS = 5
 
 function lockLandscape() {
   return screen.orientation?.lock?.('landscape').catch(() => {})
@@ -56,7 +57,7 @@ export default function ForeheadGame() {
     [{ mode: 'member', search: `${user.firstName} ${user.lastName}`, memberId: user.memberId }],
     [{ mode: 'guest', search: '', memberId: null }],
   ])
-  const [selectedThemes, setSelectedThemes] = useState(() => [THEMES[0].key])
+  const [selectedThemeIndex, setSelectedThemeIndex] = useState(0)
   const [roundDuration, setRoundDuration] = useState(45)
   const [totalRounds, setTotalRounds] = useState(3)
 
@@ -64,14 +65,18 @@ export default function ForeheadGame() {
   const [teams, setTeams] = useState([])
   const [turnOrder, setTurnOrder] = useState([])
   const [turnIndex, setTurnIndex] = useState(0)
+  const [countdownValue, setCountdownValue] = useState(COUNTDOWN_SECONDS)
   const [timeLeft, setTimeLeft] = useState(0)
   const [currentWord, setCurrentWord] = useState(null)
   const [turnLog, setTurnLog] = useState([])
+  const [paused, setPaused] = useState(false)
+  const [flash, setFlash] = useState(null)
   const startTimeRef = useRef(null)
   const wordPoolRef = useRef([])
   const queueRef = useRef([])
   const currentWordRef = useRef(null)
   const timeLeftRef = useRef(0)
+  const flashTimeoutRef = useRef(null)
 
   useEffect(() => {
     setTeamsSlots(prev => {
@@ -133,13 +138,9 @@ export default function ForeheadGame() {
     }))
   }
 
-  function toggleTheme(key) {
-    setSelectedThemes(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
-  }
-
   function handleStartGame() {
     const finalTeams = buildFinalTeams()
-    wordPoolRef.current = buildWordPool(selectedThemes)
+    wordPoolRef.current = buildWordPool([THEMES[selectedThemeIndex].key])
     setTeams(finalTeams)
     setTurnOrder(buildTurnOrder(finalTeams, totalRounds))
     setTurnIndex(0)
@@ -152,7 +153,7 @@ export default function ForeheadGame() {
       await tilt.requestPermission()
     }
     await lockLandscape()
-    setStep('playing')
+    setStep('countdown')
   }
 
   function setWord(w) {
@@ -172,27 +173,55 @@ export default function ForeheadGame() {
   }
 
   function handleResult(result) {
-    if (timeLeftRef.current <= 0) return
+    if (paused || timeLeftRef.current <= 0) return
     const wordJustShown = currentWordRef.current
     if (wordJustShown == null) return
     setTurnLog(prev => [...prev, { word: wordJustShown, result }])
     setWord(drawNext(wordJustShown))
+    setFlash(result)
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current)
+    flashTimeoutRef.current = setTimeout(() => setFlash(null), 350)
   }
 
   useEffect(() => {
+    if (step !== 'countdown') return
+    setCountdownValue(COUNTDOWN_SECONDS)
+    const id = setInterval(() => {
+      setCountdownValue(v => {
+        if (v <= 1) {
+          clearInterval(id)
+          setStep('playing')
+          return 0
+        }
+        return v - 1
+      })
+    }, 1000)
+    return () => clearInterval(id)
+  }, [step, turnIndex])
+
+  // Prépare le mot et le chrono une seule fois à l'entrée fraîche dans le tour.
+  useEffect(() => {
     if (step !== 'playing') return
+    setPaused(false)
     timeLeftRef.current = roundDuration
     setTimeLeft(roundDuration)
     setTurnLog([])
     queueRef.current = shuffle(wordPoolRef.current)
     setWord(queueRef.current.shift())
-    tilt.start(handleResult)
-    return () => tilt.stop()
+    return () => { if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, turnIndex])
 
+  // Capteur actif seulement hors pause : se recalibre naturellement à la reprise.
   useEffect(() => {
-    if (step !== 'playing') return
+    if (step !== 'playing' || paused) return
+    tilt.start(handleResult)
+    return () => tilt.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, turnIndex, paused])
+
+  useEffect(() => {
+    if (step !== 'playing' || paused) return
     const id = setInterval(() => {
       setTimeLeft(t => {
         const next = t - 1
@@ -209,7 +238,7 @@ export default function ForeheadGame() {
     }, 1000)
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, turnIndex])
+  }, [step, turnIndex, paused])
 
   function toggleLogResult(i) {
     setTurnLog(prev => prev.map((e, idx) => idx === i ? { ...e, result: e.result === 'correct' ? 'pass' : 'correct' } : e))
@@ -285,32 +314,17 @@ export default function ForeheadGame() {
 
   if (step === 'setup-themes') {
     return (
-      <div className="overflow-y-auto h-full bg-gray-50 pb-24">
-        <GameHeader title="Sur le Front" subtitle="Choisis les thèmes" onBack={() => setStep('setup-teams')} />
-        <div className="px-4 mt-5 pb-4 space-y-6">
-          <div className="grid grid-cols-2 gap-3">
-            {THEMES.map(theme => {
-              const selected = selectedThemes.includes(theme.key)
-              return (
-                <button
-                  key={theme.key}
-                  onClick={() => toggleTheme(theme.key)}
-                  className={`rounded-2xl p-4 text-center transition-all ${selected ? 'bg-primary shadow-lg shadow-primary/30 scale-[1.03]' : 'bg-white shadow-sm'}`}
-                >
-                  <div className="text-2xl">{theme.emoji}</div>
-                  <p className={`mt-1.5 font-extrabold text-sm ${selected ? 'text-white' : 'text-gray-800'}`}>{theme.label}</p>
-                  <p className={`mt-0.5 text-[11px] font-bold ${selected ? 'text-white/75' : 'text-gray-400'}`}>{theme.words.length} mots</p>
-                </button>
-              )
-            })}
-          </div>
-
+      <div className="h-full flex flex-col bg-gray-50">
+        <GameHeader title="Sur le Front" subtitle="Choisis un thème" onBack={() => setStep('setup-teams')} />
+        <div className="flex-1 flex flex-col justify-center overflow-hidden py-6">
+          <ThemeCarousel themes={THEMES} index={selectedThemeIndex} onChange={setSelectedThemeIndex} />
+        </div>
+        <div className="px-4 pb-4">
           <button
             onClick={() => setStep('setup-rounds')}
-            disabled={selectedThemes.length === 0}
-            className="w-full rounded-2xl bg-dark py-4 text-base font-black text-white shadow-lg shadow-dark/30 active:opacity-90 disabled:opacity-40"
+            className="w-full rounded-2xl bg-dark py-4 text-base font-black text-white shadow-lg shadow-dark/30 active:opacity-90"
           >
-            {selectedThemes.length === 0 ? 'Choisis au moins un thème' : 'Continuer'}
+            Continuer
           </button>
         </div>
       </div>
@@ -377,14 +391,39 @@ export default function ForeheadGame() {
     )
   }
 
+  if (step === 'countdown') {
+    const currentTurn = turnOrder[turnIndex]
+    const currentTeam = teams[currentTurn.teamIndex]
+
+    return (
+      <div className="h-full flex flex-col bg-gray-50">
+        <GameHeader title={currentTeam.label} onBack={handleExit} />
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <p key={countdownValue} className="text-8xl font-black text-primary animate-[ping_0.5s_ease-out_1]">{countdownValue}</p>
+          <p className="text-sm text-gray-400 mt-4">Prépare-toi...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (step === 'playing') {
     const currentTurn = turnOrder[turnIndex]
     const currentTeam = teams[currentTurn.teamIndex]
     const correctCount = turnLog.filter(e => e.result === 'correct').length
+    const bgClass = flash === 'correct' ? 'bg-green-400' : flash === 'pass' ? 'bg-red-400' : 'bg-gray-50'
 
     return (
-      <div className="h-full flex flex-col bg-gray-50">
-        <GameHeader title={currentTeam.label} subtitle={`${correctCount} trouvé${correctCount > 1 ? 's' : ''}`} onBack={handleExit} />
+      <div className={`h-full flex flex-col transition-colors duration-300 ${bgClass}`}>
+        <div className="pt-8 landscape:pt-3 pb-1 flex items-center justify-center shrink-0 safe-top">
+          <button
+            onClick={() => setPaused(true)}
+            className="flex items-center gap-1.5 rounded-full bg-black/10 px-4 py-2.5 active:bg-black/20"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-gray-600" />
+            <span className="h-1.5 w-1.5 rounded-full bg-gray-600" />
+            <span className="h-1.5 w-1.5 rounded-full bg-gray-600" />
+          </button>
+        </div>
         <div className="flex-1 flex flex-col items-center justify-center px-6 landscape:px-10 text-center">
           <p className={`text-4xl landscape:text-2xl font-black mb-8 landscape:mb-2 ${timeLeft <= 10 ? 'text-red-500' : 'text-gray-800'}`}>{timeLeft}s</p>
           <div className="w-full max-w-xs landscape:max-w-md rounded-3xl bg-white shadow-lg p-8 landscape:p-4 mb-10 landscape:mb-4">
@@ -405,6 +444,23 @@ export default function ForeheadGame() {
             </button>
           </div>
         </div>
+
+        {paused && (
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-dark/95 px-6 text-center">
+            <p className="text-4xl mb-3">⏸️</p>
+            <h2 className="text-xl font-black text-white mb-1">Pause</h2>
+            <p className="text-sm text-white/60 mb-8">{currentTeam.label} · {timeLeft}s restantes</p>
+            <button
+              onClick={() => setPaused(false)}
+              className="w-full max-w-xs rounded-2xl bg-primary py-4 text-sm font-bold text-white shadow-lg active:bg-primary-dark mb-3"
+            >
+              Reprendre
+            </button>
+            <button onClick={handleExit} className="w-full max-w-xs rounded-2xl bg-white/10 py-4 text-sm font-bold text-white active:bg-white/20">
+              Abandonner la partie
+            </button>
+          </div>
+        )}
       </div>
     )
   }
@@ -475,6 +531,84 @@ function OptionPicker({ label, options, value, onChange, formatLabel = String })
           >
             {formatLabel(opt)}
           </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const CAROUSEL_CARD_WIDTH = 200
+const CAROUSEL_GAP = 20
+const CAROUSEL_STEP = CAROUSEL_CARD_WIDTH + CAROUSEL_GAP
+
+// Carrousel "roue" : la carte au centre est nette et à taille pleine, celles sur les côtés
+// sont visibles en aperçu, réduites et estompées selon leur distance au centre. `progress`
+// suit le scroll en continu (pas juste l'index arrondi) pour un effet fluide pendant le drag.
+function ThemeCarousel({ themes, index, onChange }) {
+  const scrollRef = useRef(null)
+  const settleTimeoutRef = useRef(null)
+  const [progress, setProgress] = useState(index)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTo({ left: index * CAROUSEL_STEP, behavior: 'auto' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function handleScroll() {
+    const el = scrollRef.current
+    if (!el) return
+    setProgress(el.scrollLeft / CAROUSEL_STEP)
+
+    if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current)
+    settleTimeoutRef.current = setTimeout(() => {
+      const nearest = Math.max(0, Math.min(themes.length - 1, Math.round(el.scrollLeft / CAROUSEL_STEP)))
+      onChange(nearest)
+    }, 120)
+  }
+
+  function scrollToIndex(i) {
+    scrollRef.current?.scrollTo({ left: i * CAROUSEL_STEP, behavior: 'smooth' })
+  }
+
+  const sidePadding = `calc(50% - ${CAROUSEL_CARD_WIDTH / 2}px)`
+
+  return (
+    <div>
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-none select-none"
+        style={{ scrollPaddingLeft: sidePadding, scrollPaddingRight: sidePadding }}
+      >
+        <div style={{ flex: `0 0 ${sidePadding}` }} />
+        {themes.map((theme, i) => {
+          const distance = Math.abs(progress - i)
+          const scale = Math.max(0.75, 1 - distance * 0.25)
+          const opacity = Math.max(0.35, 1 - distance * 0.55)
+          return (
+            <button
+              key={theme.key}
+              onClick={() => scrollToIndex(i)}
+              style={{ flex: `0 0 ${CAROUSEL_CARD_WIDTH}px`, marginRight: CAROUSEL_GAP, transform: `scale(${scale})`, opacity, scrollSnapAlign: 'center' }}
+              className="shrink-0 rounded-3xl bg-white shadow-xl p-6 text-center"
+            >
+              <div className="text-5xl mb-3">{theme.emoji}</div>
+              <p className="font-extrabold text-gray-800">{theme.label}</p>
+              <p className="text-xs text-gray-400 mt-1">{theme.words.length} mots</p>
+            </button>
+          )
+        })}
+        <div style={{ flex: `0 0 ${sidePadding}` }} />
+      </div>
+
+      <div className="flex justify-center gap-1.5 mt-5">
+        {themes.map((theme, i) => (
+          <div
+            key={theme.key}
+            className={`h-1.5 rounded-full transition-all ${i === index ? 'w-4 bg-primary' : 'w-1.5 bg-gray-300'}`}
+          />
         ))}
       </div>
     </div>
