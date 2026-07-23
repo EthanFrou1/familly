@@ -31,6 +31,7 @@ import FamilleEnOrAdmin from './pages/FamilleEnOrAdmin'
 import FamilleEnOrGameRemote from './pages/FamilleEnOrGameRemote'
 import UndercoverGame from './pages/UndercoverGame'
 import UndercoverGameRemote from './pages/UndercoverGameRemote'
+import ForeheadGame from './pages/ForeheadGame'
 import Leaderboard from './pages/Leaderboard'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
@@ -116,6 +117,7 @@ function ProtectedLayoutContent() {
           <Route path="/games/famillenor/remote" element={<FamilleEnOrGameRemote />} />
           <Route path="/games/undercover" element={<UndercoverGame />} />
           <Route path="/games/undercover/remote" element={<UndercoverGameRemote />} />
+          <Route path="/games/surlefront" element={<ForeheadGame />} />
           <Route path="/games/leaderboard" element={<Leaderboard />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/duplicates" element={<Duplicates />} />
