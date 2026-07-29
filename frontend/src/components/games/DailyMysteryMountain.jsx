@@ -25,7 +25,8 @@ function trailLeft(pct, seed = 0) {
   return Math.min(88, Math.max(12, 50 + wobble))
 }
 
-const CAMPS = [1, 2, 3, 4].map(victories => ({ victories, pct: victories / VICTORIES_TO_SUMMIT }))
+// Repères de l'échelle sur le côté (1 pt à 5 pts), à la même hauteur que les avatars correspondants.
+const SCALE_MARKS = [1, 2, 3, 4, 5].map(points => ({ points, pct: points / VICTORIES_TO_SUMMIT }))
 
 export default function DailyMysteryMountain({ entries, currentMemberId }) {
   const [bgFailed, setBgFailed] = useState(false)
@@ -42,23 +43,18 @@ export default function DailyMysteryMountain({ entries, currentMemberId }) {
         />
       )}
 
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 text-xs font-black text-white bg-black/30 backdrop-blur-sm rounded-full px-3 py-1 tracking-wide z-20">
-        🏁 Sommet du Canigou
-      </div>
-
-      {CAMPS.map((camp, i) => {
-        const bottom = 8 + camp.pct * 76
-        const left = Math.min(80, Math.max(20, trailLeft(camp.pct) + (i % 2 === 0 ? -16 : 16)))
-        return (
-          <span
-            key={camp.victories}
-            className="absolute -translate-x-1/2 text-[10px] font-bold text-white bg-black/35 backdrop-blur-sm rounded-full px-2 py-0.5 whitespace-nowrap"
-            style={{ left: `${left}%`, bottom: `${bottom}%`, zIndex: Math.round(camp.pct * 100) }}
-          >
-            🏕️ Camp {camp.victories}
+      {SCALE_MARKS.map(mark => (
+        <div
+          key={mark.points}
+          className="absolute left-2 flex items-center gap-1"
+          style={{ bottom: `${8 + mark.pct * 76}%`, zIndex: 30 }}
+        >
+          <span className="h-px w-3 bg-white/80" />
+          <span className="text-[9px] font-bold text-white bg-black/35 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+            {mark.points} pt{mark.points > 1 ? 's' : ''}
           </span>
-        )
-      })}
+        </div>
+      ))}
 
       {entries.map(e => {
         const pct = Math.min(1, e.victories / VICTORIES_TO_SUMMIT)
@@ -69,14 +65,11 @@ export default function DailyMysteryMountain({ entries, currentMemberId }) {
         const isMe = e.memberId === currentMemberId
 
         return (
-          <div
+          <span
             key={e.memberId}
-            className="absolute flex flex-col items-center -translate-x-1/2"
+            className="absolute -translate-x-1/2"
             style={{ left: `${left}%`, bottom: `${bottom}%`, zIndex: 50 + Math.round(pct * 100) }}
           >
-            <span className="mb-1 text-[10px] font-extrabold text-white bg-black/40 backdrop-blur-sm rounded-full px-2 py-0.5 whitespace-nowrap">
-              🏆 {e.victories} pt{e.victories > 1 ? 's' : ''}
-            </span>
             <span className="relative inline-block">
               <Avatar
                 src={e.profilePictureUrl}
@@ -88,10 +81,7 @@ export default function DailyMysteryMountain({ entries, currentMemberId }) {
                 <span className="absolute -top-3 -right-1.5 text-base rotate-12 select-none" aria-hidden="true">👑</span>
               )}
             </span>
-            <span className="mt-0.5 text-[10px] font-bold text-white bg-black/40 backdrop-blur-sm rounded-full px-2 py-0.5 whitespace-nowrap max-w-[80px] truncate">
-              {e.firstName}
-            </span>
-          </div>
+          </span>
         )
       })}
     </div>
