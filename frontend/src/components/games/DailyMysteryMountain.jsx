@@ -20,7 +20,7 @@ export default function DailyMysteryMountain({ entries, currentMemberId }) {
   const hasAnyVictory = entries.some(e => e.victories > 0)
 
   return (
-    <div className="relative w-full aspect-[3/4] rounded-3xl overflow-hidden shadow-lg bg-gradient-to-b from-sky-300 via-sky-100 to-emerald-200">
+    <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-lg bg-gradient-to-b from-sky-300 via-sky-100 to-emerald-200">
       {!bgFailed && (
         <img
           src={BACKGROUND_SRC}
