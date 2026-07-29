@@ -67,15 +67,21 @@ export default function DailyMysteryMountain({ entries, currentMemberId }) {
         return (
           <span
             key={e.memberId}
-            className="absolute -translate-x-1/2"
+            className="absolute -translate-x-1/2 flex flex-col items-center"
             style={{ left: `${left}%`, bottom: `${bottom}%`, zIndex: 50 + Math.round(pct * 100) }}
           >
-            <span className="relative inline-block">
+            <span
+              aria-hidden="true"
+              className={`h-0 w-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent drop-shadow ${
+                isMe ? 'border-t-[9px] border-t-primary' : 'border-t-[8px] border-t-white'
+              }`}
+            />
+            <span className="relative -mt-px inline-block">
               <Avatar
                 src={e.profilePictureUrl}
                 name={`${e.firstName} ${e.lastName}`}
                 size={44}
-                className={`ring-2 ${isMe ? 'ring-primary' : 'ring-white'} shadow-md`}
+                className={isMe ? 'ring-[3px] ring-primary shadow-md' : 'ring-2 ring-white shadow-md'}
               />
               {reachedSummit && (
                 <span className="absolute -top-3 -right-1.5 text-base rotate-12 select-none" aria-hidden="true">👑</span>
