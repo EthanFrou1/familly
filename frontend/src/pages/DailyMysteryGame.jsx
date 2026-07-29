@@ -6,11 +6,13 @@ import { useMembers } from '../store/MembersContext'
 import { dailyMysteryApi } from '../services/api'
 import DailyMysteryGrid from '../components/games/DailyMysteryGrid'
 import DailyMysteryLegendSheet from '../components/games/DailyMysteryLegendSheet'
+import DailyMysteryMountain from '../components/games/DailyMysteryMountain'
 import Avatar from '../components/shared/Avatar'
 import { matchesSearch } from '../utils/normalize'
 
-const FIRST_PLACE_POINTS = 2
-const OTHER_SOLVED_POINTS = 1
+const TIER1_POINTS = 3 // trouvé en 1-2 essais
+const TIER2_POINTS = 2 // trouvé en 3-4 essais
+const TIER3_POINTS = 1 // trouvé en 5 essais ou plus
 
 export default function DailyMysteryGame() {
   const { user } = useAuth()
@@ -24,6 +26,8 @@ export default function DailyMysteryGame() {
   const [loadingYesterday, setLoadingYesterday] = useState(true)
   const [pointsLeaderboard, setPointsLeaderboard] = useState(null)
   const [loadingPoints, setLoadingPoints] = useState(true)
+  const [victoriesLeaderboard, setVictoriesLeaderboard] = useState(null)
+  const [loadingVictories, setLoadingVictories] = useState(true)
   const [state, setState] = useState(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -47,6 +51,11 @@ export default function DailyMysteryGame() {
       .then(({ data }) => setPointsLeaderboard(data))
       .catch(() => setPointsLeaderboard([]))
       .finally(() => setLoadingPoints(false))
+
+    dailyMysteryApi.getVictoriesLeaderboard()
+      .then(({ data }) => setVictoriesLeaderboard(data))
+      .catch(() => setVictoriesLeaderboard([]))
+      .finally(() => setLoadingVictories(false))
   }, [])
 
   useEffect(() => {
@@ -137,7 +146,7 @@ export default function DailyMysteryGame() {
             ) : (
               <>
                 <p className="text-xs font-semibold text-gray-400 px-0.5">
-                  Résultats définitifs d'hier — {FIRST_PLACE_POINTS} pts pour qui a trouvé en le moins d'essais, {OTHER_SOLVED_POINTS} pt pour les autres réussites.
+                  Résultats définitifs d'hier — {TIER1_POINTS} pts en 1-2 essais, {TIER2_POINTS} pts en 3-4, {TIER3_POINTS} pt à partir de 5.
                 </p>
                 {yesterdayParticipants.map(p => (
                   <ParticipantRow key={p.memberId} p={p} isMe={p.memberId === user?.memberId} />
@@ -154,7 +163,7 @@ export default function DailyMysteryGame() {
             ) : (
               <>
                 <p className="text-xs font-semibold text-gray-400 px-0.5">
-                  🏆 {FIRST_PLACE_POINTS} pts pour qui a trouvé en le moins d'essais ce jour-là, {OTHER_SOLVED_POINTS} pt pour les autres réussites. Remis à zéro chaque lundi.
+                  🏆 {TIER1_POINTS} pts en 1-2 essais, {TIER2_POINTS} pts en 3-4, {TIER3_POINTS} pt à partir de 5. Remis à zéro chaque lundi.
                 </p>
                 {pointsLeaderboard.map((e, i) => (
                   <PointsRow key={e.memberId} e={e} rank={i + 1} isMe={e.memberId === user?.memberId} />
@@ -164,18 +173,49 @@ export default function DailyMysteryGame() {
           )}
         </div>
 
-        {ctaLabel && (
-          <div className="shrink-0 px-4 pb-4 pt-2">
+        <div className="shrink-0 px-4 pb-4 pt-2 space-y-2">
+          {ctaLabel && (
             <button
               onClick={() => setStep('game')}
               className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
             >
               {ctaLabel}
             </button>
-          </div>
-        )}
+          )}
+          <button
+            onClick={() => setStep('general')}
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-white border border-gray-200 py-3 text-sm font-semibold text-gray-600 shadow-sm active:bg-gray-50"
+          >
+            🏔️ Classement général
+          </button>
+        </div>
 
         <div className="shrink-0 h-6" />
+      </div>
+    )
+  }
+
+  if (step === 'general') {
+    return (
+      <div className="h-full flex flex-col bg-surface">
+        <div className="shrink-0">
+          <MysteryHeader onBack={() => setStep('lobby')} subtitle="Classement général" />
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-3 pb-6 space-y-2">
+          <p className="text-xs font-semibold text-gray-400 px-0.5">
+            1 victoire = finir 1er du classement de la semaine (égalité incluse). Chaque victoire fait grimper la montagne !
+          </p>
+          {loadingVictories ? (
+            <p className="text-center text-sm font-semibold text-gray-400 py-10">Chargement…</p>
+          ) : victoriesLeaderboard.length === 0 ? (
+            <p className="text-center text-sm font-semibold text-gray-400 py-10">
+              Personne n'a encore joué. Le classement général démarre à la fin de la première semaine !
+            </p>
+          ) : (
+            <DailyMysteryMountain entries={victoriesLeaderboard} currentMemberId={user?.memberId} />
+          )}
+        </div>
       </div>
     )
   }
@@ -381,7 +421,7 @@ function PointsRow({ e, rank, isMe }) {
           {e.firstName} {e.lastName}{isMe ? ' (toi)' : ''}
         </p>
         <p className="text-xs text-gray-500">
-          {e.daysWon > 0 && `🏆 ${e.daysWon} victoire${e.daysWon > 1 ? 's' : ''} · `}
+          {e.daysWon > 0 && `🏆 ${e.daysWon} jour${e.daysWon > 1 ? 's' : ''} en 1-2 essais · `}
           {e.daysPlayed} jour{e.daysPlayed > 1 ? 's' : ''} joué{e.daysPlayed > 1 ? 's' : ''}
         </p>
       </div>
@@ -393,11 +433,11 @@ function PointsRow({ e, rank, isMe }) {
 }
 
 function ParticipantRow({ p, isMe }) {
-  const isFirst = p.pointsPreview === FIRST_PLACE_POINTS
+  const isTopTier = p.pointsPreview === TIER1_POINTS
 
   return (
     <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${isMe ? 'bg-primary/10 border border-primary/30' : 'bg-white shadow-sm'}`}>
-      <CrownedAvatar crowned={isFirst} src={p.profilePictureUrl} name={`${p.firstName} ${p.lastName}`} size="sm" />
+      <CrownedAvatar crowned={isTopTier} src={p.profilePictureUrl} name={`${p.firstName} ${p.lastName}`} size="sm" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-gray-800 truncate">
           {p.firstName} {p.lastName}{isMe ? ' (toi)' : ''}
@@ -408,10 +448,10 @@ function ParticipantRow({ p, isMe }) {
         {p.pointsPreview != null && (
           <span
             className={`text-xs font-bold rounded-full px-2.5 py-1 ${
-              isFirst ? 'bg-amber-100 text-amber-700' : 'bg-primary/10 text-primary'
+              isTopTier ? 'bg-amber-100 text-amber-700' : 'bg-primary/10 text-primary'
             }`}
           >
-            {isFirst && '🏆 '}+{p.pointsPreview} pt{p.pointsPreview > 1 ? 's' : ''}
+            {isTopTier && '🏆 '}+{p.pointsPreview} pt{p.pointsPreview > 1 ? 's' : ''}
           </span>
         )}
         {p.streak > 0 && (

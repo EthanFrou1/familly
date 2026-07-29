@@ -12,8 +12,6 @@ namespace FamilyApp.API.Services;
 // Comme WhoAmIRoundGenerator, le membre réponse n'est jamais exposé avant résolution/échec.
 public class DailyMysteryService(AppDbContext db)
 {
-    private const int AvoidRepeatDays = 20;
-
     public record MemberInfo(
         Guid Id, string FirstName, string LastName, string? Gender, Guid? FamilyId,
         DateTime? BirthDate, bool IsAlive, string? City, string? Country, string? PostalCode,
@@ -53,10 +51,11 @@ public class DailyMysteryService(AppDbContext db)
         if (eligible.Count == 0)
             throw new InvalidOperationException("Aucun membre suffisamment renseigné pour le défi du jour.");
 
-        var recentCount = Math.Min(AvoidRepeatDays, eligible.Count - 1);
+        // Anti-répétition remis à zéro chaque lundi (comme le classement de points) : seuls les membres
+        // déjà tirés depuis le début de la semaine en cours sont exclus, pas un historique glissant.
+        var weekStart = GetStartOfWeek(today);
         var recentIds = (await db.DailyChallenges
-                .OrderByDescending(c => c.Date)
-                .Take(recentCount)
+                .Where(c => c.Date >= weekStart && c.Date < today)
                 .Select(c => c.MemberId)
                 .ToListAsync())
             .ToHashSet();
@@ -129,13 +128,6 @@ public class DailyMysteryService(AppDbContext db)
             .Select(u => new { u.Id, u.Member })
             .ToListAsync();
 
-        // Nombre d'essais minimum parmi les tentatives résolues ce jour-là : sert à repérer le(s)
-        // plus rapide(s) pour l'aperçu de points (égalité incluse, comme GetPointsLeaderboardAsync).
-        var minSolvedAttempts = attempts.Where(a => a.Solved)
-            .Select(a => (JsonSerializer.Deserialize<List<Guid>>(a.GuessesJson) ?? []).Count)
-            .DefaultIfEmpty(int.MaxValue)
-            .Min();
-
         var participants = new List<DailyMysteryParticipantDto>();
         foreach (var attempt in attempts)
         {
@@ -145,9 +137,7 @@ public class DailyMysteryService(AppDbContext db)
             var guessedIds = JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? [];
             var status = attempt.Solved ? "solved" : "inProgress";
             var (streak, _) = await ComputeStreakAsync(attempt.UserId, challenge.Date);
-            int? pointsPreview = attempt.Solved
-                ? (guessedIds.Count == minSolvedAttempts ? FirstPlacePoints : OtherSolvedPoints)
-                : null;
+            int? pointsPreview = attempt.Solved ? PointsForAttempts(guessedIds.Count) : null;
 
             participants.Add(new DailyMysteryParticipantDto(
                 um.Member.Id, um.Member.FirstName, um.Member.LastName, um.Member.ProfilePictureUrl,
@@ -200,11 +190,19 @@ public class DailyMysteryService(AppDbContext db)
             .ToList();
     }
 
-    // Barème du jour : le(s) plus rapide(s) (nombre d'essais minimum parmi les gagnants) touchent
-    // FirstPlacePoints chacun, tous les autres gagnants touchent OtherSolvedPoints. En cas d'égalité
-    // sur le nombre d'essais, tout le monde à égalité reçoit les points de première place.
-    private const int FirstPlacePoints = 2;
-    private const int OtherSolvedPoints = 1;
+    // Barème du jour : les points dépendent uniquement du nombre d'essais de CE membre, jamais de ce
+    // que font les autres joueurs ce jour-là. Volontaire : ça récompense l'assiduité (jouer tous les
+    // jours rapporte mécaniquement plus que bien jouer une seule fois) plutôt que la compétition du jour.
+    private const int Tier1Points = 3; // trouvé en 1-2 essais
+    private const int Tier2Points = 2; // trouvé en 3-4 essais
+    private const int Tier3Points = 1; // trouvé en 5 essais ou plus
+
+    private static int PointsForAttempts(int attemptsUsed) => attemptsUsed switch
+    {
+        <= 2 => Tier1Points,
+        <= 4 => Tier2Points,
+        _ => Tier3Points,
+    };
 
     // Classement par points remis à zéro chaque semaine (lundi-dimanche) : ne compte que les jours
     // de la semaine en cours. Comme rien n'est stocké (tout est recalculé à la lecture), le "reset"
@@ -246,13 +244,12 @@ public class DailyMysteryService(AppDbContext db)
                 .ToList();
             if (dayResults.Count == 0) continue;
 
-            var minAttempts = dayResults.Min(r => r.AttemptsUsed);
             foreach (var (memberId, attemptsUsed) in dayResults)
             {
-                var isFirst = attemptsUsed == minAttempts;
-                points[memberId] = points.GetValueOrDefault(memberId) + (isFirst ? FirstPlacePoints : OtherSolvedPoints);
+                var pts = PointsForAttempts(attemptsUsed);
+                points[memberId] = points.GetValueOrDefault(memberId) + pts;
                 daysPlayed[memberId] = daysPlayed.GetValueOrDefault(memberId) + 1;
-                if (isFirst) daysWon[memberId] = daysWon.GetValueOrDefault(memberId) + 1;
+                if (pts == Tier1Points) daysWon[memberId] = daysWon.GetValueOrDefault(memberId) + 1;
             }
         }
 
@@ -270,6 +267,63 @@ public class DailyMysteryService(AppDbContext db)
             })
             .OrderByDescending(e => e.TotalPoints)
             .ThenByDescending(e => e.DaysWon)
+            .ToList();
+    }
+
+    // Classement général (toutes semaines confondues) : une "victoire" = avoir le score de points le
+    // plus haut d'une semaine terminée (lundi-dimanche), égalité incluse (tout le monde à égalité
+    // gagne 1 victoire ce jour-là). Contrairement à GetPointsLeaderboardAsync, jamais remis à zéro :
+    // sert de base au parcours/montagne où chaque membre avance d'un cran par victoire.
+    // La semaine en cours est exclue tant qu'elle n'est pas terminée (même raison que GetPointsLeaderboardAsync).
+    public async Task<List<DailyMysteryVictoriesDto>> GetVictoriesLeaderboardAsync()
+    {
+        var today = GetParisToday();
+        var currentWeekStart = GetStartOfWeek(today);
+
+        var allAttempts = await db.DailyChallengeAttempts.ToListAsync();
+        var userIds = allAttempts.Select(a => a.UserId).Distinct().ToList();
+        var memberByUser = (await db.Users
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.Member })
+                .ToListAsync())
+            .ToDictionary(x => x.Id, x => x.Member);
+
+        var challengeDates = await db.DailyChallenges.ToDictionaryAsync(c => c.Id, c => c.Date);
+
+        var pointsByWeek = new Dictionary<DateOnly, Dictionary<Guid, int>>();
+        foreach (var attempt in allAttempts)
+        {
+            if (!attempt.Solved) continue;
+            if (!memberByUser.TryGetValue(attempt.UserId, out var member)) continue;
+            if (!challengeDates.TryGetValue(attempt.DailyChallengeId, out var date)) continue;
+
+            var weekStart = GetStartOfWeek(date);
+            if (weekStart >= currentWeekStart) continue;
+
+            var attemptsUsed = (JsonSerializer.Deserialize<List<Guid>>(attempt.GuessesJson) ?? []).Count;
+            var pts = PointsForAttempts(attemptsUsed);
+
+            if (!pointsByWeek.TryGetValue(weekStart, out var weekPoints))
+                pointsByWeek[weekStart] = weekPoints = new Dictionary<Guid, int>();
+            weekPoints[member.Id] = weekPoints.GetValueOrDefault(member.Id) + pts;
+        }
+
+        var victories = new Dictionary<Guid, int>();
+        foreach (var weekPoints in pointsByWeek.Values)
+        {
+            var maxPoints = weekPoints.Values.Max();
+            foreach (var (memberId, pts) in weekPoints)
+                if (pts == maxPoints) victories[memberId] = victories.GetValueOrDefault(memberId) + 1;
+        }
+
+        var memberInfoById = memberByUser.Values
+            .GroupBy(m => m.Id)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        return memberInfoById.Values
+            .Select(m => new DailyMysteryVictoriesDto(
+                m.Id, m.FirstName, m.LastName, m.ProfilePictureUrl, victories.GetValueOrDefault(m.Id)))
+            .OrderByDescending(e => e.Victories)
             .ToList();
     }
 
