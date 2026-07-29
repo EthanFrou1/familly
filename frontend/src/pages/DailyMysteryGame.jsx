@@ -202,19 +202,21 @@ export default function DailyMysteryGame() {
           <MysteryHeader onBack={() => setStep('lobby')} subtitle="Classement général" />
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-3 pb-6 space-y-2">
-          <p className="text-xs font-semibold text-gray-400 px-0.5">
-            1 victoire = finir 1er du classement de la semaine (égalité incluse). Chaque victoire fait grimper la montagne !
+        <div className="flex-1 min-h-0 flex flex-col px-4 pt-3 pb-3 gap-2">
+          <p className="shrink-0 text-xs font-semibold text-gray-400 px-0.5">
+            1 victoire = finir 1er du classement de la semaine (égalité incluse). 5 victoires pour atteindre le sommet !
           </p>
-          {loadingVictories ? (
-            <p className="text-center text-sm font-semibold text-gray-400 py-10">Chargement…</p>
-          ) : victoriesLeaderboard.length === 0 ? (
-            <p className="text-center text-sm font-semibold text-gray-400 py-10">
-              Personne n'a encore joué. Le classement général démarre à la fin de la première semaine !
-            </p>
-          ) : (
-            <DailyMysteryMountain entries={victoriesLeaderboard} currentMemberId={user?.memberId} />
-          )}
+          <div className="flex-1 min-h-0">
+            {loadingVictories ? (
+              <p className="text-center text-sm font-semibold text-gray-400 py-10">Chargement…</p>
+            ) : victoriesLeaderboard.length === 0 ? (
+              <p className="text-center text-sm font-semibold text-gray-400 py-10">
+                Personne n'a encore joué. Le classement général démarre à la fin de la première semaine !
+              </p>
+            ) : (
+              <DailyMysteryMountain entries={victoriesLeaderboard} currentMemberId={user?.memberId} />
+            )}
+          </div>
         </div>
       </div>
     )
