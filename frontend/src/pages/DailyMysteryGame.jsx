@@ -204,7 +204,7 @@ export default function DailyMysteryGame() {
 
         <div className="flex-1 min-h-0 flex flex-col px-4 pt-3 pb-3 gap-2">
           <p className="shrink-0 text-xs font-semibold text-gray-400 px-0.5">
-            1 victoire = finir 1er du classement de la semaine (égalité incluse). Chaque victoire fait grimper la montagne !
+            1 victoire = finir 1er du classement de la semaine (égalité incluse). 5 victoires pour atteindre le sommet !
           </p>
           <div className="flex-1 min-h-0">
             {loadingVictories ? (
