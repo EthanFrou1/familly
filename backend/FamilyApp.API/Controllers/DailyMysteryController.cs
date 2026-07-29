@@ -44,6 +44,12 @@ public class DailyMysteryController(DailyMysteryService service) : ControllerBas
         return Ok(await service.GetPointsLeaderboardAsync());
     }
 
+    [HttpGet("leaderboard/victories")]
+    public async Task<IActionResult> GetVictoriesLeaderboard()
+    {
+        return Ok(await service.GetVictoriesLeaderboardAsync());
+    }
+
     [HttpPost("guess")]
     public async Task<IActionResult> Guess(DailyGuessRequestDto dto)
     {

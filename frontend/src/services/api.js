@@ -186,6 +186,7 @@ export const dailyMysteryApi = {
   getYesterdayLeaderboard: () => api.get('/daily-mystery/yesterday/leaderboard'),
   getLeaderboard: () => api.get('/daily-mystery/leaderboard'),
   getPointsLeaderboard: () => api.get('/daily-mystery/leaderboard/points'),
+  getVictoriesLeaderboard: () => api.get('/daily-mystery/leaderboard/victories'),
   guess: (memberId) => api.post('/daily-mystery/guess', { memberId }),
 }
 
