@@ -32,7 +32,7 @@ export default function DailyMysteryMountain({ entries, currentMemberId }) {
   const [bgFailed, setBgFailed] = useState(false)
 
   return (
-    <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-lg bg-gradient-to-b from-sky-300 via-sky-100 to-emerald-200">
+    <div className="relative isolate w-full h-full rounded-3xl overflow-hidden shadow-lg bg-gradient-to-b from-sky-300 via-sky-100 to-emerald-200">
       {!bgFailed && (
         <img
           src={BACKGROUND_SRC}
