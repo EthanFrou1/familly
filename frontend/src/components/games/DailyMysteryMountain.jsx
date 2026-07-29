@@ -70,12 +70,12 @@ export default function DailyMysteryMountain({ entries, currentMemberId }) {
             className="absolute -translate-x-1/2 flex flex-col items-center"
             style={{ left: `${left}%`, bottom: `${bottom}%`, zIndex: 50 + Math.round(pct * 100) }}
           >
-            <span
-              aria-hidden="true"
-              className={`h-0 w-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent drop-shadow ${
-                isMe ? 'border-t-[9px] border-t-primary' : 'border-t-[8px] border-t-white'
-              }`}
-            />
+            {isMe && (
+              <span
+                aria-hidden="true"
+                className="h-0 w-0 border-l-[11px] border-l-transparent border-r-[11px] border-r-transparent border-t-[18px] border-t-primary drop-shadow-md animate-bounce"
+              />
+            )}
             <span className="relative -mt-px inline-block">
               <Avatar
                 src={e.profilePictureUrl}
