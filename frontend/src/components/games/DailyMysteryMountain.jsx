@@ -73,7 +73,7 @@ export default function DailyMysteryMountain({ entries, currentMemberId }) {
             {isMe && (
               <span
                 aria-hidden="true"
-                className="h-0 w-0 border-l-[11px] border-l-transparent border-r-[11px] border-r-transparent border-t-[18px] border-t-primary drop-shadow-md animate-bounce"
+                className="h-0 w-0 border-l-[11px] border-l-transparent border-r-[11px] border-r-transparent border-t-[18px] border-t-white drop-shadow-md animate-bounce"
               />
             )}
             <span className="relative -mt-px inline-block">
