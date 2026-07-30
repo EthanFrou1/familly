@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
-import { familiesApi, settingsApi, relationsApi, activityLogsApi, photosApi, gamesApi } from '../services/api'
+import { familiesApi, settingsApi, relationsApi, activityLogsApi, photosApi, gamesApi, dailyMysteryApi } from '../services/api'
 import { usePageRefresh } from '../hooks/usePageRefresh'
 import Avatar from '../components/shared/Avatar'
 import BirthdayPopup from '../components/home/BirthdayPopup'
@@ -131,7 +131,8 @@ export default function Home() {
   const [relations, setRelations] = useState([])
   const [activityLogs, setActivityLogs] = useState([])
   const [recentPhotos, setRecentPhotos] = useState([])
-  const [gameStats, setGameStats] = useState(null)
+  const [globalGameStats, setGlobalGameStats] = useState(null)
+  const [worstGuesser, setWorstGuesser] = useState(null)
   const [showExportSheet, setShowExportSheet] = useState(false)
   const { supported: pushSupported, subscribed, permission, subscribe } = usePushNotifications()
   const [pushBannerDismissed, setPushBannerDismissed] = useState(
@@ -164,7 +165,8 @@ export default function Home() {
   }, [members])
 
   useEffect(() => {
-    gamesApi.getStats('memory').then(({ data }) => setGameStats(data)).catch(() => {})
+    gamesApi.getGlobalStats().then(({ data }) => setGlobalGameStats(data)).catch(() => {})
+    dailyMysteryApi.getWorstGuesser().then(({ data }) => setWorstGuesser(data)).catch(() => {})
   }, [])
 
   usePageRefresh(() => {
@@ -204,16 +206,16 @@ export default function Home() {
 
   const gameFunStats = useMemo(() => {
     const list = []
-    if (gameStats?.topWinner) {
-      const { name, count, memberId } = gameStats.topWinner
-      list.push({ emoji: '🏆', label: 'Le boss du Memory', value: name, sub: `${count} victoire${count > 1 ? 's' : ''}`, memberId })
+    if (globalGameStats?.topWinner) {
+      const { name, count, memberId } = globalGameStats.topWinner
+      list.push({ emoji: '🏆', label: 'Le boss des mini-jeux', value: name, sub: `${count} victoire${count > 1 ? 's' : ''}`, memberId })
     }
-    if (gameStats?.topLoser) {
-      const { name, count, memberId } = gameStats.topLoser
-      list.push({ emoji: '🏮', label: 'Lanterne rouge du Memory', value: name, sub: `${count} défaite${count > 1 ? 's' : ''}`, memberId })
+    if (worstGuesser) {
+      const { firstName, lastName, attemptsUsed, memberId } = worstGuesser
+      list.push({ emoji: '🐌', label: 'Le plus nul au membre mystère', value: `${firstName} ${lastName}`, sub: `${attemptsUsed} essais`, memberId })
     }
     return list
-  }, [gameStats])
+  }, [globalGameStats, worstGuesser])
 
   const allFunStats = [...funStats, ...gameFunStats]
 
