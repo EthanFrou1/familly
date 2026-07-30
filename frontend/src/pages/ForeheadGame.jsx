@@ -19,6 +19,7 @@ const IN_ROUND_STEPS = ['ready', 'countdown', 'playing', 'turn-review']
 const MIN_PER_TEAM = 1
 const MAX_PER_TEAM = 8
 const COUNTDOWN_SECONDS = 5
+const MIN_RESULT_INTERVAL_MS = 1200
 
 function lockLandscape() {
   return screen.orientation?.lock?.('landscape').catch(() => {})
@@ -77,6 +78,7 @@ export default function ForeheadGame() {
   const currentWordRef = useRef(null)
   const timeLeftRef = useRef(0)
   const flashTimeoutRef = useRef(null)
+  const lastResultTimeRef = useRef(0)
 
   useEffect(() => {
     setTeamsSlots(prev => {
@@ -141,6 +143,7 @@ export default function ForeheadGame() {
   function handleStartGame() {
     const finalTeams = buildFinalTeams()
     wordPoolRef.current = buildWordPool([THEMES[selectedThemeIndex].key])
+    queueRef.current = []
     setTeams(finalTeams)
     setTurnOrder(buildTurnOrder(finalTeams, totalRounds))
     setTurnIndex(0)
@@ -149,6 +152,9 @@ export default function ForeheadGame() {
   }
 
   async function handleStartTurn() {
+    // Doit être acquis pendant le geste de tap lui-même : demandé plus tard (après le décompte),
+    // le navigateur refuse silencieusement le verrou et l'écran finit par s'éteindre en pleine manche.
+    tilt.acquireWakeLock()
     if (tilt.needsPermissionRequest && tilt.permissionState === 'unknown') {
       await tilt.requestPermission()
     }
@@ -176,6 +182,9 @@ export default function ForeheadGame() {
     if (paused || timeLeftRef.current <= 0) return
     const wordJustShown = currentWordRef.current
     if (wordJustShown == null) return
+    const now = Date.now()
+    if (now - lastResultTimeRef.current < MIN_RESULT_INTERVAL_MS) return
+    lastResultTimeRef.current = now
     setTurnLog(prev => [...prev, { word: wordJustShown, result }])
     setWord(drawNext(wordJustShown))
     setFlash(result)
@@ -206,8 +215,8 @@ export default function ForeheadGame() {
     timeLeftRef.current = roundDuration
     setTimeLeft(roundDuration)
     setTurnLog([])
-    queueRef.current = shuffle(wordPoolRef.current)
-    setWord(queueRef.current.shift())
+    lastResultTimeRef.current = 0
+    setWord(drawNext(currentWordRef.current))
     return () => { if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, turnIndex])
@@ -257,6 +266,7 @@ export default function ForeheadGame() {
   }
 
   function handleExit() {
+    tilt.releaseWakeLock()
     unlockOrientation()
     navigate('/games')
   }

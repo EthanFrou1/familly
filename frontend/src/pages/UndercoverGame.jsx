@@ -313,7 +313,6 @@ export default function UndercoverGame() {
               <Avatar member={memberById(lastElimination.player.memberId)} name={lastElimination.player.name} size="lg" className="mb-3" />
               <p className="text-lg font-extrabold text-gray-800">{lastElimination.player.name} était...</p>
               <p className="text-2xl font-black text-primary mt-1">{ROLE_LABELS[lastElimination.player.role]}</p>
-              {lastElimination.player.word && <p className="text-sm text-gray-400 mt-1">Mot : {lastElimination.player.word}</p>}
             </>
           )}
 

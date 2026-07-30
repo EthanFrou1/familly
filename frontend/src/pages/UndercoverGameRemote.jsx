@@ -32,6 +32,7 @@ export default function UndercoverGameRemote() {
 
   const [myRole, setMyRole] = useState(null)
   const [myWord, setMyWord] = useState(null)
+  const [revealShown, setRevealShown] = useState(false)
   const [aliveMemberIds, setAliveMemberIds] = useState([])
   const [speakingOrder, setSpeakingOrder] = useState([])
   const [phase, setPhase] = useState('clue')
@@ -104,6 +105,7 @@ export default function UndercoverGameRemote() {
         setElapsedSeconds(0)
         startTimeRef.current = Date.now()
         setPaused(false)
+        setRevealShown(false)
         setStep('reveal')
       }),
       onHubEvent('GamePaused', ({ byColorIndex, byName }) => {
@@ -196,7 +198,7 @@ export default function UndercoverGameRemote() {
   }
 
   function handleVote(memberId) {
-    if (myVote || paused) return
+    if (paused || !amAlive) return
     setMyVote(memberId)
     gameHub.submitUndercoverVote(memberId).catch(() => {})
   }
@@ -303,25 +305,43 @@ export default function UndercoverGameRemote() {
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
           {myRole === null ? (
             <p className="text-sm text-gray-400">Chargement…</p>
-          ) : myRole === 'MrWhite' ? (
+          ) : !revealShown ? (
             <>
-              <p className="text-3xl mb-3">🎭</p>
-              <p className="text-lg font-extrabold text-gray-800 mb-1">Tu es Mr. White !</p>
-              <p className="text-sm text-gray-500 max-w-xs">Tu n'as aucun mot. Bluffe en donnant un indice crédible sans te faire démasquer.</p>
+              <p className="text-3xl mb-3">🤫</p>
+              <p className="text-lg font-extrabold text-gray-800 mb-2">Attention</p>
+              <p className="text-sm text-gray-500 max-w-xs mb-8">
+                Vérifie que personne d'autre ne peut voir ton écran : ton rôle va s'afficher.
+              </p>
+              <button
+                onClick={() => setRevealShown(true)}
+                className="w-full max-w-xs rounded-2xl bg-primary py-4 text-sm font-bold text-white shadow-lg active:bg-primary-dark"
+              >
+                Tap pour voir ton rôle 🤫
+              </button>
             </>
           ) : (
             <>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Ton mot secret</p>
-              <p className="text-3xl font-black text-gray-800 mb-1">{myWord}</p>
-              <p className="text-xs text-gray-400 mt-2">Donne un indice à voix haute sans jamais le répéter.</p>
+              {myRole === 'MrWhite' ? (
+                <>
+                  <p className="text-3xl mb-3">🎭</p>
+                  <p className="text-lg font-extrabold text-gray-800 mb-1">Tu es Mr. White !</p>
+                  <p className="text-sm text-gray-500 max-w-xs">Tu n'as aucun mot. Bluffe en donnant un indice crédible sans te faire démasquer.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Ton mot secret</p>
+                  <p className="text-3xl font-black text-gray-800 mb-1">{myWord}</p>
+                  <p className="text-xs text-gray-400 mt-2">Donne un indice à voix haute sans jamais le répéter.</p>
+                </>
+              )}
+              <button
+                onClick={() => setStep('playing')}
+                className="mt-8 w-full max-w-xs rounded-2xl bg-primary py-4 text-sm font-bold text-white shadow-lg active:bg-primary-dark"
+              >
+                J'ai compris
+              </button>
             </>
           )}
-          <button
-            onClick={() => setStep('playing')}
-            className="mt-8 w-full max-w-xs rounded-2xl bg-primary py-4 text-sm font-bold text-white shadow-lg active:bg-primary-dark"
-          >
-            J'ai compris
-          </button>
         </div>
       </div>
     )
@@ -438,7 +458,7 @@ export default function UndercoverGameRemote() {
                   <button
                     key={p.memberId}
                     onClick={() => handleVote(p.memberId)}
-                    disabled={!!myVote || !amAlive}
+                    disabled={!amAlive}
                     className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 transition-all disabled:opacity-100 ${
                       myVote === p.memberId ? 'bg-primary/15 ring-2 ring-primary' : 'bg-white shadow-sm active:opacity-80'
                     }`}
@@ -476,7 +496,6 @@ export default function UndercoverGameRemote() {
                   {players.find(p => p.memberId === lastElimination.eliminatedMemberId)?.name} était...
                 </p>
                 <p className="text-2xl font-black text-primary">{ROLE_LABELS[lastElimination.role] ?? lastElimination.role}</p>
-                {lastElimination.word && <p className="text-sm text-gray-400">Mot : {lastElimination.word}</p>}
               </>
             )}
 
