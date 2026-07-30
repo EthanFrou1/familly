@@ -60,6 +60,34 @@ public class GamesController(AppDbContext db) : ControllerBase
         });
     }
 
+    // Boss toutes-catégories : cumule les victoires sur tous les mini-jeux (memory, famille en or,
+    // sur le front, etc.) au lieu de filtrer par gameType comme GetStats.
+    [HttpGet("stats/global")]
+    public async Task<IActionResult> GetGlobalStats()
+    {
+        var results = await db.GameResults.ToListAsync();
+        var wins = new Dictionary<(Guid MemberId, string Name), int>();
+
+        foreach (var r in results)
+        {
+            var players = JsonSerializer.Deserialize<List<GamePlayerScoreDto>>(r.PlayersJson) ?? [];
+            var linked = players.Where(p => p.MemberId.HasValue && !p.IsGuest).ToList();
+            if (linked.Count < 2) continue;
+
+            var maxScore = linked.Max(p => p.Score);
+            var isTie = linked.Count(p => p.Score == maxScore) > 1;
+            if (isTie) continue;
+
+            foreach (var p in linked.Where(p => p.Score == maxScore))
+            {
+                var key = (p.MemberId!.Value, p.Name);
+                wins[key] = wins.GetValueOrDefault(key) + 1;
+            }
+        }
+
+        return Ok(new { topWinner = TopEntry(wins) });
+    }
+
     private static object? TopEntry(Dictionary<(Guid MemberId, string Name), int> counts) =>
         counts.Count == 0 ? null : counts
             .OrderByDescending(kv => kv.Value)

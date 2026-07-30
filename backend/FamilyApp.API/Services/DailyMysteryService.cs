@@ -315,6 +315,35 @@ public class DailyMysteryService(AppDbContext db)
             .ToList();
     }
 
+    // Record toutes dates confondues : la tentative résolue ayant nécessité le plus d'essais.
+    // Une seule tentative gagnante (pas un cumul par membre) : c'est le pire jour de quelqu'un, pas sa moyenne.
+    public async Task<DailyMysteryWorstGuesserDto?> GetWorstGuesserAsync()
+    {
+        var solvedAttempts = await db.DailyChallengeAttempts.Where(a => a.Solved).ToListAsync();
+        if (solvedAttempts.Count == 0) return null;
+
+        var userIds = solvedAttempts.Select(a => a.UserId).Distinct().ToList();
+        var memberByUser = (await db.Users
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.Member })
+                .ToListAsync())
+            .ToDictionary(x => x.Id, x => x.Member);
+
+        var worst = solvedAttempts
+            .Where(a => memberByUser.ContainsKey(a.UserId))
+            .Select(a => new
+            {
+                Member = memberByUser[a.UserId],
+                AttemptsUsed = (JsonSerializer.Deserialize<List<Guid>>(a.GuessesJson) ?? []).Count,
+            })
+            .OrderByDescending(x => x.AttemptsUsed)
+            .FirstOrDefault();
+
+        return worst is null
+            ? null
+            : new DailyMysteryWorstGuesserDto(worst.Member.Id, worst.Member.FirstName, worst.Member.LastName, worst.AttemptsUsed);
+    }
+
     public async Task<DailyMysteryStateDto> SubmitGuessAsync(Guid userId, Guid memberId)
     {
         if (!await db.Members.AnyAsync(m => m.Id == memberId))

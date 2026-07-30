@@ -88,3 +88,12 @@ public record DailyMysteryVictoriesDto(
     string? ProfilePictureUrl,
     int Victories
 );
+
+// Record (toutes dates confondues) du nombre d'essais le plus élevé pour trouver le membre mystère
+// d'un jour donné. AttemptsUsed vient d'une tentative résolue précise, pas d'un cumul.
+public record DailyMysteryWorstGuesserDto(
+    Guid MemberId,
+    string FirstName,
+    string LastName,
+    int AttemptsUsed
+);

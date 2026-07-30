@@ -175,6 +175,7 @@ export const gamesApi = {
   getResults: (gameType, limit = 10) => api.get('/games/results', { params: { gameType, limit } }),
   submitResult: (data) => api.post('/games/results', data),
   getStats: (gameType) => api.get('/games/stats', { params: { gameType } }),
+  getGlobalStats: () => api.get('/games/stats/global'),
   getMemberStats: (memberId, gameType) => api.get(`/games/stats/member/${memberId}`, { params: { gameType } }),
   getLeaderboard: (gameType) => api.get('/games/leaderboard', { params: { gameType } }),
   getGlobalLeaderboard: () => api.get('/games/leaderboard/global'),
@@ -187,6 +188,7 @@ export const dailyMysteryApi = {
   getLeaderboard: () => api.get('/daily-mystery/leaderboard'),
   getPointsLeaderboard: () => api.get('/daily-mystery/leaderboard/points'),
   getVictoriesLeaderboard: () => api.get('/daily-mystery/leaderboard/victories'),
+  getWorstGuesser: () => api.get('/daily-mystery/worst-guesser'),
   guess: (memberId) => api.post('/daily-mystery/guess', { memberId }),
 }
 

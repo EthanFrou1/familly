@@ -50,6 +50,12 @@ public class DailyMysteryController(DailyMysteryService service) : ControllerBas
         return Ok(await service.GetVictoriesLeaderboardAsync());
     }
 
+    [HttpGet("worst-guesser")]
+    public async Task<IActionResult> GetWorstGuesser()
+    {
+        return Ok(await service.GetWorstGuesserAsync());
+    }
+
     [HttpPost("guess")]
     public async Task<IActionResult> Guess(DailyGuessRequestDto dto)
     {
