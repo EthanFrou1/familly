@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useUiChrome } from '../store/UiChromeContext'
-import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
+import { connectHub, gameHub, onHubEvent, setReconnectHandler } from '../services/gameHub'
 import { gamesApi } from '../services/api'
 import { formatDuration } from '../utils/memoryGame'
 import GameHeader from '../components/games/GameHeader'
@@ -48,9 +48,19 @@ export default function FamilleEnOrGameRemote() {
   const [finalWinnerName, setFinalWinnerName] = useState(null)
   const [gameDuration, setGameDuration] = useState(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const [pausedByName, setPausedByName] = useState(null)
+  const [pausedByColorIndex, setPausedByColorIndex] = useState(null)
+  const [disconnectedPlayers, setDisconnectedPlayers] = useState([])
+  const [now, setNow] = useState(Date.now())
   const startTimeRef = useRef(null)
+  const pausedAtRef = useRef(null)
+  const pausedDurationRef = useRef(0)
+  const stepRef = useRef(step)
+  const roomCodeRef = useRef(roomCode)
 
   const me = players.find(p => p.memberId === user?.memberId)
+  const myColorIndex = me?.colorIndex
   const isHost = me?.isHost ?? false
   const team0 = players.filter(p => p.teamIndex === 0)
   const team1 = players.filter(p => p.teamIndex === 1)
@@ -70,23 +80,41 @@ export default function FamilleEnOrGameRemote() {
     return () => setHideChrome(false)
   }, [step, setHideChrome])
 
+  useEffect(() => { stepRef.current = step }, [step])
+  useEffect(() => { roomCodeRef.current = roomCode }, [roomCode])
+
+  useEffect(() => {
+    if (disconnectedPlayers.length === 0) return
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [disconnectedPlayers.length])
+
   useEffect(() => {
     connectHub()
       .then(() => { if (autoJoinCode) handleJoinRoom(autoJoinCode) })
       .catch(() => setError('Connexion impossible.'))
+    // SignalR reconnecte le transport tout seul après une coupure réseau (nouveau
+    // ConnectionId) : il faut rappeler JoinRoom pour que le serveur relie ça au
+    // joueur — uniquement si une partie était en cours, sinon rien à faire.
+    setReconnectHandler(() => {
+      if (roomCodeRef.current && stepRef.current === 'playing') {
+        gameHub.joinRoom(roomCodeRef.current).catch(() => {})
+      }
+    })
     return () => {
       gameHub.leaveRoom().catch(() => {})
+      setReconnectHandler(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
-    if (step !== 'playing') return
+    if (step !== 'playing' || paused) return
     const interval = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000))
+      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current - pausedDurationRef.current) / 1000))
     }, 1000)
     return () => clearInterval(interval)
-  }, [step])
+  }, [step, paused])
 
   useEffect(() => {
     const offs = [
@@ -111,7 +139,43 @@ export default function FamilleEnOrGameRemote() {
         setReveal(null)
         setElapsedSeconds(0)
         startTimeRef.current = Date.now()
+        pausedAtRef.current = null
+        pausedDurationRef.current = 0
+        setPaused(false)
+        setPausedByName(null)
+        setPausedByColorIndex(null)
         setStep('playing')
+      }),
+      onHubEvent('GamePaused', ({ byColorIndex, byName }) => {
+        pausedAtRef.current = Date.now()
+        setPausedByName(byName ?? null)
+        setPausedByColorIndex(byColorIndex)
+        setPaused(true)
+      }),
+      onHubEvent('GameResumed', () => {
+        if (pausedAtRef.current) {
+          pausedDurationRef.current += Date.now() - pausedAtRef.current
+          pausedAtRef.current = null
+        }
+        setPausedByName(null)
+        setPausedByColorIndex(null)
+        setPaused(false)
+      }),
+      onHubEvent('PlayerDisconnected', ({ memberId, colorIndex, name, graceSeconds }) => {
+        if (!pausedAtRef.current) pausedAtRef.current = Date.now()
+        setPaused(true)
+        setDisconnectedPlayers(prev => prev.some(p => p.memberId === memberId)
+          ? prev
+          : [...prev, { memberId, colorIndex, name, deadline: Date.now() + graceSeconds * 1000 }])
+      }),
+      onHubEvent('PlayerReconnected', ({ memberId, players: updated }) => {
+        setDisconnectedPlayers(prev => prev.filter(p => p.memberId !== memberId))
+        if (updated) setPlayers(updated)
+      }),
+      onHubEvent('PlayerKicked', ({ memberId, players: updated, faceOffMemberIds: updatedFaceOff }) => {
+        setDisconnectedPlayers(prev => prev.filter(p => p.memberId !== memberId))
+        setPlayers(updated)
+        if (updatedFaceOff) setFaceOffMemberIds(updatedFaceOff)
       }),
       onHubEvent('BuzzWon', ({ teamIndex }) => {
         setControllingTeamIndex(teamIndex)
@@ -380,7 +444,7 @@ export default function FamilleEnOrGameRemote() {
 
   return (
     <div className="relative h-full bg-gray-50 overflow-hidden">
-      <div className="h-full flex flex-col">
+      <div className={`h-full flex flex-col transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
         <div className="px-4 pt-10 pb-2 shrink-0">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-primary bg-white rounded-full px-3 py-1 shadow-sm">
@@ -389,6 +453,12 @@ export default function FamilleEnOrGameRemote() {
             <span className="text-xs font-mono font-semibold text-gray-400 bg-white rounded-full px-2.5 py-1 shadow-sm">
               ⏱ {formatDuration(elapsedSeconds)}
             </span>
+            <button
+              onClick={() => gameHub.pauseGame().catch(() => {})}
+              className="shrink-0 min-h-touch min-w-touch flex items-center justify-center text-gray-400 bg-white rounded-full shadow-sm"
+            >
+              <DotsIcon />
+            </button>
           </div>
           <div className="flex items-center gap-2">
             <TeamScoreChip label="Équipe 1" score={team0Score} active={controllingTeamIndex === 0} />
@@ -519,6 +589,62 @@ export default function FamilleEnOrGameRemote() {
             ) : (
               <p className="text-xs text-gray-400">En attente de l'hôte pour continuer…</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {paused && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center px-10">
+          <div className="w-full max-w-xs space-y-3">
+            <div className="rounded-2xl bg-white shadow-lg px-5 py-4 text-center space-y-2">
+              {disconnectedPlayers.length === 0 ? (
+                <>
+                  <p className="text-sm font-bold text-gray-800">⏸ Partie mise en pause</p>
+                  {pausedByName && <p className="text-xs text-gray-400 mt-1">par {pausedByName}</p>}
+                </>
+              ) : (
+                disconnectedPlayers.map(dp => (
+                  <p key={dp.memberId} className="text-sm font-bold text-gray-800">
+                    🔌 {dp.name} s'est déconnecté·e
+                    <span className="block text-xs font-normal text-gray-400 mt-1">
+                      Reconnexion possible pendant encore {Math.max(0, Math.ceil((dp.deadline - now) / 1000))}s…
+                    </span>
+                  </p>
+                ))
+              )}
+            </div>
+
+            {disconnectedPlayers.length === 0 && (
+              pausedByColorIndex === myColorIndex ? (
+                <button
+                  onClick={() => gameHub.resumeGame().catch(() => {})}
+                  className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
+                >
+                  Reprendre
+                </button>
+              ) : (
+                <p className="text-xs text-gray-400 text-center">
+                  Seul{pausedByName ? ` ${pausedByName}` : ''} peut reprendre la partie.
+                </p>
+              )
+            )}
+
+            {isHost && disconnectedPlayers.map(dp => (
+              <button
+                key={dp.memberId}
+                onClick={() => gameHub.kickDisconnectedPlayer(dp.memberId).catch(() => {})}
+                className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-gray-600 shadow-lg active:bg-gray-50"
+              >
+                Continuer sans {dp.name.split(' ')[0]}
+              </button>
+            ))}
+
+            <button
+              onClick={handleExit}
+              className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-red-500 shadow-lg active:bg-gray-50"
+            >
+              Quitter la partie
+            </button>
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMembers } from '../store/MembersContext'
 import { useUiChrome } from '../store/UiChromeContext'
-import { connectHub, gameHub, onHubEvent } from '../services/gameHub'
+import { connectHub, gameHub, onHubEvent, setReconnectHandler } from '../services/gameHub'
 import { matchesSearch } from '../utils/normalize'
 import { formatDuration } from '../utils/memoryGame'
 import GameHeader from '../components/games/GameHeader'
@@ -51,12 +51,16 @@ export default function WhoAmIGameRemote() {
   const [paused, setPaused] = useState(false)
   const [pausedByName, setPausedByName] = useState(null)
   const [pausedByColorIndex, setPausedByColorIndex] = useState(null)
+  const [disconnectedPlayers, setDisconnectedPlayers] = useState([])
+  const [now, setNow] = useState(Date.now())
   const [finalPlayers, setFinalPlayers] = useState([])
   const [gameDuration, setGameDuration] = useState(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const startTimeRef = useRef(null)
   const pausedAtRef = useRef(null)
   const pausedDurationRef = useRef(0)
+  const stepRef = useRef(step)
+  const roomCodeRef = useRef(roomCode)
 
   const me = players.find(p => p.memberId === user?.memberId)
   const myColorIndex = me?.colorIndex
@@ -67,6 +71,15 @@ export default function WhoAmIGameRemote() {
     return () => setHideChrome(false)
   }, [step, setHideChrome])
 
+  useEffect(() => { stepRef.current = step }, [step])
+  useEffect(() => { roomCodeRef.current = roomCode }, [roomCode])
+
+  useEffect(() => {
+    if (disconnectedPlayers.length === 0) return
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [disconnectedPlayers.length])
+
   useEffect(() => {
     // La connexion doit être établie avant toute tentative de join automatique
     // (deux useEffect séparés se battaient pour la même connexion encore en
@@ -74,8 +87,17 @@ export default function WhoAmIGameRemote() {
     connectHub()
       .then(() => { if (autoJoinCode) handleJoinRoom(autoJoinCode) })
       .catch(() => setError('Connexion impossible.'))
+    // SignalR reconnecte le transport tout seul après une coupure réseau (nouveau
+    // ConnectionId) : il faut rappeler JoinRoom pour que le serveur relie ça au
+    // joueur — uniquement si une partie était en cours, sinon rien à faire.
+    setReconnectHandler(() => {
+      if (roomCodeRef.current && stepRef.current === 'playing') {
+        gameHub.joinRoom(roomCodeRef.current).catch(() => {})
+      }
+    })
     return () => {
       gameHub.leaveRoom().catch(() => {})
+      setReconnectHandler(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -147,6 +169,21 @@ export default function WhoAmIGameRemote() {
         setPausedByName(null)
         setPausedByColorIndex(null)
         setPaused(false)
+      }),
+      onHubEvent('PlayerDisconnected', ({ memberId, colorIndex, name, graceSeconds }) => {
+        if (!pausedAtRef.current) pausedAtRef.current = Date.now()
+        setPaused(true)
+        setDisconnectedPlayers(prev => prev.some(p => p.memberId === memberId)
+          ? prev
+          : [...prev, { memberId, colorIndex, name, deadline: Date.now() + graceSeconds * 1000 }])
+      }),
+      onHubEvent('PlayerReconnected', ({ memberId, players: updated }) => {
+        setDisconnectedPlayers(prev => prev.filter(p => p.memberId !== memberId))
+        if (updated) setPlayers(updated)
+      }),
+      onHubEvent('PlayerKicked', ({ memberId, players: updated }) => {
+        setDisconnectedPlayers(prev => prev.filter(p => p.memberId !== memberId))
+        setPlayers(updated)
       }),
       onHubEvent('ClueRevealed', ({ clue, hasMore }) => {
         setClues(prev => [...prev, clue])
@@ -471,22 +508,49 @@ export default function WhoAmIGameRemote() {
       {paused && (
         <div className="fixed inset-0 z-40 flex items-center justify-center px-10">
           <div className="w-full max-w-xs space-y-3">
-            <div className="rounded-2xl bg-white shadow-lg px-5 py-4 text-center">
-              <p className="text-sm font-bold text-gray-800">⏸ Partie mise en pause</p>
-              {pausedByName && <p className="text-xs text-gray-400 mt-1">par {pausedByName}</p>}
+            <div className="rounded-2xl bg-white shadow-lg px-5 py-4 text-center space-y-2">
+              {disconnectedPlayers.length === 0 ? (
+                <>
+                  <p className="text-sm font-bold text-gray-800">⏸ Partie mise en pause</p>
+                  {pausedByName && <p className="text-xs text-gray-400 mt-1">par {pausedByName}</p>}
+                </>
+              ) : (
+                disconnectedPlayers.map(dp => (
+                  <p key={dp.memberId} className="text-sm font-bold text-gray-800">
+                    🔌 {dp.name} s'est déconnecté·e
+                    <span className="block text-xs font-normal text-gray-400 mt-1">
+                      Reconnexion possible pendant encore {Math.max(0, Math.ceil((dp.deadline - now) / 1000))}s…
+                    </span>
+                  </p>
+                ))
+              )}
             </div>
-            {pausedByColorIndex === myColorIndex ? (
-              <button
-                onClick={() => gameHub.resumeGame().catch(() => {})}
-                className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
-              >
-                Reprendre
-              </button>
-            ) : (
-              <p className="text-xs text-gray-400 text-center">
-                Seul{pausedByName ? ` ${pausedByName}` : ''} peut reprendre la partie.
-              </p>
+
+            {disconnectedPlayers.length === 0 && (
+              pausedByColorIndex === myColorIndex ? (
+                <button
+                  onClick={() => gameHub.resumeGame().catch(() => {})}
+                  className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white shadow-lg active:bg-primary-dark"
+                >
+                  Reprendre
+                </button>
+              ) : (
+                <p className="text-xs text-gray-400 text-center">
+                  Seul{pausedByName ? ` ${pausedByName}` : ''} peut reprendre la partie.
+                </p>
+              )
             )}
+
+            {isHost && disconnectedPlayers.map(dp => (
+              <button
+                key={dp.memberId}
+                onClick={() => gameHub.kickDisconnectedPlayer(dp.memberId).catch(() => {})}
+                className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-gray-600 shadow-lg active:bg-gray-50"
+              >
+                Continuer sans {dp.name.split(' ')[0]}
+              </button>
+            ))}
+
             <button
               onClick={handleExit}
               className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-red-500 shadow-lg active:bg-gray-50"

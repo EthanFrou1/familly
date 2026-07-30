@@ -20,6 +20,9 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
     private const int DefaultMaxPlayers = 4;
     private const int FamilleEnOrMinPlayersPerTeam = 2;
     private const int UndercoverMinPlayers = 4;
+    // Délai laissé à un joueur pour revenir après une coupure en pleine partie avant d'être retiré
+    // (voir HandleMidGameDisconnectAsync) — l'hôte peut aussi écourter ce délai via KickDisconnectedPlayer.
+    private const int ReconnectGraceSeconds = 30;
     private static readonly Dictionary<string, int> MaxPlayersByGameType = new()
     {
         ["superlative"] = 10,
@@ -56,9 +59,14 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
     {
         var session = store.Get(code);
         if (session is null) return new { success = false, error = "Code introuvable." };
-        if (session.Started) return new { success = false, error = "La partie a déjà commencé." };
 
         var (memberId, name, photo) = await ResolveCallerAsync();
+
+        if (session.Started)
+        {
+            if (session.Finished) return new { success = false, error = "La partie a déjà commencé." };
+            return await ReconnectToStartedRoomAsync(session, memberId);
+        }
 
         List<PlayerDto> playerDtos;
         string? staleConnectionId = null;
@@ -102,6 +110,63 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         return new { success = true, code = session.Code, players = playerDtos };
     }
 
+    // Reconnexion en pleine partie : le joueur est déjà dans la session (marqué déconnecté ou pas —
+    // une reco peut arriver avant même que le serveur ait détecté la coupure côté SignalR). On
+    // échange juste le ConnectionId et on lève le flag Disconnected ; si plus personne n'attend, la
+    // partie reprend. Contrairement au join en lobby, aucun état de jeu n'est renvoyé ici : on
+    // suppose que la page cliente est restée montée (reco réseau, pas relance de l'appli) et a
+    // gardé son état — voir gameHub.js/onreconnected.
+    private async Task<object> ReconnectToStartedRoomAsync(GameSession session, Guid memberId)
+    {
+        List<PlayerDto> playerDtos;
+        string? staleConnectionId;
+        bool wasDisconnected;
+        bool resumeGame = false;
+
+        lock (session)
+        {
+            var existing = session.Players.FirstOrDefault(p => p.MemberId == memberId);
+            if (existing is null) return new { success = false, error = "La partie a déjà commencé." };
+
+            wasDisconnected = existing.Disconnected;
+            staleConnectionId = existing.ConnectionId;
+            existing.ConnectionId = Context.ConnectionId;
+            existing.Disconnected = false;
+            existing.DisconnectToken = Guid.Empty;
+
+            if (wasDisconnected && session.PausedByColorIndex == existing.ColorIndex)
+            {
+                var stillWaiting = session.Players.FirstOrDefault(p => p.Disconnected);
+                if (stillWaiting is null)
+                {
+                    if (session.PausedAt is not null)
+                        session.PausedSeconds += (DateTime.UtcNow - session.PausedAt.Value).TotalSeconds;
+                    session.Paused = false;
+                    session.PausedAt = null;
+                    session.PausedByColorIndex = null;
+                    resumeGame = true;
+                }
+                else
+                {
+                    session.PausedByColorIndex = stillWaiting.ColorIndex;
+                }
+            }
+
+            playerDtos = ToPlayerDtos(session);
+        }
+
+        if (staleConnectionId is not null && staleConnectionId != Context.ConnectionId)
+            await Groups.RemoveFromGroupAsync(staleConnectionId, session.Code);
+        await Groups.AddToGroupAsync(Context.ConnectionId, session.Code);
+
+        if (wasDisconnected)
+            await Clients.Group(session.Code).SendAsync("PlayerReconnected", new { memberId, players = playerDtos });
+        if (resumeGame)
+            await Clients.Group(session.Code).SendAsync("GameResumed");
+
+        return new { success = true, code = session.Code, players = playerDtos, reconnected = true };
+    }
+
     public async Task LeaveRoom()
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
@@ -132,8 +197,215 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
-        if (session is not null) await HandleLeaveAsync(session, Context.ConnectionId);
+        if (session is not null)
+        {
+            if (session.Started && !session.Finished)
+                await HandleMidGameDisconnectAsync(session, Context.ConnectionId);
+            else
+                await HandleLeaveAsync(session, Context.ConnectionId);
+        }
         await base.OnDisconnectedAsync(exception);
+    }
+
+    // Une coupure en pleine partie ne l'annule plus tout de suite : elle met en pause et laisse
+    // ReconnectGraceSeconds au joueur pour revenir (JoinRoom/ReconnectToStartedRoomAsync accepte la
+    // reco tant que la partie n'est pas Finished). Passé ce délai, ResolveDisconnectAsync retire le
+    // joueur si le jeu le permet, sinon annule — l'hôte peut aussi écourter l'attente via
+    // KickDisconnectedPlayer si le joueur a dit vouloir arrêter.
+    private async Task HandleMidGameDisconnectAsync(GameSession session, string connectionId)
+    {
+        SessionPlayer? player;
+        Guid token;
+        object payload;
+
+        lock (session)
+        {
+            player = session.Players.FirstOrDefault(p => p.ConnectionId == connectionId);
+            if (player is null || player.Disconnected) return;
+
+            player.Disconnected = true;
+            token = player.DisconnectToken = Guid.NewGuid();
+
+            if (!session.Paused)
+            {
+                session.Paused = true;
+                session.PausedAt = DateTime.UtcNow;
+                session.PausedByColorIndex = player.ColorIndex;
+            }
+
+            payload = new
+            {
+                memberId = player.MemberId,
+                colorIndex = player.ColorIndex,
+                name = player.Name,
+                graceSeconds = ReconnectGraceSeconds,
+            };
+        }
+
+        await Clients.Group(session.Code).SendAsync("PlayerDisconnected", payload);
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(ReconnectGraceSeconds));
+            await ResolveDisconnectAsync(session, player.MemberId, token);
+        });
+    }
+
+    // Permet à l'hôte d'écourter le délai de grâce si le joueur déconnecté ne reviendra
+    // visiblement pas — évite à toute la table d'attendre ReconnectGraceSeconds pour rien.
+    public async Task KickDisconnectedPlayer(Guid memberId)
+    {
+        var session = store.FindByConnectionId(Context.ConnectionId);
+        if (session is null || !session.Started || session.Finished) return;
+
+        var caller = session.Players.FirstOrDefault(p => p.ConnectionId == Context.ConnectionId);
+        if (caller is null || !caller.IsHost) return;
+
+        Guid token;
+        lock (session)
+        {
+            var target = session.Players.FirstOrDefault(p => p.MemberId == memberId);
+            if (target is null || !target.Disconnected) return;
+            token = target.DisconnectToken;
+        }
+
+        await ResolveDisconnectAsync(session, memberId, token);
+    }
+
+    // Appelée soit par le timer de grâce, soit par KickDisconnectedPlayer. `token` protège contre
+    // une reco entre-temps (le champ aurait changé) ou un double appel (timer + kick manuel).
+    private async Task ResolveDisconnectAsync(GameSession session, Guid memberId, Guid token)
+    {
+        bool cancelGame = false;
+        bool resumeGame = false;
+        bool shouldAutoResolveRound = false;
+        object? kickedPayload = null;
+        object? progressPayload = null;
+
+        lock (session)
+        {
+            var player = session.Players.FirstOrDefault(p => p.MemberId == memberId);
+            if (player is null || !player.Disconnected || player.DisconnectToken != token) return;
+
+            var result = TryRemovePlayerFromGameLocked(session, player);
+            if (!result.Removed)
+            {
+                cancelGame = true;
+            }
+            else
+            {
+                kickedPayload = new
+                {
+                    memberId = player.MemberId,
+                    colorIndex = player.ColorIndex,
+                    players = ToPlayerDtos(session),
+                    nextPlayerColorIndex = result.NextPlayerColorIndex,
+                    faceOffMemberIds = session.GameType == "famillenor" ? session.FamilleEnOrFaceOffMemberIds : null,
+                };
+
+                if (session.PausedByColorIndex == player.ColorIndex)
+                {
+                    var stillWaiting = session.Players.FirstOrDefault(p => p.Disconnected);
+                    if (stillWaiting is null)
+                    {
+                        if (session.PausedAt is not null)
+                            session.PausedSeconds += (DateTime.UtcNow - session.PausedAt.Value).TotalSeconds;
+                        session.Paused = false;
+                        session.PausedAt = null;
+                        session.PausedByColorIndex = null;
+                        resumeGame = true;
+                    }
+                    else
+                    {
+                        session.PausedByColorIndex = stillWaiting.ColorIndex;
+                    }
+                }
+
+                if (session.GameType is "superlative" or "whoami" && session.SimRoundIndex < session.SimRounds.Count)
+                {
+                    progressPayload = new { answered = session.PendingAnswers.Count, total = session.Players.Count };
+                    shouldAutoResolveRound = session.PendingAnswers.Count >= session.Players.Count;
+                }
+            }
+        }
+
+        if (cancelGame)
+        {
+            await Clients.Group(session.Code).SendAsync("GameCancelled");
+            store.Remove(session.Code);
+            return;
+        }
+
+        await Clients.Group(session.Code).SendAsync("PlayerKicked", kickedPayload);
+        if (resumeGame) await Clients.Group(session.Code).SendAsync("GameResumed");
+        if (progressPayload is not null) await Clients.Group(session.Code).SendAsync("AnswerProgress", progressPayload);
+        if (shouldAutoResolveRound) await ResolveRoundAsync(session);
+    }
+
+    private readonly record struct KickResult(bool Removed, int? NextPlayerColorIndex);
+
+    // Retire un joueur déconnecté de la partie en cours sans casser l'état — renvoie Removed=false
+    // si le jeu ne peut structurellement pas continuer sans lui (l'appelant doit alors annuler la
+    // partie). Doit être appelée à l'intérieur d'un lock(session).
+    private static KickResult TryRemovePlayerFromGameLocked(GameSession session, SessionPlayer player)
+    {
+        // Rôles/effectif figés au lancement (alive list, votes, ordre de parole) : pas de retrait
+        // propre possible sans risquer de casser les conditions de victoire.
+        if (session.GameType == "undercover") return new KickResult(false, null);
+
+        if (session.GameType == "famillenor")
+        {
+            if (player.TeamIndex is null) return new KickResult(false, null);
+            var teammatesLeft = session.Players.Count(p => p.TeamIndex == player.TeamIndex && p.MemberId != player.MemberId);
+            if (teammatesLeft == 0) return new KickResult(false, null);
+
+            session.Players.Remove(player);
+            if (player.IsHost && session.Players.Count > 0) session.Players[0].IsHost = true;
+
+            if (session.FamilleEnOrPhase == "faceoff" && session.FamilleEnOrFaceOffMemberIds.Contains(player.MemberId))
+            {
+                var repIndex = session.FamilleEnOrFaceOffMemberIds.IndexOf(player.MemberId);
+                var roster = session.Players.Where(p => p.TeamIndex == player.TeamIndex).OrderBy(p => p.ColorIndex).ToList();
+                if (roster.Count > 0)
+                {
+                    var idx = session.FamilleEnOrTeamRepIndex.GetValueOrDefault(player.TeamIndex!.Value) % roster.Count;
+                    session.FamilleEnOrTeamRepIndex[player.TeamIndex!.Value] = idx + 1;
+                    session.FamilleEnOrFaceOffMemberIds[repIndex] = roster[idx].MemberId;
+                }
+            }
+            return new KickResult(true, null);
+        }
+
+        if (session.Players.Count(p => p.MemberId != player.MemberId) < MinPlayers) return new KickResult(false, null);
+
+        session.Players.Remove(player);
+        if (player.IsHost && session.Players.Count > 0) session.Players[0].IsHost = true;
+
+        if (session.GameType is "superlative" or "whoami")
+        {
+            session.PendingAnswers.Remove(player.MemberId);
+            session.PlayerHintCounts.Remove(player.MemberId);
+            return new KickResult(true, null);
+        }
+
+        // Jeux tour par tour (memory / quiwho / relationship) : la roue de départ n'est peut-être
+        // pas finie, ou le tour en cours est le sien — dans les deux cas il faut retirer sa trace
+        // de l'ordre et faire avancer la main si besoin.
+        session.RemainingColorIndexesForWheel.Remove(player.ColorIndex);
+
+        var orderIndex = session.TurnOrderColorIndexes.IndexOf(player.ColorIndex);
+        if (orderIndex < 0) return new KickResult(true, null);
+
+        var wasCurrent = orderIndex == session.CurrentPlayerIndex;
+        session.TurnOrderColorIndexes.RemoveAt(orderIndex);
+        if (session.TurnOrderColorIndexes.Count == 0) return new KickResult(false, null);
+
+        if (orderIndex < session.CurrentPlayerIndex) session.CurrentPlayerIndex--;
+        session.CurrentPlayerIndex %= session.TurnOrderColorIndexes.Count;
+        if (!wasCurrent) return new KickResult(true, null);
+
+        session.FlippedCardIds.Clear();
+        return new KickResult(true, session.TurnOrderColorIndexes[session.CurrentPlayerIndex]);
     }
 
     private async Task HandleLeaveAsync(GameSession session, string connectionId)
