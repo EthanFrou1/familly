@@ -183,7 +183,7 @@ export default function SuperlativeGameRemote() {
   }
 
   function handleVote(memberId) {
-    if (paused || myVote || reveal) return
+    if (paused || reveal) return
     setMyVote(memberId)
     gameHub.submitAnswer(memberId).catch(() => {})
   }
@@ -341,7 +341,7 @@ export default function SuperlativeGameRemote() {
                 <button
                   key={p.memberId}
                   onClick={() => handleVote(p.memberId)}
-                  disabled={!!myVote || !!reveal}
+                  disabled={!!reveal}
                   className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 transition-all disabled:opacity-100 ${
                     isWinner ? 'bg-primary/15 ring-2 ring-primary' : isMine ? 'bg-primary/10 ring-2 ring-primary/40' : 'bg-white shadow-sm active:opacity-80'
                   }`}
