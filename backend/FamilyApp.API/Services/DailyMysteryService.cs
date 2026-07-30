@@ -51,19 +51,7 @@ public class DailyMysteryService(AppDbContext db)
         if (eligible.Count == 0)
             throw new InvalidOperationException("Aucun membre suffisamment renseigné pour le défi du jour.");
 
-        // Anti-répétition remis à zéro chaque lundi (comme le classement de points) : seuls les membres
-        // déjà tirés depuis le début de la semaine en cours sont exclus, pas un historique glissant.
-        var weekStart = GetStartOfWeek(today);
-        var recentIds = (await db.DailyChallenges
-                .Where(c => c.Date >= weekStart && c.Date < today)
-                .Select(c => c.MemberId)
-                .ToListAsync())
-            .ToHashSet();
-
-        var pool = eligible.Where(id => !recentIds.Contains(id)).ToList();
-        if (pool.Count == 0) pool = eligible;
-
-        var challenge = new DailyChallenge { Date = today, MemberId = pool[Random.Shared.Next(pool.Count)] };
+        var challenge = new DailyChallenge { Date = today, MemberId = eligible[Random.Shared.Next(eligible.Count)] };
         db.DailyChallenges.Add(challenge);
 
         try
