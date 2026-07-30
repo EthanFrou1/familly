@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 
-const NEUTRAL_ZONE_DEG = 15
-const TRIGGER_OFFSET_DEG = 30
+const NEUTRAL_ZONE_DEG = 20
+const TRIGGER_OFFSET_DEG = 45
 const TRIGGER_COOLDOWN_MS = 400
 const SUPPORT_TIMEOUT_MS = 1500
 const CALIBRATION_SAMPLES = 3
@@ -42,6 +42,8 @@ export default function useTiltDetector() {
 
   const listenerRef = useRef(null)
   const wakeLockRef = useRef(null)
+  const wakeLockActiveRef = useRef(false)
+  const visibilityListenerRef = useRef(null)
   const baselineRef = useRef(null)
   const samplesRef = useRef([])
   const armedRef = useRef(true)
@@ -63,6 +65,41 @@ export default function useTiltDetector() {
     }
   }, [])
 
+  // Le verrou d'écran (Wake Lock API) exige un geste utilisateur récent pour être accordé : demandé
+  // trop tard (ex. après le décompte de 5s), le navigateur le refuse silencieusement et l'écran finit
+  // par s'éteindre en plein jeu. On l'acquiert donc directement dans le handler de clic ("Je suis
+  // prêt·e !"), pas après coup dans `start`. Le navigateur libère aussi le verrou dès que l'onglet
+  // passe en arrière-plan (notif, changement d'appli...) : on le redemande donc à chaque retour au
+  // premier plan tant que la manche est active.
+  const acquireWakeLock = useCallback(() => {
+    wakeLockActiveRef.current = true
+    if (!navigator.wakeLock) return
+
+    navigator.wakeLock.request('screen').then(lock => { wakeLockRef.current = lock }).catch(() => {})
+
+    if (!visibilityListenerRef.current) {
+      const onVisibility = () => {
+        if (wakeLockActiveRef.current && document.visibilityState === 'visible') {
+          navigator.wakeLock.request('screen').then(lock => { wakeLockRef.current = lock }).catch(() => {})
+        }
+      }
+      visibilityListenerRef.current = onVisibility
+      document.addEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
+
+  const releaseWakeLock = useCallback(() => {
+    wakeLockActiveRef.current = false
+    if (visibilityListenerRef.current) {
+      document.removeEventListener('visibilitychange', visibilityListenerRef.current)
+      visibilityListenerRef.current = null
+    }
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().catch(() => {})
+      wakeLockRef.current = null
+    }
+  }, [])
+
   const stop = useCallback(() => {
     if (listenerRef.current) {
       window.removeEventListener('deviceorientation', listenerRef.current)
@@ -72,14 +109,11 @@ export default function useTiltDetector() {
       clearTimeout(supportTimeoutRef.current)
       supportTimeoutRef.current = null
     }
-    if (wakeLockRef.current) {
-      wakeLockRef.current.release().catch(() => {})
-      wakeLockRef.current = null
-    }
+    releaseWakeLock()
     baselineRef.current = null
     samplesRef.current = []
     armedRef.current = true
-  }, [])
+  }, [releaseWakeLock])
 
   const start = useCallback((onTilt) => {
     stop()
@@ -89,9 +123,7 @@ export default function useTiltDetector() {
       return
     }
 
-    if (navigator.wakeLock) {
-      navigator.wakeLock.request('screen').then(lock => { wakeLockRef.current = lock }).catch(() => {})
-    }
+    acquireWakeLock()
 
     let receivedEvent = false
 
@@ -140,5 +172,5 @@ export default function useTiltDetector() {
     }, SUPPORT_TIMEOUT_MS)
   }, [stop])
 
-  return { supported, permissionState, needsPermissionRequest, requestPermission, start, stop }
+  return { supported, permissionState, needsPermissionRequest, requestPermission, start, stop, acquireWakeLock, releaseWakeLock }
 }
