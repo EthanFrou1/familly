@@ -22,7 +22,7 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
     private const int UndercoverMinPlayers = 4;
     // Délai laissé à un joueur pour revenir après une coupure en pleine partie avant d'être retiré
     // (voir HandleMidGameDisconnectAsync) — l'hôte peut aussi écourter ce délai via KickDisconnectedPlayer.
-    private const int ReconnectGraceSeconds = 30;
+    private const int ReconnectGraceSeconds = 45;
     private static readonly Dictionary<string, int> MaxPlayersByGameType = new()
     {
         ["superlative"] = 10,
