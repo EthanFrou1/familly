@@ -41,6 +41,23 @@ export function onHubEvent(event, handler) {
   return () => getConnection().off(event, handler)
 }
 
+let reconnectHandler = null
+let reconnectListenerAttached = false
+
+// SignalR (withAutomaticReconnect) rétablit la connexion transport toute seule après une coupure
+// réseau, mais avec un nouveau ConnectionId — le serveur ne sait donc pas relier ça au joueur tant
+// qu'on n'a pas rappelé JoinRoom. Un seul handler à la fois : la page de jeu montée l'enregistre à
+// la connexion et le retire à son démontage (voir *GameRemote.jsx), sinon les handlers d'anciennes
+// pages s'accumuleraient sur cette connexion singleton partagée entre les écrans.
+export function setReconnectHandler(handler) {
+  reconnectHandler = handler
+  const conn = getConnection()
+  if (!reconnectListenerAttached) {
+    conn.onreconnected(() => { reconnectHandler?.() })
+    reconnectListenerAttached = true
+  }
+}
+
 export const gameHub = {
   getOpenRooms: () => getConnection().invoke('GetOpenRooms'),
   createRoom: (gameType) => getConnection().invoke('CreateRoom', gameType),
@@ -49,6 +66,7 @@ export const gameHub = {
   startGame: (pairsCount) => getConnection().invoke('StartGame', pairsCount),
   pauseGame: () => getConnection().invoke('PauseGame'),
   resumeGame: () => getConnection().invoke('ResumeGame'),
+  kickDisconnectedPlayer: (memberId) => getConnection().invoke('KickDisconnectedPlayer', memberId),
   spinWheel: () => getConnection().invoke('SpinWheel'),
   flipCard: (cardId) => getConnection().invoke('FlipCard', cardId),
   skipTurn: () => getConnection().invoke('SkipTurn'),

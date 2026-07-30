@@ -11,6 +11,13 @@ public class SessionPlayer
     public bool IsHost { get; set; }
     // (famillenor) Équipe assignée en lobby avant lancement, null tant que l'hôte ne l'a pas choisie.
     public int? TeamIndex { get; set; }
+
+    // Déconnexion en pleine partie (voir GameHub.HandleMidGameDisconnectAsync) : le joueur garde sa
+    // place le temps du délai de grâce plutôt que d'être retiré immédiatement. DisconnectToken
+    // identifie l'épisode de déconnexion en cours, pour qu'un timer de grâce expiré après une
+    // reconnexion (ou après un kick manuel déjà traité) soit reconnu comme obsolète et ignoré.
+    public bool Disconnected { get; set; }
+    public Guid DisconnectToken { get; set; }
 }
 
 public class DeckCard
