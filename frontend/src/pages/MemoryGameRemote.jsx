@@ -120,7 +120,12 @@ export default function MemoryGameRemote() {
     // joueur — uniquement si une partie était en cours, sinon rien à faire.
     setReconnectHandler(() => {
       if (roomCodeRef.current && (stepRef.current === 'order' || stepRef.current === 'playing')) {
-        gameHub.joinRoom(roomCodeRef.current).catch(() => {})
+        // La reco SignalR seule ne rejoue pas les événements manqués pendant la coupure
+        // (CardFlipped/TurnResolved) : on applique l'instantané renvoyé par JoinRoom pour
+        // rattraper le plateau réel plutôt que de rester bloqué sur son dernier état connu.
+        gameHub.joinRoom(roomCodeRef.current).then(res => {
+          if (res?.state) applyReconnectState(res.state)
+        }).catch(() => {})
       }
     })
     return () => {
@@ -265,6 +270,17 @@ export default function MemoryGameRemote() {
     } finally {
       setConnecting(false)
     }
+  }
+
+  function applyReconnectState(state) {
+    deckRef.current = state.deck
+    setDeck(state.deck)
+    setPairsCount(state.pairsCount)
+    setMatchedBy(new Map(state.matchedBy.map(m => [m.memberId, m.colorIndex])))
+    setFlipped(state.flippedCardIds)
+    setLocked(state.flippedCardIds.length >= 2)
+    if (state.currentPlayerColorIndex != null) setCurrentColorIndex(state.currentPlayerColorIndex)
+    setStep('playing')
   }
 
   function handleChooseDifficulty(count) {

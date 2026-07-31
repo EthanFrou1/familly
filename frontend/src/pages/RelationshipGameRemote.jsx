@@ -90,7 +90,12 @@ export default function RelationshipGameRemote() {
     // joueur — uniquement si une partie était en cours, sinon rien à faire.
     setReconnectHandler(() => {
       if (roomCodeRef.current && (stepRef.current === 'order' || stepRef.current === 'playing')) {
-        gameHub.joinRoom(roomCodeRef.current).catch(() => {})
+        // La reco SignalR seule ne rejoue pas les événements manqués pendant la coupure
+        // (AnswerResolved) : on applique l'instantané renvoyé par JoinRoom pour rattraper la
+        // question/le tour réels plutôt que de rester bloqué sur le dernier état connu.
+        gameHub.joinRoom(roomCodeRef.current).then(res => {
+          if (res?.state) applyReconnectState(res.state)
+        }).catch(() => {})
       }
     })
     return () => {
@@ -257,6 +262,18 @@ export default function RelationshipGameRemote() {
     } finally {
       setConnecting(false)
     }
+  }
+
+  function applyReconnectState(state) {
+    myPickRef.current = null
+    setRevealKey(null)
+    setCorrectKey(null)
+    setCurrentQuestion(state.currentQuestion)
+    setQuestionIndex(state.questionIndex)
+    setQuestionCount(state.questionCount)
+    if (state.currentPlayerColorIndex != null) setCurrentColorIndex(state.currentPlayerColorIndex)
+    setTimeLeft(ANSWER_TIME_LIMIT)
+    setStep('playing')
   }
 
   function handleChooseQuestionCount(count) {

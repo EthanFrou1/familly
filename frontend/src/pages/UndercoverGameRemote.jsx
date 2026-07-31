@@ -85,7 +85,14 @@ export default function UndercoverGameRemote() {
     // joueur — uniquement si une partie était en cours, sinon rien à faire.
     setReconnectHandler(() => {
       if (roomCodeRef.current && (stepRef.current === 'playing' || stepRef.current === 'reveal')) {
-        gameHub.joinRoom(roomCodeRef.current).catch(() => {})
+        // La reco SignalR seule ne rejoue pas les événements manqués pendant la coupure — le
+        // plus grave ici : YourUndercoverRole (rôle/mot privés) n'est envoyé qu'une seule fois
+        // au lancement, donc un joueur en reco pile à ce moment restait bloqué sur
+        // "Chargement…" pour toute la partie. On applique l'instantané renvoyé par JoinRoom
+        // pour rattraper rôle/phase/manche réels.
+        gameHub.joinRoom(roomCodeRef.current).then(res => {
+          if (res?.state) applyReconnectState(res.state)
+        }).catch(() => {})
       }
     })
     return () => {
@@ -225,6 +232,26 @@ export default function UndercoverGameRemote() {
     } finally {
       setConnecting(false)
     }
+  }
+
+  function applyReconnectState(state) {
+    if (state.myRole != null) {
+      setMyRole(state.myRole)
+      setMyWord(state.myWord)
+    }
+    setAliveMemberIds(state.aliveMemberIds)
+    setSpeakingOrder(state.speakingOrder)
+    setCurrentSpeakerMemberId(state.currentSpeakerMemberId)
+    // "mrwhite-guess" est une sous-phase transitoire de "eliminated" côté client (voir
+    // lastElimination, non reconstituable ici sans le payload complet de l'élimination) — le
+    // joueur verra l'écran se compléter au prochain événement plutôt que de rester bloqué.
+    setPhase(state.phase === 'mrwhite-guess' ? 'eliminated' : state.phase)
+    setLastElimination(null)
+    setMrWhiteGuessResult(null)
+    setVoteProgress(state.voteProgress)
+    setMyVote(state.myVoteTargetId)
+    setRevealShown(true)
+    setStep('playing')
   }
 
   function handleStartGame() {

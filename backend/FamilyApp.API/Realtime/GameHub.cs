@@ -114,15 +114,20 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
     // Reconnexion en pleine partie : le joueur est déjà dans la session (marqué déconnecté ou pas —
     // une reco peut arriver avant même que le serveur ait détecté la coupure côté SignalR). On
     // échange juste le ConnectionId et on lève le flag Disconnected ; si plus personne n'attend, la
-    // partie reprend. Contrairement au join en lobby, aucun état de jeu n'est renvoyé ici : on
-    // suppose que la page cliente est restée montée (reco réseau, pas relance de l'appli) et a
-    // gardé son état — voir gameHub.js/onreconnected.
+    // partie reprend. `state` (voir BuildReconnectState) comble les événements de groupe manqués
+    // pendant la coupure — SignalR ne les rejoue jamais, donc sans ça le client resterait bloqué
+    // sur l'état d'avant la coupure indéfiniment. C'est la valeur de retour de cet appel RPC (pas
+    // un message de groupe) donc elle arrive de façon fiable au client qui reconnecte, y compris
+    // les infos privées comme le rôle Undercover.
     private async Task<object> ReconnectToStartedRoomAsync(GameSession session, Guid memberId)
     {
         List<PlayerDto> playerDtos;
         string? staleConnectionId;
         bool wasDisconnected;
         bool resumeGame = false;
+        object? state;
+        bool pausedSnapshot;
+        int? pausedByColorIndexSnapshot;
 
         lock (session)
         {
@@ -154,6 +159,9 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
             }
 
             playerDtos = ToPlayerDtos(session);
+            state = BuildReconnectState(session, memberId);
+            pausedSnapshot = session.Paused;
+            pausedByColorIndexSnapshot = session.PausedByColorIndex;
         }
 
         if (staleConnectionId is not null && staleConnectionId != Context.ConnectionId)
@@ -165,8 +173,97 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         if (resumeGame)
             await Clients.Group(session.Code).SendAsync("GameResumed");
 
-        return new { success = true, code = session.Code, players = playerDtos, reconnected = true };
+        return new
+        {
+            success = true,
+            code = session.Code,
+            players = playerDtos,
+            reconnected = true,
+            state,
+            paused = pausedSnapshot,
+            pausedByColorIndex = pausedByColorIndexSnapshot,
+        };
     }
+
+    // Instantané envoyé uniquement au joueur qui reconnecte (jamais diffusé au groupe — voir
+    // ReconnectToStartedRoomAsync). Simplification assumée : si la coupure est survenue pendant
+    // l'écran de révélation entre deux manches, on renvoie directement la manche suivante plutôt
+    // que de reconstituer un écran transitoire déjà passé — l'objectif est de débloquer le joueur
+    // dans un état correct et jouable, pas de rejouer l'animation manquée. Doit être appelée à
+    // l'intérieur d'un lock(session).
+    private static object? BuildReconnectState(GameSession session, Guid memberId) => session.GameType switch
+    {
+        "memory" => new
+        {
+            deck = session.Deck.Select(c => new { cardId = c.CardId, memberId = c.MemberId, photoUrl = c.PhotoUrl }),
+            pairsCount = session.PairsCount,
+            matchedBy = session.MatchedBy.Select(kv => new { memberId = kv.Key, colorIndex = kv.Value }),
+            flippedCardIds = session.FlippedCardIds,
+            turnOrderColorIndexes = session.TurnOrderColorIndexes,
+            currentPlayerColorIndex = session.TurnOrderColorIndexes.Count > 0
+                ? session.TurnOrderColorIndexes[session.CurrentPlayerIndex]
+                : (int?)null,
+        },
+
+        "quiwho" or "relationship" => session.QuizQuestionIndex < session.QuizQuestions.Count
+            ? new
+            {
+                currentQuestion = ToPublicQuestion(session.QuizQuestions[session.QuizQuestionIndex]),
+                questionIndex = session.QuizQuestionIndex,
+                questionCount = session.QuizQuestions.Count,
+                currentPlayerColorIndex = session.TurnOrderColorIndexes.Count > 0
+                    ? session.TurnOrderColorIndexes[session.CurrentPlayerIndex]
+                    : (int?)null,
+            }
+            : null,
+
+        "superlative" or "whoami" or "familytrivia" => session.SimRoundIndex < session.SimRounds.Count
+            ? new
+            {
+                currentRound = ToPublicSimRound(session.SimRounds[session.SimRoundIndex]),
+                roundIndex = session.SimRoundIndex,
+                roundCount = session.SimRounds.Count,
+                answerProgress = new { answered = session.PendingAnswers.Count, total = session.Players.Count },
+                // La propre réponse du joueur qui reconnecte (pas celle des autres) : sûr à
+                // renvoyer ici, ça permet au client de savoir s'il a déjà répondu ET quoi,
+                // plutôt qu'un simple booléen.
+                myAnswer = session.PendingAnswers.GetValueOrDefault(memberId),
+            }
+            : null,
+
+        "famillenor" => session.FamilleEnOrRoundIndex < session.FamilleEnOrRounds.Count
+            ? new
+            {
+                round = ToPublicFamilleEnOrRound(session.FamilleEnOrRounds[session.FamilleEnOrRoundIndex]),
+                roundIndex = session.FamilleEnOrRoundIndex,
+                roundCount = session.FamilleEnOrRounds.Count,
+                phase = session.FamilleEnOrPhase,
+                controllingTeamIndex = session.FamilleEnOrControllingTeamIndex,
+                strikes = session.FamilleEnOrStrikes,
+                pot = session.FamilleEnOrRoundPot,
+                faceOffMemberIds = session.FamilleEnOrFaceOffMemberIds,
+            }
+            : null,
+
+        // myRole/myWord viennent des dictionnaires privés du joueur qui reconnecte : sûr à
+        // renvoyer ici car c'est la réponse RPC du seul appelant, jamais un message de groupe.
+        "undercover" => new
+        {
+            myRole = session.UndercoverRoles.TryGetValue(memberId, out var role) ? role.ToString() : null,
+            myWord = session.UndercoverWords.GetValueOrDefault(memberId),
+            aliveMemberIds = session.UndercoverAliveMemberIds,
+            speakingOrder = session.UndercoverSpeakingOrder,
+            currentSpeakerMemberId = session.UndercoverSpeakingOrder.Count > 0 && session.UndercoverSpeakerIndex < session.UndercoverSpeakingOrder.Count
+                ? session.UndercoverSpeakingOrder[session.UndercoverSpeakerIndex]
+                : (Guid?)null,
+            phase = session.UndercoverPhase,
+            voteProgress = new { voted = session.UndercoverVotes.Count, total = session.UndercoverAliveMemberIds.Count },
+            myVoteTargetId = session.UndercoverVotes.TryGetValue(memberId, out var voted) ? voted : (Guid?)null,
+            pendingMrWhiteGuesserId = session.UndercoverPendingMrWhiteGuesserId,
+        },
+
+        _ => null,
+    };
 
     public async Task LeaveRoom()
     {
