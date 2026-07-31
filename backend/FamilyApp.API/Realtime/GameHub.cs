@@ -1091,6 +1091,10 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
                     scorerMemberIds = scorerIds.Select(id => id.ToString()),
                     scorerPoints = scorerPoints.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
                     answers = session.PendingAnswers.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
+                    // Ordre d'arrivée des réponses (correctes ou non), pour afficher qui a répondu
+                    // le plus vite dans la modale entre les manches. Matérialisé en liste tout de
+                    // suite : PendingAnswerOrder est vidé juste après, avant l'envoi du payload.
+                    answerOrder = session.PendingAnswerOrder.Select(id => id.ToString()).ToList(),
                     isLastRound,
                 };
             }
