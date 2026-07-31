@@ -4,6 +4,7 @@ import { AuthProvider } from './store/AuthContext'
 import { MembersProvider } from './store/MembersContext'
 import { UiChromeProvider, useUiChrome } from './store/UiChromeContext'
 import { useAuth } from './hooks/useAuth'
+import { readAndClearPendingRedirect } from './utils/pendingRedirect'
 import BottomNav from './components/layout/BottomNav'
 import OnboardingModal from './components/shared/OnboardingModal'
 import Home from './pages/Home'
@@ -101,6 +102,14 @@ function ProtectedLayoutContent() {
     }
     navigator.serviceWorker.addEventListener('message', handleMessage)
     return () => navigator.serviceWorker.removeEventListener('message', handleMessage)
+  }, [navigate])
+
+  // Lancement à froid depuis une notification : si le service worker a dû ouvrir une nouvelle
+  // fenêtre (voir sw.js/notificationclick), certains navigateurs (bug WebKit connu sur iOS)
+  // ignorent l'URL passée à clients.openWindow() et ouvrent le start_url à la place — on relit
+  // alors l'URL cible déposée en filet de secours pour terminer la redirection nous-mêmes.
+  useEffect(() => {
+    readAndClearPendingRedirect().then(url => { if (url) navigate(url) }).catch(() => {})
   }, [navigate])
 
   return (
