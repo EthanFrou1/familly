@@ -83,7 +83,12 @@ export default function FamilyTriviaGameRemote() {
       .catch(() => setError('Connexion impossible.'))
     setReconnectHandler(() => {
       if (roomCodeRef.current && stepRef.current === 'playing') {
-        gameHub.joinRoom(roomCodeRef.current).catch(() => {})
+        // La reco SignalR seule ne rejoue pas les événements manqués pendant la coupure
+        // (RoundResolved/NextRound) : on applique l'instantané renvoyé par JoinRoom pour
+        // rattraper la question réelle plutôt que de rester bloqué sur le dernier état connu.
+        gameHub.joinRoom(roomCodeRef.current).then(res => {
+          if (res?.state) applyReconnectState(res.state)
+        }).catch(() => {})
       }
     })
     return () => {
@@ -237,6 +242,17 @@ export default function FamilyTriviaGameRemote() {
 
   function handleToggleCategory(key) {
     setCategories(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])
+  }
+
+  function applyReconnectState(state) {
+    setRoundIndex(state.roundIndex)
+    setRoundCount(state.roundCount)
+    setCurrentRound(state.currentRound)
+    setMyAnswer(state.myAnswer)
+    setSubmitted(state.myAnswer != null)
+    setAnswerProgress(state.answerProgress)
+    setReveal(null)
+    setStep('playing')
   }
 
   function handleChooseRoundCount(count) {

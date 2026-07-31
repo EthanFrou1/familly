@@ -98,7 +98,13 @@ export default function FamilleEnOrGameRemote() {
     // joueur — uniquement si une partie était en cours, sinon rien à faire.
     setReconnectHandler(() => {
       if (roomCodeRef.current && stepRef.current === 'playing') {
-        gameHub.joinRoom(roomCodeRef.current).catch(() => {})
+        // La reco SignalR seule ne rejoue pas les événements manqués pendant la coupure
+        // (AnswerRevealed/StrikeAdded/FamilleEnOrRoundResolved...) : on applique l'instantané
+        // renvoyé par JoinRoom pour rattraper la manche/phase réelle plutôt que de rester
+        // bloqué sur le dernier état connu.
+        gameHub.joinRoom(roomCodeRef.current).then(res => {
+          if (res?.state) applyReconnectState(res.state)
+        }).catch(() => {})
       }
     })
     return () => {
@@ -268,6 +274,20 @@ export default function FamilleEnOrGameRemote() {
   function handleAssignTeam(memberId, teamIndex) {
     if (!isHost) return
     gameHub.assignTeam(memberId, teamIndex).catch(() => {})
+  }
+
+  function applyReconnectState(state) {
+    setRoundIndex(state.roundIndex)
+    setRoundCount(state.roundCount)
+    setCurrentRound(state.round)
+    setFaceOffMemberIds(state.faceOffMemberIds)
+    setPhase(state.phase)
+    setControllingTeamIndex(state.controllingTeamIndex)
+    setStealingTeamIndex(state.phase === 'steal' && state.controllingTeamIndex != null ? 1 - state.controllingTeamIndex : null)
+    setStrikes(state.strikes)
+    setAnswerDraft('')
+    setReveal(null)
+    setStep('playing')
   }
 
   function handleChooseRoundCount(count) {

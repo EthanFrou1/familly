@@ -82,7 +82,12 @@ export default function SuperlativeGameRemote() {
     // joueur — uniquement si une partie était en cours, sinon rien à faire.
     setReconnectHandler(() => {
       if (roomCodeRef.current && stepRef.current === 'playing') {
-        gameHub.joinRoom(roomCodeRef.current).catch(() => {})
+        // La reco SignalR seule ne rejoue pas les événements manqués pendant la coupure
+        // (RoundResolved/NextRound) : on applique l'instantané renvoyé par JoinRoom pour
+        // rattraper la manche réelle plutôt que de rester bloqué sur le dernier état connu.
+        gameHub.joinRoom(roomCodeRef.current).then(res => {
+          if (res?.state) applyReconnectState(res.state)
+        }).catch(() => {})
       }
     })
     return () => {
@@ -213,6 +218,16 @@ export default function SuperlativeGameRemote() {
     } finally {
       setConnecting(false)
     }
+  }
+
+  function applyReconnectState(state) {
+    setCurrentRound(state.currentRound)
+    setRoundIndex(state.roundIndex)
+    setRoundCount(state.roundCount)
+    setAnswerProgress(state.answerProgress)
+    setMyVote(state.myAnswer)
+    setReveal(null)
+    setStep('playing')
   }
 
   function handleChooseRoundCount(count) {
