@@ -6,6 +6,7 @@ import { membersWithPhoto, MIN_PAIRS_TO_UNLOCK } from '../utils/memoryGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_WHOISIT } from '../utils/whoIsItGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_RELATIONSHIP } from '../utils/relationshipGame'
 import { MIN_SUBJECTS_TO_UNLOCK, eligibleSubjectsCount } from '../utils/whoAmIGame'
+import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_TRIVIA, eligibleMembersCount as eligibleTriviaMembersCount } from '../utils/familyTriviaGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_DAILY_MYSTERY } from '../utils/dailyMystery'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_UNDERCOVER } from '../utils/undercoverGame'
 import { MIN_MEMBERS_TO_UNLOCK as MIN_MEMBERS_FOR_FOREHEAD } from '../utils/foreheadThemes'
@@ -45,6 +46,7 @@ export default function GamesLobby() {
   const relationshipUnlocked = members.length >= MIN_MEMBERS_FOR_RELATIONSHIP
   const superlativeUnlocked = members.length >= MIN_MEMBERS_FOR_SUPERLATIVE
   const whoAmIUnlocked = eligibleSubjectsCount(members) >= MIN_SUBJECTS_TO_UNLOCK
+  const triviaUnlocked = eligibleTriviaMembersCount(members) >= MIN_MEMBERS_FOR_TRIVIA
   const dailyMysteryUnlocked = members.length >= MIN_MEMBERS_FOR_DAILY_MYSTERY
   const famillenorPlayable = members.length >= MIN_MEMBERS_FOR_FAMILLENOR && famillenorReadyCount >= MIN_READY_QUESTIONS_FOR_FAMILLENOR
   const undercoverUnlocked = members.length >= MIN_MEMBERS_FOR_UNDERCOVER
@@ -199,6 +201,15 @@ export default function GamesLobby() {
               unlocked={whoAmIUnlocked}
               lockedHint="Complétez plus de profils (bio, métier, sport...) pour débloquer"
               onPlay={() => navigate('/games/whoami/remote')}
+            />
+
+            <GameCard
+              emoji="🧠"
+              title="Quiz Famille"
+              description="Date de naissance, ville, qui est né en premier... Répondez au plus vite ! Jusqu'à 10 joueurs."
+              unlocked={triviaUnlocked}
+              lockedHint={`${MIN_MEMBERS_FOR_TRIVIA} membres avec date de naissance min. pour débloquer`}
+              onPlay={() => navigate('/games/familytrivia/remote')}
             />
 
             <button
