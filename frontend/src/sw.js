@@ -1,4 +1,5 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
+import { savePendingRedirect } from './utils/pendingRedirect'
 
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST ?? [])
@@ -33,13 +34,27 @@ self.addEventListener('notificationclick', event => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async list => {
       const existing = list.find(c => 'focus' in c)
       if (existing) {
-        // Sur iOS/Safari en PWA, une fenêtre déjà ouverte ne change pas de route
-        // via clients.openWindow (elle est juste ramenée au premier plan) : on
-        // délègue la navigation à l'app elle-même via postMessage.
         await existing.focus()
-        existing.postMessage({ type: 'navigate', url })
+        // client.navigate() redirige réellement la fenêtre existante — contrairement à un
+        // postMessage seul, qui ne fonctionne que si l'app écoute déjà ce message, ce qui n'est
+        // pas garanti si elle était en arrière-plan ou gelée par l'OS (c'était le bug : la
+        // fenêtre revenait au premier plan sur la page où elle était restée, ex. Home, au lieu
+        // de la room défiée). postMessage reste envoyé en complément pour Firefox, qui ne
+        // supporte pas navigate() sur un WindowClient.
+        if ('navigate' in existing) {
+          try {
+            await existing.navigate(url)
+          } catch {
+            existing.postMessage({ type: 'navigate', url })
+          }
+        } else {
+          existing.postMessage({ type: 'navigate', url })
+        }
         return
       }
+      // Filet de secours pour le bug WebKit qui ignore parfois l'URL passée à openWindow au
+      // lancement à froid (voir utils/pendingRedirect.js) : l'app la relira à son démarrage.
+      await savePendingRedirect(url)
       return clients.openWindow(url)
     })
   )
