@@ -408,6 +408,7 @@ export default function FamilyTriviaGameRemote() {
             correctKey={reveal?.correctKey ?? null}
             options={currentRound.options ?? []}
             selectedKey={reveal ? myAnswer : null}
+            pendingKey={myAnswer}
             onAnswer={handleAnswer}
             disabled={paused || submitted}
             timeLeft={timeLeft}

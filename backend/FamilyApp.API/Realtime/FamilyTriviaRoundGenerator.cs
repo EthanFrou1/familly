@@ -10,14 +10,17 @@ public static class FamilyTriviaRoundGenerator
     private const int OptionsPerQuestion = 4;
     private static readonly CultureInfo FrenchCulture = CultureInfo.GetCultureInfo("fr-FR");
 
-    public record MemberInfo(Guid Id, string FirstName, string LastName, string? Gender, Guid? FamilyId, DateTime? BirthDate, string? City, string? Phone);
+    public record MemberInfo(Guid Id, string FirstName, string LastName, string? Gender, Guid? FamilyId, DateTime? BirthDate, string? City, string? Phone, bool IsAlive, string? Occupation, string? Sport);
 
-    public static List<SimRound> Build(List<MemberInfo> members, int roundCount, List<string> categories)
+    // childCounts : nombre d'enfants connus par membre (Id du parent -> nombre), précalculé par
+    // l'appelant à partir des relations ParentChild — le générateur n'a pas besoin de connaître
+    // le modèle Relation/RelationType.
+    public static List<SimRound> Build(List<MemberInfo> members, int roundCount, List<string> categories, Dictionary<Guid, int> childCounts)
     {
         var rounds = new List<SimRound>();
         if (roundCount <= 0 || categories.Count == 0) return rounds;
 
-        var eligibleCategories = categories.Where(c => IsCategoryEligible(c, members)).ToList();
+        var eligibleCategories = categories.Where(c => IsCategoryEligible(c, members, childCounts)).ToList();
         if (eligibleCategories.Count == 0) return rounds;
 
         // Clé = "{catégorie}-{cible ou paire}" : empêche de reposer la même question dans la
@@ -31,9 +34,14 @@ public static class FamilyTriviaRoundGenerator
             var round = category switch
             {
                 "birthdate" => BuildBirthdateRound(members, usedKeys),
+                "birth_day" => BuildBirthDayRound(members, usedKeys),
                 "city" => BuildFieldRound(members, usedKeys, "city", m => m.City, m => $"Où habite {m.FirstName} {m.LastName} ?"),
-                "phone" => BuildFieldRound(members, usedKeys, "phone", m => m.Phone, m => $"Quel est le numéro de {m.FirstName} {m.LastName} ?"),
+                "phone" => BuildFieldRound(members, usedKeys, "phone", m => FormatPhone(m.Phone), m => $"Quel est le numéro de {m.FirstName} {m.LastName} ?"),
+                "occupation" => BuildFieldRound(members, usedKeys, "occupation", m => m.Occupation, m => $"Quel est le métier de {m.FirstName} {m.LastName} ?"),
+                "sport" => BuildFieldRound(members, usedKeys, "sport", m => m.Sport, m => $"Quel sport ou loisir pratique {m.FirstName} {m.LastName} ?"),
                 "birth_order" => BuildBirthOrderRound(members, usedKeys),
+                "age" => BuildAgeRound(members, usedKeys),
+                "children_count" => BuildChildrenCountRound(members, childCounts, usedKeys),
                 _ => null,
             };
             if (round is not null) rounds.Add(round);
@@ -42,12 +50,23 @@ public static class FamilyTriviaRoundGenerator
         return rounds;
     }
 
-    private static bool IsCategoryEligible(string category, List<MemberInfo> members) => category switch
+    private static bool IsCategoryEligible(string category, List<MemberInfo> members, Dictionary<Guid, int> childCounts) => category switch
     {
         "birthdate" => members.Count(m => m.BirthDate.HasValue) >= OptionsPerQuestion,
+        // Les leurres sont des numéros de jour au hasard (pas des vraies données d'autres
+        // membres) : une seule personne avec une date de naissance suffit à poser la question.
+        "birth_day" => members.Count(m => m.BirthDate.HasValue) >= 1,
         "city" => members.Count(m => !string.IsNullOrWhiteSpace(m.City)) >= OptionsPerQuestion,
         "phone" => members.Count(m => !string.IsNullOrWhiteSpace(m.Phone)) >= OptionsPerQuestion,
+        "occupation" => members.Count(m => !string.IsNullOrWhiteSpace(m.Occupation)) >= OptionsPerQuestion,
+        "sport" => members.Count(m => !string.IsNullOrWhiteSpace(m.Sport)) >= OptionsPerQuestion,
         "birth_order" => members.Count(m => m.BirthDate.HasValue) >= 2,
+        // Comme birth_day, les leurres sont des âges plausibles générés (pas des vraies données
+        // d'autres membres) : une seule personne vivante avec une date de naissance suffit.
+        "age" => members.Count(m => m.BirthDate.HasValue && m.IsAlive) >= 1,
+        // Comme age, les leurres sont des nombres générés : un seul parent avec au moins un
+        // enfant connu suffit.
+        "children_count" => childCounts.Values.Any(c => c > 0),
         _ => false,
     };
 
@@ -117,6 +136,42 @@ public static class FamilyTriviaRoundGenerator
         return null;
     }
 
+    // Contrairement aux autres catégories, les leurres sont des numéros de jour tirés au hasard
+    // (pas les vraies données d'autres membres) : le mois n'est jamais révélé, donc n'importe
+    // quel jour de 1 à 31 est un leurre plausible.
+    private static SimRound? BuildBirthDayRound(List<MemberInfo> members, HashSet<string> usedKeys)
+    {
+        var pool = members.Where(m => m.BirthDate.HasValue).ToList();
+        if (pool.Count == 0) return null;
+
+        foreach (var target in Shuffle(pool).Where(m => !usedKeys.Contains($"birth_day-{m.Id}")))
+        {
+            var correctDay = target.BirthDate!.Value.Day;
+            var distractorDays = new List<int>();
+            while (distractorDays.Count < OptionsPerQuestion - 1)
+            {
+                var candidate = Random.Shared.Next(1, 32);
+                if (candidate == correctDay || distractorDays.Contains(candidate)) continue;
+                distractorDays.Add(candidate);
+            }
+
+            usedKeys.Add($"birth_day-{target.Id}");
+            var options = Shuffle(new[] { correctDay }.Concat(distractorDays).ToList())
+                .Select(day => new QuizOption { Key = day.ToString(), Label = day.ToString() })
+                .ToList();
+
+            return new SimRound
+            {
+                Id = $"birth_day-{target.Id}",
+                Prompt = $"Le combien du mois est né(e) {target.FirstName} {target.LastName} ?",
+                CorrectKey = correctDay.ToString(),
+                Options = options,
+            };
+        }
+
+        return null;
+    }
+
     private static SimRound? BuildBirthOrderRound(List<MemberInfo> members, HashSet<string> usedKeys)
     {
         var pool = members.Where(m => m.BirthDate.HasValue).ToList();
@@ -149,7 +204,111 @@ public static class FamilyTriviaRoundGenerator
         return null;
     }
 
+    // Uniquement les membres vivants (un âge "actuel" n'a pas de sens pour un membre décédé). Comme
+    // birth_day, les leurres sont des âges plausibles générés autour du bon âge, pas les vraies
+    // données d'autres membres — évite qu'un leurre trop éloigné trahisse la bonne réponse.
+    private static SimRound? BuildAgeRound(List<MemberInfo> members, HashSet<string> usedKeys)
+    {
+        var pool = members.Where(m => m.BirthDate.HasValue && m.IsAlive).ToList();
+        if (pool.Count == 0) return null;
+
+        foreach (var target in Shuffle(pool).Where(m => !usedKeys.Contains($"age-{m.Id}")))
+        {
+            var correctAge = CalculateAge(target.BirthDate!.Value);
+            if (correctAge < 0) continue;
+
+            var distractorAges = new List<int>();
+            foreach (var offset in Shuffle(new List<int> { -5, -4, -3, -2, -1, 1, 2, 3, 4, 5 }))
+            {
+                if (distractorAges.Count >= OptionsPerQuestion - 1) break;
+                var candidate = correctAge + offset;
+                if (candidate < 0 || distractorAges.Contains(candidate)) continue;
+                distractorAges.Add(candidate);
+            }
+            if (distractorAges.Count < OptionsPerQuestion - 1) continue;
+
+            usedKeys.Add($"age-{target.Id}");
+            var options = Shuffle(new[] { correctAge }.Concat(distractorAges).ToList())
+                .Select(age => new QuizOption { Key = age.ToString(), Label = $"{age} ans" })
+                .ToList();
+
+            return new SimRound
+            {
+                Id = $"age-{target.Id}",
+                Prompt = $"Quel âge a {target.FirstName} {target.LastName} ?",
+                CorrectKey = correctAge.ToString(),
+                Options = options,
+            };
+        }
+
+        return null;
+    }
+
+    private static int CalculateAge(DateTime birthDate)
+    {
+        var today = DateTime.UtcNow.Date;
+        var age = today.Year - birthDate.Year;
+        if (birthDate.Date.AddYears(age) > today) age--;
+        return age;
+    }
+
+    // Uniquement les membres ayant au moins un enfant connu dans l'arbre (sinon la question porte
+    // sur une absence de données plutôt qu'un vrai fait). Comme age/birth_day, les leurres sont
+    // des nombres plausibles générés autour du bon compte, pas les vrais comptes d'autres membres.
+    private static SimRound? BuildChildrenCountRound(List<MemberInfo> members, Dictionary<Guid, int> childCounts, HashSet<string> usedKeys)
+    {
+        var pool = members.Where(m => childCounts.GetValueOrDefault(m.Id) > 0).ToList();
+        if (pool.Count == 0) return null;
+
+        foreach (var target in Shuffle(pool).Where(m => !usedKeys.Contains($"children_count-{m.Id}")))
+        {
+            var correctCount = childCounts[target.Id];
+            var distractorCounts = new List<int>();
+            foreach (var offset in Shuffle(new List<int> { -3, -2, -1, 1, 2, 3, 4 }))
+            {
+                if (distractorCounts.Count >= OptionsPerQuestion - 1) break;
+                var candidate = correctCount + offset;
+                if (candidate < 0 || distractorCounts.Contains(candidate)) continue;
+                distractorCounts.Add(candidate);
+            }
+            if (distractorCounts.Count < OptionsPerQuestion - 1) continue;
+
+            usedKeys.Add($"children_count-{target.Id}");
+            var options = Shuffle(new[] { correctCount }.Concat(distractorCounts).ToList())
+                .Select(count => new QuizOption { Key = count.ToString(), Label = count == 0 ? "Aucun" : count.ToString() })
+                .ToList();
+
+            return new SimRound
+            {
+                Id = $"children_count-{target.Id}",
+                Prompt = $"Combien d'enfants a {target.FirstName} {target.LastName} ?",
+                CorrectKey = correctCount.ToString(),
+                Options = options,
+            };
+        }
+
+        return null;
+    }
+
     private static string FormatDate(DateTime date) => date.ToString("d MMMM yyyy", FrenchCulture);
+
+    // Les membres saisissent leur numéro dans des formats variés (+33 6 53 63 53 53, 06.53.63.53.53,
+    // 0033653635353...) : on les ramène tous au même format nationnal "0X XX XX XX XX" pour que les
+    // options du QCM ne trahissent pas la bonne réponse par leur mise en forme. Renvoie l'original
+    // (nettoyé) si le numéro ne ressemble pas à un mobile/fixe français à 10 chiffres.
+    private static string? FormatPhone(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+
+        var digits = new string(raw.Where(char.IsDigit).ToArray());
+
+        if (digits.StartsWith("0033")) digits = "0" + digits[4..];
+        else if (digits.StartsWith("33") && digits.Length == 11) digits = "0" + digits[2..];
+
+        if (digits.Length != 10) return raw.Trim();
+
+        return string.Join(" ", Enumerable.Range(0, 5).Select(i => digits.Substring(i * 2, 2)));
+    }
 
     private static List<T> Shuffle<T>(List<T> list) => [.. list.OrderBy(_ => Random.Shared.Next())];
 }

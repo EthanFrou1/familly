@@ -6,9 +6,14 @@ export const MIN_MEMBERS_TO_UNLOCK = 4
 
 export const CATEGORIES = [
   { key: 'birthdate', label: 'Date de naissance', emoji: '🎂' },
+  { key: 'birth_day', label: 'Jour du mois', emoji: '📅' },
   { key: 'birth_order', label: 'Qui est né en premier', emoji: '⏳' },
+  { key: 'age', label: 'Âge actuel', emoji: '🎈' },
   { key: 'city', label: 'Ville', emoji: '📍' },
   { key: 'phone', label: 'Numéro de téléphone', emoji: '📞' },
+  { key: 'occupation', label: 'Métier', emoji: '💼' },
+  { key: 'sport', label: 'Sport / loisir', emoji: '⚽' },
+  { key: 'children_count', label: "Nombre d'enfants", emoji: '👶' },
 ]
 
 export const DEFAULT_CATEGORY_KEYS = CATEGORIES.map(c => c.key)
