@@ -30,6 +30,7 @@ const RelationshipGame = lazy(() => import('./pages/RelationshipGame'))
 const RelationshipGameRemote = lazy(() => import('./pages/RelationshipGameRemote'))
 const SuperlativeGameRemote = lazy(() => import('./pages/SuperlativeGameRemote'))
 const WhoAmIGameRemote = lazy(() => import('./pages/WhoAmIGameRemote'))
+const FamilyTriviaGameRemote = lazy(() => import('./pages/FamilyTriviaGameRemote'))
 const DailyMysteryGame = lazy(() => import('./pages/DailyMysteryGame'))
 const FamilleEnOrSurvey = lazy(() => import('./pages/FamilleEnOrSurvey'))
 const FamilleEnOrAdmin = lazy(() => import('./pages/FamilleEnOrAdmin'))
@@ -125,6 +126,7 @@ function ProtectedLayoutContent() {
             <Route path="/games/relationship/remote" element={<RelationshipGameRemote />} />
             <Route path="/games/superlative/remote" element={<SuperlativeGameRemote />} />
             <Route path="/games/whoami/remote" element={<WhoAmIGameRemote />} />
+            <Route path="/games/familytrivia/remote" element={<FamilyTriviaGameRemote />} />
             <Route path="/games/daily-mystery" element={<DailyMysteryGame />} />
             <Route path="/games/famillenor/survey" element={<FamilleEnOrSurvey />} />
             <Route path="/games/famillenor/remote" element={<FamilleEnOrGameRemote />} />

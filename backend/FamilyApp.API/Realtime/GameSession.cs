@@ -46,15 +46,18 @@ public class QuizQuestion
     public Guid? MemberBId { get; set; }
 }
 
-// Round d'un jeu "simultané" (superlative / whoami) : tous les joueurs répondent en parallèle,
-// contrairement aux QuizQuestion résolues tour par tour. CorrectKey ne doit jamais être envoyé
-// au client avant résolution (whoami : id du membre-sujet).
+// Round d'un jeu "simultané" (superlative / whoami / familytrivia) : tous les joueurs répondent
+// en parallèle, contrairement aux QuizQuestion résolues tour par tour. CorrectKey ne doit jamais
+// être envoyé au client avant résolution (whoami : id du membre-sujet ; familytrivia : clé de
+// l'option correcte).
 public class SimRound
 {
     public required string Id { get; set; }
     public string? Prompt { get; set; }
     public List<string> Clues { get; set; } = [];
     public required string CorrectKey { get; set; }
+    // (familytrivia) Options du QCM, null pour les autres jeux à rounds simultanés.
+    public List<QuizOption>? Options { get; set; }
 }
 
 // Une catégorie de réponses équivalentes pour une question "Une Famille en Or", triée par points
@@ -107,6 +110,9 @@ public class GameSession
     // cours, en privé — chaque indice coûte des points au moment du score (voir ResolveRoundAsync).
     public Dictionary<Guid, int> PlayerHintCounts { get; set; } = [];
     public Dictionary<Guid, string?> PendingAnswers { get; set; } = [];
+    // (familytrivia) Ordre d'arrivée des réponses du round en cours, pour le bonus de rapidité —
+    // plus fiable que de compter sur l'ordre d'insertion de PendingAnswers.
+    public List<Guid> PendingAnswerOrder { get; set; } = [];
     public bool ResultSaved { get; set; }
 
     // (famillenor) Rounds piochés une fois pour toutes au lancement (voir StartFamilleEnOrGame) :

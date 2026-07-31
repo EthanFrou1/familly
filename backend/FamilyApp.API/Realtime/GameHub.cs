@@ -29,6 +29,7 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         ["whoami"] = 10,
         ["famillenor"] = 8,
         ["undercover"] = 10,
+        ["familytrivia"] = 10,
     };
 
     private static int MaxPlayersFor(string gameType) => MaxPlayersByGameType.GetValueOrDefault(gameType, DefaultMaxPlayers);
@@ -321,7 +322,7 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
                     }
                 }
 
-                if (session.GameType is "superlative" or "whoami" && session.SimRoundIndex < session.SimRounds.Count)
+                if (session.GameType is "superlative" or "whoami" or "familytrivia" && session.SimRoundIndex < session.SimRounds.Count)
                 {
                     progressPayload = new { answered = session.PendingAnswers.Count, total = session.Players.Count };
                     shouldAutoResolveRound = session.PendingAnswers.Count >= session.Players.Count;
@@ -381,9 +382,10 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         session.Players.Remove(player);
         if (player.IsHost && session.Players.Count > 0) session.Players[0].IsHost = true;
 
-        if (session.GameType is "superlative" or "whoami")
+        if (session.GameType is "superlative" or "whoami" or "familytrivia")
         {
             session.PendingAnswers.Remove(player.MemberId);
+            session.PendingAnswerOrder.Remove(player.MemberId);
             session.PlayerHintCounts.Remove(player.MemberId);
             return new KickResult(true, null);
         }
@@ -857,9 +859,11 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         if (finishedPayload is not null) await Clients.Group(session.Code).SendAsync("GameFinished", finishedPayload);
     }
 
-    // Démarre un jeu à rounds simultanés (superlative / whoami) : contrairement à StartQuiz,
-    // il n'y a pas de tour par tour — tous les joueurs répondent en parallèle à chaque round.
-    public async Task StartSimultaneousGame(int roundCount)
+    // Démarre un jeu à rounds simultanés (superlative / whoami / familytrivia) : contrairement à
+    // StartQuiz, il n'y a pas de tour par tour — tous les joueurs répondent en parallèle à chaque
+    // round. `categories` n'est utilisé que par familytrivia (catégories de questions activées
+    // par l'hôte), ignoré par les autres jeux.
+    public async Task StartSimultaneousGame(int roundCount, List<string>? categories = null)
     {
         var session = store.FindByConnectionId(Context.ConnectionId);
         if (session is null || session.Started) return;
@@ -883,6 +887,14 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
                 .ToListAsync();
 
             rounds = WhoAmIRoundGenerator.Build(members, relations, session.Players, roundCount);
+        }
+        else if (session.GameType == "familytrivia")
+        {
+            var members = await db.Members
+                .Select(m => new FamilyTriviaRoundGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.City, m.Phone))
+                .ToListAsync();
+
+            rounds = FamilyTriviaRoundGenerator.Build(members, roundCount, categories ?? []);
         }
         else
         {
@@ -932,6 +944,7 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         {
             if (session.SimRoundIndex >= session.SimRounds.Count) return;
             session.PendingAnswers[caller.MemberId] = key;
+            if (!session.PendingAnswerOrder.Contains(caller.MemberId)) session.PendingAnswerOrder.Add(caller.MemberId);
             progressPayload = new { answered = session.PendingAnswers.Count, total = session.Players.Count };
             shouldResolve = session.PendingAnswers.Count >= session.Players.Count;
         }
@@ -1047,8 +1060,38 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
                     isLastRound,
                 };
             }
+            else if (session.GameType == "familytrivia")
+            {
+                // 1 point pour une bonne réponse, +1 point bonus (donc 2) pour le premier joueur
+                // de PendingAnswerOrder à avoir répondu correctement — récompense la rapidité sans
+                // dépendre d'une synchro d'horloge client/serveur.
+                var firstCorrect = session.PendingAnswerOrder
+                    .FirstOrDefault(id => session.PendingAnswers.TryGetValue(id, out var a) && a == round.CorrectKey);
+
+                var scorerIds = new List<Guid>();
+                var scorerPoints = new Dictionary<Guid, int>();
+                foreach (var (memberId, answer) in session.PendingAnswers)
+                {
+                    if (answer != round.CorrectKey) continue;
+                    var points = memberId == firstCorrect ? 2 : 1;
+                    scorerIds.Add(memberId);
+                    scorerPoints[memberId] = points;
+                    var player = session.Players.FirstOrDefault(p => p.MemberId == memberId);
+                    if (player is not null) player.Score += points;
+                }
+
+                resolvedPayload = new
+                {
+                    correctKey = round.CorrectKey,
+                    scorerMemberIds = scorerIds.Select(id => id.ToString()),
+                    scorerPoints = scorerPoints.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
+                    answers = session.PendingAnswers.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value),
+                    isLastRound,
+                };
+            }
 
             session.PendingAnswers.Clear();
+            session.PendingAnswerOrder.Clear();
             session.PlayerHintCounts.Clear();
             session.SimRoundIndex++;
 
@@ -1839,6 +1882,7 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
             session.SimRoundIndex = 0;
             session.PlayerHintCounts.Clear();
             session.PendingAnswers.Clear();
+            session.PendingAnswerOrder.Clear();
             session.ResultSaved = false;
             session.Paused = false;
             session.PausedAt = null;
@@ -1886,6 +1930,7 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         prompt = round.Prompt,
         clues = round.Clues.Count > 0 ? new[] { round.Clues[0] } : Array.Empty<string>(),
         hasMoreClues = round.Clues.Count > 1,
+        options = round.Options?.Select(o => new { key = o.Key, label = o.Label }),
     };
 
     private object BuildOpenRoomsPayload() =>

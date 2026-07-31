@@ -4,6 +4,7 @@ export const GAMES = [
   { key: 'relationship', label: 'Quel est le lien', unitLabel: 'questions', fullLabel: 'Quel est le lien ?', emoji: '🌳' },
   { key: 'superlative', label: 'Le plus susceptible', unitLabel: 'titres', fullLabel: 'Le/la plus susceptible de...', emoji: '🎉' },
   { key: 'whoami', label: 'Qui suis-je', unitLabel: 'personnages', fullLabel: 'Qui suis-je ?', emoji: '❓' },
+  { key: 'familytrivia', label: 'Quiz Famille', unitLabel: 'questions', fullLabel: 'Le Quiz de la Famille', emoji: '🧠' },
   { key: 'dailymystery', label: 'Membre Mystère', unitLabel: 'essais', fullLabel: 'Le Membre Mystère', emoji: '🔮' },
   { key: 'famillenor', label: 'Famille en Or', unitLabel: 'manches', fullLabel: 'Une Famille en Or', emoji: '💰' },
   { key: 'undercover', label: 'Undercover', unitLabel: 'manches', fullLabel: 'Undercover', emoji: '🎭' },
