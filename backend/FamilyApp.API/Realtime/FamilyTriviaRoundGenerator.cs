@@ -10,7 +10,7 @@ public static class FamilyTriviaRoundGenerator
     private const int OptionsPerQuestion = 4;
     private static readonly CultureInfo FrenchCulture = CultureInfo.GetCultureInfo("fr-FR");
 
-    public record MemberInfo(Guid Id, string FirstName, string LastName, string? Gender, Guid? FamilyId, DateTime? BirthDate, string? City, string? Phone);
+    public record MemberInfo(Guid Id, string FirstName, string LastName, string? Gender, Guid? FamilyId, DateTime? BirthDate, string? City, string? Phone, bool IsAlive);
 
     public static List<SimRound> Build(List<MemberInfo> members, int roundCount, List<string> categories)
     {
@@ -35,6 +35,7 @@ public static class FamilyTriviaRoundGenerator
                 "city" => BuildFieldRound(members, usedKeys, "city", m => m.City, m => $"Où habite {m.FirstName} {m.LastName} ?"),
                 "phone" => BuildFieldRound(members, usedKeys, "phone", m => FormatPhone(m.Phone), m => $"Quel est le numéro de {m.FirstName} {m.LastName} ?"),
                 "birth_order" => BuildBirthOrderRound(members, usedKeys),
+                "age" => BuildAgeRound(members, usedKeys),
                 _ => null,
             };
             if (round is not null) rounds.Add(round);
@@ -52,6 +53,9 @@ public static class FamilyTriviaRoundGenerator
         "city" => members.Count(m => !string.IsNullOrWhiteSpace(m.City)) >= OptionsPerQuestion,
         "phone" => members.Count(m => !string.IsNullOrWhiteSpace(m.Phone)) >= OptionsPerQuestion,
         "birth_order" => members.Count(m => m.BirthDate.HasValue) >= 2,
+        // Comme birth_day, les leurres sont des âges plausibles générés (pas des vraies données
+        // d'autres membres) : une seule personne vivante avec une date de naissance suffit.
+        "age" => members.Count(m => m.BirthDate.HasValue && m.IsAlive) >= 1,
         _ => false,
     };
 
@@ -187,6 +191,54 @@ public static class FamilyTriviaRoundGenerator
         }
 
         return null;
+    }
+
+    // Uniquement les membres vivants (un âge "actuel" n'a pas de sens pour un membre décédé). Comme
+    // birth_day, les leurres sont des âges plausibles générés autour du bon âge, pas les vraies
+    // données d'autres membres — évite qu'un leurre trop éloigné trahisse la bonne réponse.
+    private static SimRound? BuildAgeRound(List<MemberInfo> members, HashSet<string> usedKeys)
+    {
+        var pool = members.Where(m => m.BirthDate.HasValue && m.IsAlive).ToList();
+        if (pool.Count == 0) return null;
+
+        foreach (var target in Shuffle(pool).Where(m => !usedKeys.Contains($"age-{m.Id}")))
+        {
+            var correctAge = CalculateAge(target.BirthDate!.Value);
+            if (correctAge < 0) continue;
+
+            var distractorAges = new List<int>();
+            foreach (var offset in Shuffle(new List<int> { -5, -4, -3, -2, -1, 1, 2, 3, 4, 5 }))
+            {
+                if (distractorAges.Count >= OptionsPerQuestion - 1) break;
+                var candidate = correctAge + offset;
+                if (candidate < 0 || distractorAges.Contains(candidate)) continue;
+                distractorAges.Add(candidate);
+            }
+            if (distractorAges.Count < OptionsPerQuestion - 1) continue;
+
+            usedKeys.Add($"age-{target.Id}");
+            var options = Shuffle(new[] { correctAge }.Concat(distractorAges).ToList())
+                .Select(age => new QuizOption { Key = age.ToString(), Label = $"{age} ans" })
+                .ToList();
+
+            return new SimRound
+            {
+                Id = $"age-{target.Id}",
+                Prompt = $"Quel âge a {target.FirstName} {target.LastName} ?",
+                CorrectKey = correctAge.ToString(),
+                Options = options,
+            };
+        }
+
+        return null;
+    }
+
+    private static int CalculateAge(DateTime birthDate)
+    {
+        var today = DateTime.UtcNow.Date;
+        var age = today.Year - birthDate.Year;
+        if (birthDate.Date.AddYears(age) > today) age--;
+        return age;
     }
 
     private static string FormatDate(DateTime date) => date.ToString("d MMMM yyyy", FrenchCulture);

@@ -891,7 +891,7 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         else if (session.GameType == "familytrivia")
         {
             var members = await db.Members
-                .Select(m => new FamilyTriviaRoundGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.City, m.Phone))
+                .Select(m => new FamilyTriviaRoundGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.City, m.Phone, m.IsAlive))
                 .ToListAsync();
 
             rounds = FamilyTriviaRoundGenerator.Build(members, roundCount, categories ?? []);
