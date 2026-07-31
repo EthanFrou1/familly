@@ -1,8 +1,13 @@
-export default function QuizRoundScreen({ prompt, correctKey, options, selectedKey, onAnswer, disabled, timeLeft, timeLimit }) {
+export default function QuizRoundScreen({ prompt, correctKey, options, selectedKey, pendingKey, onAnswer, disabled, timeLeft, timeLimit }) {
   const revealed = selectedKey != null
 
   function optionClass(option) {
-    if (!revealed) return 'bg-white shadow-sm active:opacity-70'
+    if (!revealed) {
+      // (jeux à rounds simultanés) Le joueur a répondu mais on attend les autres avant de
+      // révéler la bonne réponse : on marque quand même son choix pour un retour visuel immédiat.
+      if (option.key === pendingKey) return 'bg-primary text-white shadow-md shadow-primary/30'
+      return 'bg-white shadow-sm active:opacity-70'
+    }
     if (option.key === correctKey) return 'bg-primary text-white shadow-md shadow-primary/30'
     if (option.key === selectedKey) return 'bg-red-50 text-red-500'
     return 'bg-white shadow-sm opacity-50'

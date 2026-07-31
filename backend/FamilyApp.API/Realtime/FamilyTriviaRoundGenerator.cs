@@ -33,7 +33,7 @@ public static class FamilyTriviaRoundGenerator
                 "birthdate" => BuildBirthdateRound(members, usedKeys),
                 "birth_day" => BuildBirthDayRound(members, usedKeys),
                 "city" => BuildFieldRound(members, usedKeys, "city", m => m.City, m => $"Où habite {m.FirstName} {m.LastName} ?"),
-                "phone" => BuildFieldRound(members, usedKeys, "phone", m => m.Phone, m => $"Quel est le numéro de {m.FirstName} {m.LastName} ?"),
+                "phone" => BuildFieldRound(members, usedKeys, "phone", m => FormatPhone(m.Phone), m => $"Quel est le numéro de {m.FirstName} {m.LastName} ?"),
                 "birth_order" => BuildBirthOrderRound(members, usedKeys),
                 _ => null,
             };
@@ -190,6 +190,24 @@ public static class FamilyTriviaRoundGenerator
     }
 
     private static string FormatDate(DateTime date) => date.ToString("d MMMM yyyy", FrenchCulture);
+
+    // Les membres saisissent leur numéro dans des formats variés (+33 6 53 63 53 53, 06.53.63.53.53,
+    // 0033653635353...) : on les ramène tous au même format nationnal "0X XX XX XX XX" pour que les
+    // options du QCM ne trahissent pas la bonne réponse par leur mise en forme. Renvoie l'original
+    // (nettoyé) si le numéro ne ressemble pas à un mobile/fixe français à 10 chiffres.
+    private static string? FormatPhone(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+
+        var digits = new string(raw.Where(char.IsDigit).ToArray());
+
+        if (digits.StartsWith("0033")) digits = "0" + digits[4..];
+        else if (digits.StartsWith("33") && digits.Length == 11) digits = "0" + digits[2..];
+
+        if (digits.Length != 10) return raw.Trim();
+
+        return string.Join(" ", Enumerable.Range(0, 5).Select(i => digits.Substring(i * 2, 2)));
+    }
 
     private static List<T> Shuffle<T>(List<T> list) => [.. list.OrderBy(_ => Random.Shared.Next())];
 }
