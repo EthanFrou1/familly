@@ -891,10 +891,15 @@ public class GameHub(AppDbContext db, GameSessionStore store, FamilleEnOrService
         else if (session.GameType == "familytrivia")
         {
             var members = await db.Members
-                .Select(m => new FamilyTriviaRoundGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.City, m.Phone, m.IsAlive))
+                .Select(m => new FamilyTriviaRoundGenerator.MemberInfo(m.Id, m.FirstName, m.LastName, m.Gender, m.FamilyId, m.BirthDate, m.City, m.Phone, m.IsAlive, m.Occupation, m.Sport))
                 .ToListAsync();
 
-            rounds = FamilyTriviaRoundGenerator.Build(members, roundCount, categories ?? []);
+            var childCounts = await db.Relations
+                .Where(r => r.Type == RelationType.ParentChild)
+                .GroupBy(r => r.MemberAId)
+                .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+            rounds = FamilyTriviaRoundGenerator.Build(members, roundCount, categories ?? [], childCounts);
         }
         else
         {
