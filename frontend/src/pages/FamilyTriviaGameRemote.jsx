@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useUiChrome } from '../store/UiChromeContext'
 import { connectHub, gameHub, onHubEvent, setReconnectHandler } from '../services/gameHub'
-import { formatDuration } from '../utils/memoryGame'
+import { formatDuration, PLAYER_COLORS } from '../utils/memoryGame'
 import { DEFAULT_CATEGORY_KEYS } from '../utils/familyTriviaGame'
 import GameHeader from '../components/games/GameHeader'
 import DifficultySetupStep from '../components/games/DifficultySetupStep'
@@ -175,8 +175,8 @@ export default function FamilyTriviaGameRemote() {
         setPlayers(updated)
       }),
       onHubEvent('AnswerProgress', setAnswerProgress),
-      onHubEvent('RoundResolved', ({ correctKey, scorerMemberIds, scorerPoints, answers, isLastRound }) => {
-        setReveal({ correctKey, scorerMemberIds, scorerPoints, answers, isLastRound })
+      onHubEvent('RoundResolved', ({ correctKey, scorerMemberIds, scorerPoints, answers, answerOrder, isLastRound }) => {
+        setReveal({ correctKey, scorerMemberIds, scorerPoints, answers, answerOrder, isLastRound })
         if (scorerPoints) {
           setPlayers(prev => prev.map(p => scorerPoints[p.memberId] ? { ...p, score: p.score + scorerPoints[p.memberId] } : p))
         }
@@ -259,12 +259,6 @@ export default function FamilyTriviaGameRemote() {
     gameHub.leaveRoom().catch(() => {})
     navigate('/games')
   }
-
-  const scorerLines = reveal
-    ? players
-        .filter(p => reveal.scorerMemberIds?.includes(p.memberId))
-        .map(p => `${p.name.split(' ')[0]} (+${reveal.scorerPoints?.[p.memberId] ?? 1})`)
-    : []
 
   if (step === 'menu') {
     return (
@@ -379,7 +373,7 @@ export default function FamilyTriviaGameRemote() {
   // step === 'playing'
   return (
     <div className="relative h-full bg-gray-50 overflow-hidden">
-      <div className={`h-full flex flex-col transition-opacity duration-200 ${paused ? 'opacity-30 pointer-events-none' : ''}`}>
+      <div className={`h-full flex flex-col transition-opacity duration-200 ${paused || reveal ? 'opacity-30 pointer-events-none' : ''}`}>
         <div className="px-4 pt-10 pb-2 shrink-0">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-primary bg-white rounded-full px-3 py-1 shadow-sm">
@@ -418,23 +412,12 @@ export default function FamilyTriviaGameRemote() {
       </div>
 
       {reveal && (
-        <div className="fixed inset-x-0 bottom-0 z-30 px-4 pb-safe-lg pb-6">
-          <div className="rounded-2xl bg-white shadow-xl p-4 space-y-3">
-            <p className="text-xs text-gray-500 text-center">
-              {scorerLines.length > 0 ? `Trouvé par ${scorerLines.join(', ')}` : 'Personne n\'a trouvé'}
-            </p>
-            {isHost ? (
-              <button
-                onClick={handleContinue}
-                className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white active:bg-primary-dark"
-              >
-                {reveal.isLastRound ? 'Voir les résultats' : 'Question suivante'}
-              </button>
-            ) : (
-              <p className="text-xs text-gray-400 text-center">En attente de l'hôte pour continuer…</p>
-            )}
-          </div>
-        </div>
+        <RoundResultModal
+          reveal={reveal}
+          players={players}
+          isHost={isHost}
+          onContinue={handleContinue}
+        />
       )}
 
       {paused && (
@@ -501,6 +484,71 @@ function TriviaPrompt({ prompt }) {
     <div className="flex flex-col items-center gap-3 text-center px-4">
       <span className="text-3xl">🧠</span>
       <p className="text-base font-extrabold text-gray-800">{prompt}</p>
+    </div>
+  )
+}
+
+// Modale affichée entre chaque manche : classement des joueurs par ordre de rapidité de réponse
+// (pas par score total), chacun coloré avec sa couleur vive habituelle façon Kahoot.
+function RoundResultModal({ reveal, players, isHost, onContinue }) {
+  const playerById = new Map(players.map(p => [p.memberId, p]))
+  const answerOrder = reveal.answerOrder ?? []
+  const ranked = answerOrder.map(id => playerById.get(id)).filter(Boolean)
+  const answeredIds = new Set(answerOrder)
+  const notAnswered = players.filter(p => !answeredIds.has(p.memberId))
+
+  return (
+    <div className="fixed inset-0 z-30 bg-black/40 flex items-center justify-center px-6 py-10">
+      <div className="w-full max-w-xs max-h-full overflow-y-auto rounded-3xl bg-white shadow-xl p-6 text-center space-y-4">
+        <p className="font-extrabold text-gray-800">
+          {ranked.length > 0 ? '⚡ Classement de rapidité' : 'Personne n\'a répondu'}
+        </p>
+
+        {ranked.length > 0 && (
+          <div className="space-y-1.5 max-h-72 overflow-y-auto text-left">
+            {ranked.map((p, i) => {
+              const color = PLAYER_COLORS[p.colorIndex % PLAYER_COLORS.length]
+              const correct = reveal.scorerMemberIds?.includes(p.memberId)
+              const points = reveal.scorerPoints?.[p.memberId]
+              return (
+                <div
+                  key={p.memberId}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2"
+                  style={{ backgroundColor: `${color.hex}22` }}
+                >
+                  <span className="text-xs font-black text-gray-400 w-4 shrink-0">{i + 1}</span>
+                  <Avatar src={p.profilePictureUrl} name={p.name} size="xs" className={`ring-2 shrink-0 ${color.ring}`} />
+                  <span className="flex-1 text-sm font-bold text-gray-800 truncate">{p.name.split(' ')[0]}</span>
+                  {correct ? (
+                    <span className="text-xs font-black shrink-0" style={{ color: color.hex }}>+{points}</span>
+                  ) : (
+                    <span className="text-xs text-gray-400 shrink-0">✗</span>
+                  )}
+                </div>
+              )
+            })}
+            {notAnswered.map(p => (
+              <div key={p.memberId} className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2 opacity-60">
+                <span className="text-xs font-black text-gray-300 w-4 shrink-0">—</span>
+                <Avatar src={p.profilePictureUrl} name={p.name} size="xs" className="shrink-0" />
+                <span className="flex-1 text-sm font-semibold text-gray-500 truncate">{p.name.split(' ')[0]}</span>
+                <span className="text-xs text-gray-400 shrink-0">Pas répondu</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isHost ? (
+          <button
+            onClick={onContinue}
+            className="w-full rounded-xl bg-primary py-3.5 text-sm font-semibold text-white active:bg-primary-dark"
+          >
+            {reveal.isLastRound ? 'Voir les résultats' : 'Question suivante'}
+          </button>
+        ) : (
+          <p className="text-xs text-gray-400">En attente de l'hôte pour continuer…</p>
+        )}
+      </div>
     </div>
   )
 }
