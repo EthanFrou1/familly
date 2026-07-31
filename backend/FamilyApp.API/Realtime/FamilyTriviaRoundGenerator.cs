@@ -31,6 +31,7 @@ public static class FamilyTriviaRoundGenerator
             var round = category switch
             {
                 "birthdate" => BuildBirthdateRound(members, usedKeys),
+                "birth_day" => BuildBirthDayRound(members, usedKeys),
                 "city" => BuildFieldRound(members, usedKeys, "city", m => m.City, m => $"Où habite {m.FirstName} {m.LastName} ?"),
                 "phone" => BuildFieldRound(members, usedKeys, "phone", m => m.Phone, m => $"Quel est le numéro de {m.FirstName} {m.LastName} ?"),
                 "birth_order" => BuildBirthOrderRound(members, usedKeys),
@@ -45,6 +46,9 @@ public static class FamilyTriviaRoundGenerator
     private static bool IsCategoryEligible(string category, List<MemberInfo> members) => category switch
     {
         "birthdate" => members.Count(m => m.BirthDate.HasValue) >= OptionsPerQuestion,
+        // Les leurres sont des numéros de jour au hasard (pas des vraies données d'autres
+        // membres) : une seule personne avec une date de naissance suffit à poser la question.
+        "birth_day" => members.Count(m => m.BirthDate.HasValue) >= 1,
         "city" => members.Count(m => !string.IsNullOrWhiteSpace(m.City)) >= OptionsPerQuestion,
         "phone" => members.Count(m => !string.IsNullOrWhiteSpace(m.Phone)) >= OptionsPerQuestion,
         "birth_order" => members.Count(m => m.BirthDate.HasValue) >= 2,
@@ -110,6 +114,42 @@ public static class FamilyTriviaRoundGenerator
                 Id = $"birthdate-{target.Id}",
                 Prompt = $"Quand est né(e) {target.FirstName} {target.LastName} ?",
                 CorrectKey = targetLabel,
+                Options = options,
+            };
+        }
+
+        return null;
+    }
+
+    // Contrairement aux autres catégories, les leurres sont des numéros de jour tirés au hasard
+    // (pas les vraies données d'autres membres) : le mois n'est jamais révélé, donc n'importe
+    // quel jour de 1 à 31 est un leurre plausible.
+    private static SimRound? BuildBirthDayRound(List<MemberInfo> members, HashSet<string> usedKeys)
+    {
+        var pool = members.Where(m => m.BirthDate.HasValue).ToList();
+        if (pool.Count == 0) return null;
+
+        foreach (var target in Shuffle(pool).Where(m => !usedKeys.Contains($"birth_day-{m.Id}")))
+        {
+            var correctDay = target.BirthDate!.Value.Day;
+            var distractorDays = new List<int>();
+            while (distractorDays.Count < OptionsPerQuestion - 1)
+            {
+                var candidate = Random.Shared.Next(1, 32);
+                if (candidate == correctDay || distractorDays.Contains(candidate)) continue;
+                distractorDays.Add(candidate);
+            }
+
+            usedKeys.Add($"birth_day-{target.Id}");
+            var options = Shuffle(new[] { correctDay }.Concat(distractorDays).ToList())
+                .Select(day => new QuizOption { Key = day.ToString(), Label = day.ToString() })
+                .ToList();
+
+            return new SimRound
+            {
+                Id = $"birth_day-{target.Id}",
+                Prompt = $"Le combien du mois est né(e) {target.FirstName} {target.LastName} ?",
+                CorrectKey = correctDay.ToString(),
                 Options = options,
             };
         }
