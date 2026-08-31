@@ -15,8 +15,15 @@ public class PhotoCleanupService(IServiceScopeFactory scopeFactory, ILogger<Phot
             var delay = nextRun - now;
             await Task.Delay(delay, stoppingToken);
 
-            await CleanupExpiredPhotosAsync(stoppingToken);
-            await CleanupOldActivityLogsAsync(stoppingToken);
+            try
+            {
+                await CleanupExpiredPhotosAsync(stoppingToken);
+                await CleanupOldActivityLogsAsync(stoppingToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Erreur lors du nettoyage nocturne");
+            }
         }
     }
 

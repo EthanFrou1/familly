@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FamilyApp.API.Services;
 
-public class BirthdayNotificationService(IServiceScopeFactory scopeFactory) : BackgroundService
+public class BirthdayNotificationService(IServiceScopeFactory scopeFactory, ILogger<BirthdayNotificationService> logger) : BackgroundService
 {
     private static readonly TimeZoneInfo Paris = TimeZoneInfo.FindSystemTimeZoneById("Europe/Paris");
 
@@ -19,7 +19,14 @@ public class BirthdayNotificationService(IServiceScopeFactory scopeFactory) : Ba
             await Task.Delay(nextRunUtc - DateTime.UtcNow, stoppingToken).ConfigureAwait(false);
             if (stoppingToken.IsCancellationRequested) break;
 
-            await SendBirthdayNotificationsAsync();
+            try
+            {
+                await SendBirthdayNotificationsAsync();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Erreur lors de l'envoi des notifications d'anniversaire");
+            }
         }
     }
 
