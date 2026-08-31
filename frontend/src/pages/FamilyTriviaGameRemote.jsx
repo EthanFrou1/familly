@@ -433,6 +433,7 @@ export default function FamilyTriviaGameRemote() {
           players={players}
           isHost={isHost}
           onContinue={handleContinue}
+          correctLabel={currentRound?.options?.find(o => o.key === reveal.correctKey)?.label}
         />
       )}
 
@@ -506,7 +507,7 @@ function TriviaPrompt({ prompt }) {
 
 // Modale affichée entre chaque manche : classement des joueurs par ordre de rapidité de réponse
 // (pas par score total), chacun coloré avec sa couleur vive habituelle façon Kahoot.
-function RoundResultModal({ reveal, players, isHost, onContinue }) {
+function RoundResultModal({ reveal, players, isHost, onContinue, correctLabel }) {
   const playerById = new Map(players.map(p => [p.memberId, p]))
   const answerOrder = reveal.answerOrder ?? []
   const ranked = answerOrder.map(id => playerById.get(id)).filter(Boolean)
@@ -516,6 +517,12 @@ function RoundResultModal({ reveal, players, isHost, onContinue }) {
   return (
     <div className="fixed inset-0 z-30 bg-black/40 flex items-center justify-center px-6 py-10">
       <div className="w-full max-w-xs max-h-full overflow-y-auto rounded-3xl bg-white shadow-xl p-6 text-center space-y-4">
+        {correctLabel && (
+          <p className="rounded-xl bg-primary/10 px-3 py-2 text-sm font-bold text-primary">
+            ✅ Bonne réponse : {correctLabel}
+          </p>
+        )}
+
         <p className="font-extrabold text-gray-800">
           {ranked.length > 0 ? '⚡ Classement de rapidité' : 'Personne n\'a répondu'}
         </p>
