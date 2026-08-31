@@ -433,7 +433,7 @@ export default function FamilyTriviaGameRemote() {
           players={players}
           isHost={isHost}
           onContinue={handleContinue}
-          correctLabel={currentRound?.options?.find(o => o.key === reveal.correctKey)?.label}
+          options={currentRound?.options ?? []}
         />
       )}
 
@@ -507,8 +507,10 @@ function TriviaPrompt({ prompt }) {
 
 // Modale affichée entre chaque manche : classement des joueurs par ordre de rapidité de réponse
 // (pas par score total), chacun coloré avec sa couleur vive habituelle façon Kahoot.
-function RoundResultModal({ reveal, players, isHost, onContinue, correctLabel }) {
+function RoundResultModal({ reveal, players, isHost, onContinue, options }) {
   const playerById = new Map(players.map(p => [p.memberId, p]))
+  const labelByKey = new Map(options.map(o => [o.key, o.label]))
+  const correctLabel = labelByKey.get(reveal.correctKey)
   const answerOrder = reveal.answerOrder ?? []
   const ranked = answerOrder.map(id => playerById.get(id)).filter(Boolean)
   const answeredIds = new Set(answerOrder)
@@ -533,6 +535,7 @@ function RoundResultModal({ reveal, players, isHost, onContinue, correctLabel })
               const color = PLAYER_COLORS[p.colorIndex % PLAYER_COLORS.length]
               const correct = reveal.scorerMemberIds?.includes(p.memberId)
               const points = reveal.scorerPoints?.[p.memberId]
+              const answerLabel = labelByKey.get(reveal.answers?.[p.memberId]) ?? '—'
               return (
                 <div
                   key={p.memberId}
@@ -541,7 +544,10 @@ function RoundResultModal({ reveal, players, isHost, onContinue, correctLabel })
                 >
                   <span className="text-xs font-black text-gray-400 w-4 shrink-0">{i + 1}</span>
                   <Avatar src={p.profilePictureUrl} name={p.name} size="xs" className={`ring-2 shrink-0 ${color.ring}`} />
-                  <span className="flex-1 text-sm font-bold text-gray-800 truncate">{p.name.split(' ')[0]}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-800 truncate">{p.name.split(' ')[0]}</p>
+                    <p className={`text-[10px] truncate ${correct ? 'text-green-600 font-semibold' : 'text-gray-400'}`}>{answerLabel}</p>
+                  </div>
                   {correct ? (
                     <span className="text-xs font-black shrink-0" style={{ color: color.hex }}>+{points}</span>
                   ) : (
